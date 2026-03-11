@@ -37,9 +37,12 @@
 		}
 	});
 
+	// Fetch messages and workers when the selected task changes
 	$effect(() => {
 		const taskId = task?.id;
 		if (taskId) {
+			messagesStore.fetchMessages(taskId);
+			workersStore.fetchWorkers(taskId);
 			wsStore.subscribeToTask(taskId);
 		}
 		return () => {
