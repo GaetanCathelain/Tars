@@ -15,6 +15,7 @@ import (
 	"github.com/GaetanCathelain/Tars/internal/db"
 	"github.com/GaetanCathelain/Tars/internal/handler"
 	"github.com/GaetanCathelain/Tars/internal/model"
+	"github.com/GaetanCathelain/Tars/internal/worker"
 	"github.com/GaetanCathelain/Tars/internal/ws"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
@@ -55,10 +56,13 @@ func main() {
 	hub.OnMessage = makeMessageHandler(pool)
 	go hub.Run()
 
+	mgr := worker.NewManager(pool, hub)
+
 	srv := &handler.Server{
-		DB:        pool,
-		JWTSecret: jwtSecret,
-		Hub:       hub,
+		DB:            pool,
+		JWTSecret:     jwtSecret,
+		Hub:           hub,
+		WorkerManager: mgr,
 	}
 
 	r := chi.NewRouter()
@@ -83,6 +87,8 @@ func main() {
 		r.Get("/api/tasks/{id}/messages", srv.HandleListMessages)
 		r.Post("/api/tasks/{id}/messages", srv.HandleCreateMessage)
 		r.Post("/api/tasks/{id}/workers", srv.HandleCreateWorker)
+		r.Get("/api/workers/{id}/output", srv.HandleGetWorkerOutput)
+		r.Delete("/api/workers/{id}", srv.HandleKillWorker)
 	})
 
 	// Static files

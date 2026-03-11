@@ -1,33 +1,37 @@
-# Changes — WebSocket + Real-time Layer
+# Worker Engine — Changes
 
-## New Files
-- **`internal/ws/hub.go`** — WebSocket hub with room-based broadcasting
-- **`internal/handler/ws.go`** — HTTP→WS upgrade handler with JWT query param auth
+## Added
 
-## Modified Files
-- **`internal/handler/auth.go`** — Added `Hub *ws.Hub` field to `Server` struct
-- **`internal/handler/messages.go`** — `HandleCreateMessage` now broadcasts to WS subscribers
-- **`cmd/tars/main.go`** — Creates hub, wires message handler, adds `/ws` route
-- **`go.mod` / `go.sum`** — Added `github.com/gorilla/websocket v1.5.3`
+### PTY-based Worker Engine (`internal/worker/`)
 
-## Architecture
+- **`manager.go`** — Worker lifecycle manager with thread-safe session tracking
+  - `NewManager(db, hub)` — constructor
+  - `SpawnWorker(ctx, taskID, messageID, prompt)` — creates PTY, spawns claude, inserts DB row, broadcasts `worker_start`, starts output capture + process wait goroutines
+  - `KillWorker(sessionID)` — terminates a running session
+  - `GetSession(sessionID)` / `ActiveSessions()` — query active sessions
+  - 15-minute timeout per session (auto-kill)
+  - Proper cleanup: close PTY, flush output, update DB, broadcast `worker_end`
 
-### Hub (`internal/ws/hub.go`)
-- **Hub** — central goroutine processing register/unregister/broadcast channels
-- **Client** — wraps a `gorilla/websocket.Conn` with read/write pumps
-- **Rooms** — `map[uuid.UUID]map[*Client]bool` for task-scoped broadcast
-- **`BroadcastToTask(taskID, msg)`** — public API for broadcasting from any handler
-- **`OnMessage` callback** — pluggable handler for persisting chat messages from WS clients
-- Ping/pong: 30s ping interval, 60s pong timeout
-- Thread-safe: `sync.RWMutex` on rooms/clients maps
+- **`pty.go`** — Spawns `claude <prompt>` in a real PTY via `github.com/creack/pty` with xterm-256color, 120x40 terminal size
 
-### Protocol
-Client → Server: `subscribe`, `unsubscribe`, `message`
-Server → Client: `message`, `worker_start`, `worker_output`, `worker_end`, `task_status`
+- **`capture.go`** — Reads PTY output in 4KB chunks, base64-encodes and broadcasts via WebSocket (`worker_output` events), buffers DB writes (flushes every 500ms or 8KB)
 
-### Auth
-WebSocket connections authenticate via `?token=<jwt>` query parameter (browsers can't set headers on WS handshake). Token is validated using the existing `auth.ValidateToken()`.
+### HTTP Handlers (`internal/handler/workers.go`)
 
-### Integration
-- REST `POST /api/tasks/{id}/messages` broadcasts via hub (both REST and WS clients see new messages)
-- WS `{"type":"message"}` persists to DB then broadcasts (same path, different entry point)
+- `POST /api/tasks/{id}/workers` — spawn a worker for a task (validates ownership)
+- `GET /api/workers/{id}/output` — replay all output chunks for a session (base64-encoded)
+- `DELETE /api/workers/{id}` — kill a running worker session
+
+### Integration (`cmd/tars/main.go`)
+
+- Worker manager created and wired into Server struct
+- New routes registered under auth middleware
+
+### Dependencies
+
+- Added `github.com/creack/pty v1.1.24`
+
+## Modified
+
+- `internal/handler/auth.go` — Server struct now includes `WorkerManager *worker.Manager`
+- `cmd/tars/main.go` — imports worker package, creates manager, adds routes
