@@ -14,8 +14,12 @@ import (
 	"github.com/GaetanCathelain/Tars/internal/auth"
 	"github.com/GaetanCathelain/Tars/internal/db"
 	"github.com/GaetanCathelain/Tars/internal/handler"
+	"github.com/GaetanCathelain/Tars/internal/model"
+	"github.com/GaetanCathelain/Tars/internal/ws"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
+	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 func main() {
@@ -47,9 +51,14 @@ func main() {
 	}
 	defer pool.Close()
 
+	hub := ws.NewHub()
+	hub.OnMessage = makeMessageHandler(pool)
+	go hub.Run()
+
 	srv := &handler.Server{
 		DB:        pool,
 		JWTSecret: jwtSecret,
+		Hub:       hub,
 	}
 
 	r := chi.NewRouter()
@@ -61,6 +70,9 @@ func main() {
 	r.Get("/api/health", srv.HandleHealth)
 	r.Post("/api/auth/register", srv.HandleRegister)
 	r.Post("/api/auth/login", srv.HandleLogin)
+
+	// WebSocket (auth via query param, not middleware)
+	r.Get("/ws", srv.HandleWS)
 
 	// Protected routes
 	r.Group(func(r chi.Router) {
@@ -115,4 +127,26 @@ func getEnv(key, fallback string) string {
 		return v
 	}
 	return fallback
+}
+
+// makeMessageHandler returns a ws.MessageHandler that persists messages to the database.
+func makeMessageHandler(pool *pgxpool.Pool) ws.MessageHandler {
+	return func(userID uuid.UUID, taskID uuid.UUID, content string) (interface{}, error) {
+		msg := model.Message{
+			TaskID:     taskID,
+			SenderType: "user",
+			SenderID:   &userID,
+			Content:    content,
+		}
+
+		err := pool.QueryRow(context.Background(),
+			"INSERT INTO messages (task_id, sender_type, sender_id, content) VALUES ($1, $2, $3, $4) RETURNING id, created_at",
+			msg.TaskID, msg.SenderType, msg.SenderID, msg.Content,
+		).Scan(&msg.ID, &msg.CreatedAt)
+		if err != nil {
+			return nil, err
+		}
+
+		return msg, nil
+	}
 }
