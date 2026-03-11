@@ -1,10 +1,11 @@
 <script lang="ts">
-	import { authStore } from '$lib/stores/auth.svelte';
-	import { goto } from '$app/navigation';
 	import { onMount } from 'svelte';
+	import { goto } from '$app/navigation';
+	import { auth } from '$lib/stores/auth.svelte';
 
 	onMount(() => {
-		if (authStore.isAuthenticated) {
+		auth.init();
+		if (auth.isAuthenticated) {
 			goto('/tasks');
 		} else {
 			goto('/login');
@@ -12,6 +13,6 @@
 	});
 </script>
 
-<div class="flex items-center justify-center h-full">
-	<p class="text-text-secondary font-mono text-sm">Loading...</p>
+<div class="min-h-screen flex items-center justify-center bg-background">
+	<p class="text-muted-foreground text-sm">Loading...</p>
 </div>

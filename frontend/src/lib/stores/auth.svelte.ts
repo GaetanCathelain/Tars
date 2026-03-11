@@ -1,128 +1,69 @@
-import type { AuthResponse, User } from '../types';
+import type { User, AuthResponse } from '$lib/types';
+import { api } from '$lib/api';
 
-const useMockData = true;
+const MOCK_MODE = true;
 
 function createAuthStore() {
 	let token = $state<string | null>(null);
 	let user = $state<User | null>(null);
-	let error = $state<string | null>(null);
-	let loading = $state(false);
 
-	// Load from localStorage on init
-	if (typeof window !== 'undefined') {
-		const savedToken = localStorage.getItem('tars_token');
-		const savedUser = localStorage.getItem('tars_user');
+	function init() {
+		if (typeof window === 'undefined') return;
+		const savedToken = localStorage.getItem('auth_token');
+		const savedUser = localStorage.getItem('auth_user');
 		if (savedToken && savedUser) {
 			token = savedToken;
-			try {
-				user = JSON.parse(savedUser);
-			} catch {
-				localStorage.removeItem('tars_token');
-				localStorage.removeItem('tars_user');
-			}
+			user = JSON.parse(savedUser);
 		}
 	}
 
-	function setAuth(authResponse: AuthResponse) {
-		token = authResponse.token;
-		user = authResponse.user;
-		if (typeof window !== 'undefined') {
-			localStorage.setItem('tars_token', authResponse.token);
-			localStorage.setItem('tars_user', JSON.stringify(authResponse.user));
+	async function login(username: string, password: string): Promise<void> {
+		if (MOCK_MODE) {
+			const mockUser: User = {
+				id: 'user-1',
+				username,
+				created_at: new Date().toISOString()
+			};
+			token = 'mock-jwt-token';
+			user = mockUser;
+			localStorage.setItem('auth_token', token);
+			localStorage.setItem('auth_user', JSON.stringify(user));
+			return;
 		}
+		const res = await api.post<AuthResponse>('/auth/login', { username, password });
+		token = res.token;
+		user = res.user;
+		localStorage.setItem('auth_token', res.token);
+		localStorage.setItem('auth_user', JSON.stringify(res.user));
 	}
 
-	async function login(username: string, password: string): Promise<boolean> {
-		error = null;
-		loading = true;
-		try {
-			if (useMockData) {
-				// Simulate API delay
-				await new Promise((r) => setTimeout(r, 300));
-				if (username && password) {
-					setAuth({
-						token: 'mock-jwt-token-' + Date.now(),
-						user: {
-							id: 'user-1',
-							username,
-							created_at: new Date().toISOString()
-						}
-					});
-					return true;
-				}
-				error = 'Invalid credentials';
-				return false;
-			}
-
-			const { api } = await import('../api');
-			const response = await api.post<AuthResponse>('/auth/login', { username, password });
-			setAuth(response);
-			return true;
-		} catch (e: unknown) {
-			error = (e as { error?: string })?.error || 'Login failed';
-			return false;
-		} finally {
-			loading = false;
+	async function register(username: string, password: string): Promise<void> {
+		if (MOCK_MODE) {
+			return login(username, password);
 		}
-	}
-
-	async function register(username: string, password: string): Promise<boolean> {
-		error = null;
-		loading = true;
-		try {
-			if (useMockData) {
-				await new Promise((r) => setTimeout(r, 300));
-				if (username && password) {
-					setAuth({
-						token: 'mock-jwt-token-' + Date.now(),
-						user: {
-							id: 'user-' + Date.now(),
-							username,
-							created_at: new Date().toISOString()
-						}
-					});
-					return true;
-				}
-				error = 'Registration failed';
-				return false;
-			}
-
-			const { api } = await import('../api');
-			const response = await api.post<AuthResponse>('/auth/register', { username, password });
-			setAuth(response);
-			return true;
-		} catch (e: unknown) {
-			error = (e as { error?: string })?.error || 'Registration failed';
-			return false;
-		} finally {
-			loading = false;
-		}
+		const res = await api.post<AuthResponse>('/auth/register', { username, password });
+		token = res.token;
+		user = res.user;
+		localStorage.setItem('auth_token', res.token);
+		localStorage.setItem('auth_user', JSON.stringify(res.user));
 	}
 
 	function logout() {
 		token = null;
 		user = null;
-		if (typeof window !== 'undefined') {
-			localStorage.removeItem('tars_token');
-			localStorage.removeItem('tars_user');
-		}
-	}
-
-	function clearError() {
-		error = null;
+		localStorage.removeItem('auth_token');
+		localStorage.removeItem('auth_user');
 	}
 
 	return {
 		get token() { return token; },
 		get user() { return user; },
-		get isAuthenticated() { return !!token && !!user; },
-		get error() { return error; },
-		get loading() { return loading; },
+		get isAuthenticated() { return !!token; },
+		init,
 		login,
 		register,
-		logout,
-		clearError
+		logout
 	};
 }
 
-export const authStore = createAuthStore();
+export const auth = createAuthStore();

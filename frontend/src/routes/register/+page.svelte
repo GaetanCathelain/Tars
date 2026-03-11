@@ -1,102 +1,93 @@
 <script lang="ts">
-	import { authStore } from '$lib/stores/auth.svelte';
 	import { goto } from '$app/navigation';
+	import { auth } from '$lib/stores/auth.svelte';
+	import { Button } from '$lib/components/ui/button';
+	import { Input } from '$lib/components/ui/input';
+	import { Label } from '$lib/components/ui/label';
+	import * as Card from '$lib/components/ui/card';
 
 	let username = $state('');
 	let password = $state('');
 	let confirmPassword = $state('');
-	let localError = $state('');
+	let error = $state('');
+	let loading = $state(false);
 
-	async function handleSubmit(e: Event) {
-		e.preventDefault();
-		localError = '';
-
+	async function handleRegister() {
+		if (!username || !password || !confirmPassword) {
+			error = 'Please fill in all fields';
+			return;
+		}
 		if (password !== confirmPassword) {
-			localError = 'Passwords do not match';
+			error = 'Passwords do not match';
 			return;
 		}
-
-		if (password.length < 6) {
-			localError = 'Password must be at least 6 characters';
-			return;
-		}
-
-		const success = await authStore.register(username, password);
-		if (success) {
+		loading = true;
+		error = '';
+		try {
+			await auth.register(username, password);
 			goto('/tasks');
+		} catch (e) {
+			error = e instanceof Error ? e.message : 'Registration failed';
+		} finally {
+			loading = false;
 		}
+	}
+
+	function handleKeydown(e: KeyboardEvent) {
+		if (e.key === 'Enter') handleRegister();
 	}
 </script>
 
-<div class="w-full max-w-sm mx-auto px-6">
-	<div class="bg-bg-secondary border border-border rounded-xl p-8 shadow-[0_1px_3px_rgba(0,0,0,0.4)]">
-		<div class="text-center mb-8">
-			<h1 class="text-base font-semibold tracking-wide text-zinc-200">TARS</h1>
-			<p class="text-[12px] text-text-tertiary mt-1">Create your account</p>
-		</div>
-
-		<form onsubmit={handleSubmit} class="space-y-4">
-			{#if authStore.error || localError}
-				<div class="px-3 py-2 bg-danger/10 border border-danger/20 rounded-md text-[13px] text-danger">
-					{localError || authStore.error}
-				</div>
+<div class="min-h-screen flex items-center justify-center bg-background">
+	<Card.Root class="w-[400px]">
+		<Card.Header class="text-center">
+			<div class="mx-auto mb-2 w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
+				<span class="text-lg">🤖</span>
+			</div>
+			<Card.Title class="text-xl">TARS</Card.Title>
+			<Card.Description>Create an account</Card.Description>
+		</Card.Header>
+		<Card.Content class="space-y-4">
+			{#if error}
+				<div class="text-sm text-destructive text-center">{error}</div>
 			{/if}
-
-			<div>
-				<label for="username" class="block text-[12px] font-medium text-text-secondary mb-1">Username</label>
-				<input
+			<div class="space-y-2">
+				<Label for="username">Username</Label>
+				<Input
 					id="username"
-					type="text"
+					placeholder="Choose a username"
 					bind:value={username}
-					required
-					autocomplete="username"
-					class="w-full bg-bg-primary border border-border rounded-md px-3 py-2 text-[13px] text-text-primary
-						placeholder:text-text-tertiary focus:outline-none focus:border-accent transition-all duration-150"
-					placeholder="Choose username"
+					onkeydown={handleKeydown}
 				/>
 			</div>
-
-			<div>
-				<label for="password" class="block text-[12px] font-medium text-text-secondary mb-1">Password</label>
-				<input
+			<div class="space-y-2">
+				<Label for="password">Password</Label>
+				<Input
 					id="password"
 					type="password"
+					placeholder="Choose a password"
 					bind:value={password}
-					required
-					autocomplete="new-password"
-					class="w-full bg-bg-primary border border-border rounded-md px-3 py-2 text-[13px] text-text-primary
-						placeholder:text-text-tertiary focus:outline-none focus:border-accent transition-all duration-150"
-					placeholder="Choose password"
+					onkeydown={handleKeydown}
 				/>
 			</div>
-
-			<div>
-				<label for="confirm" class="block text-[12px] font-medium text-text-secondary mb-1">Confirm Password</label>
-				<input
-					id="confirm"
+			<div class="space-y-2">
+				<Label for="confirm-password">Confirm Password</Label>
+				<Input
+					id="confirm-password"
 					type="password"
-					bind:value={confirmPassword}
-					required
-					autocomplete="new-password"
-					class="w-full bg-bg-primary border border-border rounded-md px-3 py-2 text-[13px] text-text-primary
-						placeholder:text-text-tertiary focus:outline-none focus:border-accent transition-all duration-150"
 					placeholder="Confirm password"
+					bind:value={confirmPassword}
+					onkeydown={handleKeydown}
 				/>
 			</div>
-
-			<button
-				type="submit"
-				disabled={authStore.loading}
-				class="w-full py-2 bg-accent text-white font-medium text-[13px] rounded-md
-					hover:bg-accent-hover disabled:opacity-50 transition-all duration-150"
-			>
-				{authStore.loading ? 'Creating account...' : 'Create Account'}
-			</button>
-		</form>
-
-		<p class="mt-5 text-center text-[12px] text-text-tertiary">
-			Already have an account?
-			<a href="/login" class="text-accent hover:text-accent-hover transition-all duration-150">Sign In</a>
-		</p>
-	</div>
+			<Button class="w-full" onclick={handleRegister} disabled={loading}>
+				{loading ? 'Creating account...' : 'Register'}
+			</Button>
+		</Card.Content>
+		<Card.Footer class="justify-center">
+			<p class="text-sm text-muted-foreground">
+				Already have an account? <a href="/login" class="text-primary hover:underline">Sign in</a>
+			</p>
+		</Card.Footer>
+	</Card.Root>
 </div>

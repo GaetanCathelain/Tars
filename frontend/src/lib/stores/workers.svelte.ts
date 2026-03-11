@@ -1,103 +1,84 @@
-import type { WorkerSession } from '../types';
+import type { WorkerSession } from '$lib/types';
+import { api } from '$lib/api';
 
-interface WorkerOutput {
-	id: string;
-	data: string; // base64
-	created_at: string;
-}
+const MOCK_MODE = true;
+
+const MOCK_WORKERS: Record<string, WorkerSession[]> = {
+	'task-1': [
+		{
+			id: 'ws-auth-001',
+			task_id: 'task-1',
+			status: 'completed',
+			command: 'claude-code --task "implement auth system"',
+			exit_code: 0,
+			started_at: '2025-03-10T14:01:00Z',
+			finished_at: '2025-03-10T15:30:00Z'
+		}
+	],
+	'task-2': [
+		{
+			id: 'ws-api-002',
+			task_id: 'task-2',
+			status: 'running',
+			command: 'claude-code --task "build REST API endpoints"',
+			started_at: '2025-03-10T16:01:00Z'
+		}
+	]
+};
 
 function createWorkersStore() {
-	let workers = $state<Map<string, WorkerSession[]>>(new Map());
+	let sessions = $state<Record<string, WorkerSession[]>>({});
 
-	function getWorkersForTask(taskId: string): WorkerSession[] {
-		return workers.get(taskId) ?? [];
-	}
-
-	function getWorker(sessionId: string): WorkerSession | undefined {
-		for (const sessions of workers.values()) {
-			const found = sessions.find((w) => w.id === sessionId);
-			if (found) return found;
+	async function fetchWorkers(taskId: string): Promise<void> {
+		if (MOCK_MODE) {
+			sessions = { ...sessions, [taskId]: MOCK_WORKERS[taskId] || [] };
+			return;
 		}
-		return undefined;
+		const workers = await api.get<WorkerSession[]>(`/tasks/${taskId}/workers`);
+		sessions = { ...sessions, [taskId]: workers };
 	}
 
-	function onWorkerStart(session: WorkerSession) {
-		const taskWorkers = workers.get(session.task_id) ?? [];
-		// Avoid duplicates
-		if (taskWorkers.find((w) => w.id === session.id)) return;
-		const updated = new Map(workers);
-		updated.set(session.task_id, [...taskWorkers, session]);
-		workers = updated;
-	}
-
-	function onWorkerEnd(sessionId: string, exitCode: number) {
-		const updated = new Map(workers);
-		for (const [taskId, sessions] of updated) {
-			const idx = sessions.findIndex((w) => w.id === sessionId);
-			if (idx !== -1) {
-				const updatedSessions = [...sessions];
-				updatedSessions[idx] = {
-					...updatedSessions[idx],
-					status: exitCode === 0 ? 'completed' : 'failed',
-					exit_code: exitCode,
-					finished_at: new Date().toISOString()
-				};
-				updated.set(taskId, updatedSessions);
-				break;
-			}
+	async function spawnWorker(taskId: string, command: string): Promise<WorkerSession> {
+		if (MOCK_MODE) {
+			const worker: WorkerSession = {
+				id: `ws-${Date.now()}`,
+				task_id: taskId,
+				status: 'running',
+				command,
+				started_at: new Date().toISOString()
+			};
+			sessions = { ...sessions, [taskId]: [...(sessions[taskId] || []), worker] };
+			return worker;
 		}
-		workers = updated;
+		const worker = await api.post<WorkerSession>(`/tasks/${taskId}/workers`, { command });
+		sessions = { ...sessions, [taskId]: [...(sessions[taskId] || []), worker] };
+		return worker;
 	}
 
-	async function spawnWorker(taskId: string, prompt: string): Promise<WorkerSession | null> {
-		try {
-			const { api } = await import('../api');
-			const session = await api.post<WorkerSession>(`/tasks/${taskId}/workers`, { prompt });
-			onWorkerStart(session);
-			return session;
-		} catch (e) {
-			console.error('Failed to spawn worker:', e);
-			return null;
+	async function killWorker(taskId: string, workerId: string): Promise<void> {
+		if (MOCK_MODE) {
+			sessions = {
+				...sessions,
+				[taskId]: (sessions[taskId] || []).map((w) =>
+					w.id === workerId ? { ...w, status: 'failed' as const, finished_at: new Date().toISOString() } : w
+				)
+			};
+			return;
 		}
+		await api.delete(`/tasks/${taskId}/workers/${workerId}`);
+		await fetchWorkers(taskId);
 	}
 
-	async function killWorker(sessionId: string): Promise<boolean> {
-		try {
-			const { api } = await import('../api');
-			await api.del(`/workers/${sessionId}`);
-			onWorkerEnd(sessionId, -1);
-			return true;
-		} catch (e) {
-			console.error('Failed to kill worker:', e);
-			return false;
-		}
-	}
-
-	async function fetchOutput(sessionId: string): Promise<Uint8Array[]> {
-		try {
-			const { api } = await import('../api');
-			const outputs = await api.get<WorkerOutput[]>(`/workers/${sessionId}/output`);
-			return outputs.map((o) => Uint8Array.from(atob(o.data), (c) => c.charCodeAt(0)));
-		} catch (e) {
-			console.error('Failed to fetch worker output:', e);
-			return [];
-		}
-	}
-
-	function clear() {
-		workers = new Map();
+	function getWorkers(taskId: string): WorkerSession[] {
+		return sessions[taskId] || [];
 	}
 
 	return {
-		get workers() { return workers; },
-		getWorkersForTask,
-		getWorker,
-		onWorkerStart,
-		onWorkerEnd,
+		get sessions() { return sessions; },
+		fetchWorkers,
 		spawnWorker,
 		killWorker,
-		fetchOutput,
-		clear
+		getWorkers
 	};
 }
 
