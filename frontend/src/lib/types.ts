@@ -25,7 +25,6 @@ export interface Message {
 export interface WorkerSession {
 	id: string;
 	task_id: string;
-	message_id?: string;
 	status: 'running' | 'completed' | 'failed';
 	command: string;
 	exit_code?: number;
@@ -36,9 +35,4 @@ export interface WorkerSession {
 export interface AuthResponse {
 	token: string;
 	user: User;
-}
-
-export interface ApiError {
-	error: string;
-	status: number;
 }

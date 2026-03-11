@@ -1,78 +1,61 @@
-import { authStore } from './stores/auth.svelte';
-import type { ApiError } from './types';
-
 const BASE_URL = '/api';
 
 class ApiClient {
-	private getHeaders(): HeadersInit {
-		const headers: HeadersInit = {
-			'Content-Type': 'application/json'
+	private getToken(): string | null {
+		if (typeof window === 'undefined') return null;
+		return localStorage.getItem('auth_token');
+	}
+
+	private async request<T>(path: string, options: RequestInit = {}): Promise<T> {
+		const token = this.getToken();
+		const headers: Record<string, string> = {
+			'Content-Type': 'application/json',
+			...((options.headers as Record<string, string>) || {})
 		};
-		const token = authStore.token;
 		if (token) {
 			headers['Authorization'] = `Bearer ${token}`;
 		}
-		return headers;
-	}
 
-	private async handleResponse<T>(response: Response): Promise<T> {
+		const response = await fetch(`${BASE_URL}${path}`, {
+			...options,
+			headers
+		});
+
 		if (response.status === 401) {
-			authStore.logout();
-			if (typeof window !== 'undefined') {
-				window.location.href = '/login';
-			}
+			localStorage.removeItem('auth_token');
+			localStorage.removeItem('auth_user');
+			window.location.href = '/login';
 			throw new Error('Unauthorized');
 		}
 
 		if (!response.ok) {
-			const error: ApiError = {
-				error: response.statusText,
-				status: response.status
-			};
-			try {
-				const body = await response.json();
-				error.error = body.error || body.message || response.statusText;
-			} catch {
-				// use default statusText
-			}
-			throw error;
+			const error = await response.json().catch(() => ({ message: 'Request failed' }));
+			throw new Error(error.message || `HTTP ${response.status}`);
 		}
 
-		return response.json() as Promise<T>;
+		return response.json();
 	}
 
-	async get<T>(path: string): Promise<T> {
-		const response = await fetch(`${BASE_URL}${path}`, {
-			method: 'GET',
-			headers: this.getHeaders()
-		});
-		return this.handleResponse<T>(response);
+	get<T>(path: string): Promise<T> {
+		return this.request<T>(path);
 	}
 
-	async post<T>(path: string, body?: unknown): Promise<T> {
-		const response = await fetch(`${BASE_URL}${path}`, {
+	post<T>(path: string, body?: unknown): Promise<T> {
+		return this.request<T>(path, {
 			method: 'POST',
-			headers: this.getHeaders(),
 			body: body ? JSON.stringify(body) : undefined
 		});
-		return this.handleResponse<T>(response);
 	}
 
-	async put<T>(path: string, body?: unknown): Promise<T> {
-		const response = await fetch(`${BASE_URL}${path}`, {
+	put<T>(path: string, body?: unknown): Promise<T> {
+		return this.request<T>(path, {
 			method: 'PUT',
-			headers: this.getHeaders(),
 			body: body ? JSON.stringify(body) : undefined
 		});
-		return this.handleResponse<T>(response);
 	}
 
-	async del<T>(path: string): Promise<T> {
-		const response = await fetch(`${BASE_URL}${path}`, {
-			method: 'DELETE',
-			headers: this.getHeaders()
-		});
-		return this.handleResponse<T>(response);
+	delete<T>(path: string): Promise<T> {
+		return this.request<T>(path, { method: 'DELETE' });
 	}
 }
 
