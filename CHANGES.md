@@ -1,68 +1,38 @@
-# Changes: Terminal UI Integration
+# Design Overhaul: Linear + Obsidian Aesthetic
 
 ## Summary
-Added xterm.js terminal rendering and WebSocket real-time integration to the SvelteKit frontend for live worker output display.
+Complete visual redesign of the TARS WebUI from SpacetimeDB-inspired dark/cyan theme to a refined Linear + Obsidian inspired aesthetic. Zero functionality changes.
 
-## New Files
+## Files Changed
 
-### `frontend/src/lib/stores/websocket.svelte.ts`
-WebSocket client store managing connection to the Go backend:
-- Connects with JWT token via `ws://host/ws?token=xxx`
-- Auto-reconnect with exponential backoff (1s → 2s → 4s → max 30s)
-- Subscribe/unsubscribe to task rooms
-- Dispatches events to messages, workers, and tasks stores
-- Connection status tracking: `connecting` | `connected` | `disconnected`
+| File | What Changed |
+|------|-------------|
+| `frontend/src/app.css` | New theme palette, 13px base font, Inter font features, ultra-thin scrollbars, focus-visible rings |
+| `frontend/src/app.html` | Added Google Fonts import for Inter and JetBrains Mono |
+| `frontend/src/routes/+layout.svelte` | Sidebar: subtle wordmark, tiny uppercase section labels, smaller status dots, ghost new-task button, 150ms transitions |
+| `frontend/src/routes/tasks/[id]/+page.svelte` | Chat: comment-style messages (no bubbles), small round avatars with initials, system messages as italic text, tighter spacing |
+| `frontend/src/lib/components/WorkerCard.svelte` | Elevated surface card, refined status badges with icons, subtle shadow |
+| `frontend/src/lib/components/Terminal.svelte` | Matched ANSI colors to new palette (indigo blues, muted reds/greens), #0a0a0a background |
+| `frontend/src/routes/login/+page.svelte` | Centered card layout with border + subtle shadow, smaller type |
+| `frontend/src/routes/register/+page.svelte` | Same card treatment as login |
+| `frontend/src/routes/tasks/+page.svelte` | Cleaner empty state with avatar circle instead of emoji |
 
-### `frontend/src/lib/stores/workers.svelte.ts`
-Worker session store:
-- Tracks active/completed workers per task (`Map<taskId, WorkerSession[]>`)
-- `spawnWorker(taskId, prompt)` — POST to spawn API
-- `killWorker(sessionId)` — DELETE to kill API
-- `fetchOutput(sessionId)` — GET for replay data
-- Receives `worker_start` and `worker_end` events from WebSocket
+## Color Palette
 
-### `frontend/src/lib/components/Terminal.svelte`
-xterm.js terminal component:
-- Read-only terminal with dark theme matching the app (`#0a0a0f` background)
-- FitAddon for auto-sizing with ResizeObserver
-- WebLinksAddon for clickable URLs
-- Exposes `write(data: Uint8Array)` for live output
-- Accepts `initialData` for replay of completed sessions
-- Custom scrollbar styling
+| Token | Old | New |
+|-------|-----|-----|
+| bg-primary | `#0a0a0f` | `#111113` |
+| bg-secondary | `#12121a` | `#18181b` |
+| bg-tertiary | `#1a1a2e` | `#1c1c20` |
+| border | `#2a2a3e` | `#27272a` |
+| text-primary | `#e0e0e8` | `#fafafa` |
+| text-secondary | `#8888a0` | `#a1a1aa` |
+| accent | `#00d4ff` (cyan) | `#818cf8` (indigo) |
+| success | `#00ff88` | `#34d399` |
+| warning | `#ffaa00` | `#fbbf24` |
+| danger | `#ff4466` | `#f87171` |
 
-### `frontend/src/lib/components/WorkerCard.svelte`
-Collapsible worker session card:
-- Header: worker name, status badge (pulsing green dot / ✓ / ✗), duration
-- Body: embedded Terminal component with live or replayed output
-- Fetches historical output on mount for completed workers
-- Subscribes to live WebSocket output for running workers
+**New tokens:** `bg-elevated`, `border-subtle`, `text-tertiary`, `accent-muted`, `running`
 
-## Modified Files
-
-### `frontend/src/lib/stores/messages.svelte.ts`
-- Added `WorkerEvent` type and `TimelineEntry` union type
-- Added `timeline` derived state: messages + worker events sorted chronologically
-- Added `addMessage()` for WebSocket-pushed messages
-- Added `addWorkerEvent()` for worker start/end markers
-- Added mock worker session and events for offline development
-
-### `frontend/src/lib/stores/tasks.svelte.ts`
-- Added `updateTaskStatus()` method for WebSocket `task_status` events
-
-### `frontend/src/routes/+layout.svelte`
-- Imports and initializes WebSocket store on auth
-- Connection status indicator in sidebar footer (green/yellow/red dot)
-
-### `frontend/src/routes/tasks/[id]/+page.svelte`
-- Renders timeline (messages + WorkerCards interleaved)
-- Subscribes to task room via WebSocket on mount
-- Unsubscribes when switching tasks
-- WorkerCards appear inline in the conversation flow
-
-## Dependencies Added
-- `xterm` — terminal emulator
-- `@xterm/addon-fit` — auto-resize terminal to container
-- `@xterm/addon-web-links` — clickable links in terminal output
-
-## Build Status
-✅ `npm run build` passes cleanly
+## Build
+`npm run build` passes cleanly.
