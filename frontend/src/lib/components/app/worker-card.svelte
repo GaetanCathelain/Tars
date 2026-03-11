@@ -7,7 +7,7 @@
 
 	let { worker }: { worker: WorkerSession } = $props();
 
-	let expanded = $state(true);
+	let expanded = $state(false);
 	let commandExpanded = $state(false);
 
 	const isRunning = $derived(worker.status === 'running');
