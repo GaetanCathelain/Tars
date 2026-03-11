@@ -62,12 +62,12 @@
 		};
 	}
 
-	function senderIcon(type: string): string {
+	function senderInitial(type: string): string {
 		switch (type) {
-			case 'user': return '👤';
-			case 'tars': return '🤖';
-			case 'system': return '⚙️';
-			default: return '💬';
+			case 'user': return 'U';
+			case 'tars': return 'T';
+			case 'system': return 'S';
+			default: return '?';
 		}
 	}
 
@@ -80,13 +80,21 @@
 		}
 	}
 
+	function senderAvatarClass(type: string): string {
+		switch (type) {
+			case 'tars': return 'bg-accent-muted text-accent';
+			case 'user': return 'bg-bg-elevated text-text-secondary';
+			default: return 'bg-bg-tertiary text-text-tertiary';
+		}
+	}
+
 	function statusBadgeClass(status: string): string {
 		switch (status) {
-			case 'open': return 'text-success border-success/30 bg-success/10';
-			case 'running': return 'text-success border-success/30 bg-success/10';
-			case 'completed': return 'text-warning border-warning/30 bg-warning/10';
+			case 'open': return 'text-text-tertiary border-border bg-bg-tertiary';
+			case 'running': return 'text-running border-running/30 bg-running/10';
+			case 'completed': return 'text-success border-success/30 bg-success/10';
 			case 'failed': return 'text-danger border-danger/30 bg-danger/10';
-			default: return 'text-text-secondary border-border bg-bg-tertiary';
+			default: return 'text-text-tertiary border-border bg-bg-tertiary';
 		}
 	}
 
@@ -117,13 +125,13 @@
 
 {#if !task}
 	<div class="flex-1 flex items-center justify-center">
-		<p class="text-text-secondary font-mono text-sm">Task not found</p>
+		<p class="text-text-tertiary text-[13px]">Task not found</p>
 	</div>
 {:else}
 	<!-- Header -->
-	<header class="flex items-center gap-3 px-6 py-4 border-b border-border shrink-0">
-		<h2 class="text-base font-medium text-text-primary truncate">{task.title}</h2>
-		<span class="px-2 py-0.5 text-xs font-mono border rounded shrink-0 {statusBadgeClass(task.status)}">
+	<header class="flex items-center gap-3 px-6 py-3 border-b border-border shrink-0">
+		<h2 class="text-[14px] font-medium text-text-primary truncate tracking-[-0.01em]">{task.title}</h2>
+		<span class="px-2 py-0.5 text-[11px] font-medium border rounded-md shrink-0 {statusBadgeClass(task.status)}">
 			{task.status}
 		</span>
 	</header>
@@ -131,65 +139,73 @@
 	<!-- Messages / Timeline -->
 	<div
 		bind:this={messagesContainer}
-		class="flex-1 overflow-y-auto px-6 py-4 space-y-4"
+		class="flex-1 overflow-y-auto px-6 py-4"
 	>
 		{#if messagesStore.loading}
 			<div class="flex justify-center py-8">
-				<p class="text-text-secondary font-mono text-sm">Loading messages...</p>
+				<p class="text-text-tertiary text-[13px]">Loading messages...</p>
 			</div>
 		{:else if messagesStore.timeline.length === 0}
 			<div class="flex flex-col items-center justify-center py-16 text-center">
-				<p class="text-text-secondary text-sm">No messages yet. Send a message to start.</p>
+				<p class="text-text-tertiary text-[13px]">No messages yet. Send a message to start.</p>
 			</div>
 		{:else}
-			{#each messagesStore.timeline as entry (entry.id)}
-				{#if isWorkerEvent(entry) && entry.event === 'start'}
-					<!-- Worker Card inline in the timeline -->
-					<WorkerCard session={getWorkerSession(entry.session_id)} />
-				{:else if !isWorkerEvent(entry)}
-					{@const message = entry as Message}
-					<div class="flex gap-3 {message.sender_type === 'system' ? 'opacity-60' : ''}">
-						<!-- Avatar -->
-						<div class="w-8 h-8 rounded bg-bg-tertiary flex items-center justify-center shrink-0 text-sm">
-							{senderIcon(message.sender_type)}
-						</div>
+			<div class="space-y-5">
+				{#each messagesStore.timeline as entry (entry.id)}
+					{#if isWorkerEvent(entry) && entry.event === 'start'}
+						<!-- Worker Card inline in the timeline -->
+						<WorkerCard session={getWorkerSession(entry.session_id)} />
+					{:else if !isWorkerEvent(entry)}
+						{@const message = entry as Message}
+						{#if message.sender_type === 'system'}
+							<div class="py-1">
+								<p class="text-[12px] italic text-text-tertiary">{message.content}</p>
+							</div>
+						{:else}
+							<div class="flex gap-3">
+								<!-- Avatar -->
+								<div class="w-6 h-6 rounded-full flex items-center justify-center shrink-0 text-[10px] font-medium {senderAvatarClass(message.sender_type)}">
+									{senderInitial(message.sender_type)}
+								</div>
 
-						<!-- Content -->
-						<div class="flex-1 min-w-0">
-							<div class="flex items-baseline gap-2 mb-1">
-								<span class="text-sm font-medium {message.sender_type === 'tars' ? 'text-accent' : 'text-text-primary'}">
-									{senderLabel(message.sender_type)}
-								</span>
-								<span class="text-xs text-text-secondary font-mono">
-									{formatTime(message.created_at)}
-								</span>
+								<!-- Content -->
+								<div class="flex-1 min-w-0">
+									<div class="flex items-baseline gap-2 mb-0.5">
+										<span class="text-[13px] font-medium text-zinc-300">
+											{senderLabel(message.sender_type)}
+										</span>
+										<span class="text-[11px] text-text-tertiary">
+											{formatTime(message.created_at)}
+										</span>
+									</div>
+									<div class="text-[13px] text-zinc-200 leading-[1.5] whitespace-pre-wrap">
+										{message.content}
+									</div>
+								</div>
 							</div>
-							<div class="text-sm text-text-primary leading-relaxed whitespace-pre-wrap">
-								{message.content}
-							</div>
-						</div>
-					</div>
-				{/if}
-			{/each}
+						{/if}
+					{/if}
+				{/each}
+			</div>
 		{/if}
 	</div>
 
 	<!-- Message input -->
-	<form onsubmit={handleSend} class="shrink-0 border-t border-border px-6 py-4">
-		<div class="flex gap-3">
+	<form onsubmit={handleSend} class="shrink-0 border-t border-border px-6 py-3">
+		<div class="flex gap-2">
 			<input
 				type="text"
 				bind:value={messageInput}
 				onkeydown={handleKeydown}
 				placeholder="Send a message..."
-				class="flex-1 bg-bg-tertiary border border-border rounded-md px-4 py-2.5 text-sm text-text-primary
-					placeholder:text-text-secondary focus:outline-none focus:border-accent transition-colors"
+				class="flex-1 bg-bg-tertiary border border-border rounded-md px-3.5 py-2 text-[13px] text-text-primary
+					placeholder:text-text-tertiary focus:outline-none focus:border-accent transition-all duration-150"
 			/>
 			<button
 				type="submit"
 				disabled={!messageInput.trim()}
-				class="px-5 py-2.5 bg-accent text-bg-primary text-sm font-medium rounded-md
-					hover:bg-accent-hover disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+				class="px-4 py-2 bg-accent text-white text-[13px] font-medium rounded-md
+					hover:bg-accent-hover disabled:opacity-30 disabled:cursor-not-allowed transition-all duration-150"
 			>
 				Send
 			</button>

@@ -36,28 +36,28 @@
 			lineHeight: 1.4,
 			scrollback: 5000,
 			theme: {
-				background: '#0a0a0f',
+				background: '#0a0a0a',
 				foreground: '#e4e4e7',
 				cursor: 'transparent',
 				cursorAccent: 'transparent',
-				selectionBackground: '#2a2a3e',
+				selectionBackground: '#27272a',
 				selectionForeground: '#e4e4e7',
-				black: '#1a1a2e',
-				red: '#ff4466',
-				green: '#00ff88',
-				yellow: '#ffaa00',
-				blue: '#00d4ff',
-				magenta: '#d066ff',
-				cyan: '#00d4ff',
+				black: '#18181b',
+				red: '#f87171',
+				green: '#34d399',
+				yellow: '#fbbf24',
+				blue: '#818cf8',
+				magenta: '#c084fc',
+				cyan: '#67e8f9',
 				white: '#e4e4e7',
-				brightBlack: '#8888a0',
-				brightRed: '#ff6688',
-				brightGreen: '#44ffaa',
-				brightYellow: '#ffcc44',
-				brightBlue: '#44ddff',
-				brightMagenta: '#dd88ff',
-				brightCyan: '#44ddff',
-				brightWhite: '#ffffff'
+				brightBlack: '#71717a',
+				brightRed: '#fca5a5',
+				brightGreen: '#6ee7b7',
+				brightYellow: '#fde68a',
+				brightBlue: '#a5b4fc',
+				brightMagenta: '#d8b4fe',
+				brightCyan: '#a5f3fc',
+				brightWhite: '#fafafa'
 			}
 		});
 
@@ -112,16 +112,16 @@
 	}
 	.terminal-container :global(.xterm-viewport) {
 		scrollbar-width: thin;
-		scrollbar-color: #2a2a3e #0a0a0f;
+		scrollbar-color: #27272a #0a0a0a;
 	}
 	.terminal-container :global(.xterm-viewport::-webkit-scrollbar) {
-		width: 6px;
+		width: 4px;
 	}
 	.terminal-container :global(.xterm-viewport::-webkit-scrollbar-track) {
-		background: #0a0a0f;
+		background: #0a0a0a;
 	}
 	.terminal-container :global(.xterm-viewport::-webkit-scrollbar-thumb) {
-		background: #2a2a3e;
-		border-radius: 3px;
+		background: #27272a;
+		border-radius: 2px;
 	}
 </style>
