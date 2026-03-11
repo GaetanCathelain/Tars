@@ -9,6 +9,7 @@ RUN npm run build
 # Stage 2: Build Go backend with embedded frontend
 FROM golang:1.24-alpine AS backend-builder
 WORKDIR /build
+ENV GOTOOLCHAIN=auto
 COPY go.mod go.sum ./
 RUN go mod download
 COPY . .
