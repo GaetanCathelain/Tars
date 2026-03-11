@@ -1,5 +1,5 @@
 services:
-  db:
+  postgres:
     image: postgres:16-alpine
     environment:
       POSTGRES_DB: tars
@@ -9,17 +9,24 @@ services:
       - "5432:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U tars"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
 
   app:
     build: .
     ports:
-      - "8080:8080"
+      - "3333:3333"
     environment:
-      DATABASE_URL: postgres://tars:tars_dev@db:5432/tars?sslmode=disable
+      DATABASE_URL: postgres://tars:tars_dev@postgres:5432/tars?sslmode=disable
       JWT_SECRET: dev-secret-change-in-production
-      PORT: "8080"
+      PORT: "3333"
     depends_on:
-      - db
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
 
 volumes:
   pgdata:
