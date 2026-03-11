@@ -1,0 +1,79 @@
+import { authStore } from './stores/auth.svelte';
+import type { ApiError } from './types';
+
+const BASE_URL = '/api';
+
+class ApiClient {
+	private getHeaders(): HeadersInit {
+		const headers: HeadersInit = {
+			'Content-Type': 'application/json'
+		};
+		const token = authStore.token;
+		if (token) {
+			headers['Authorization'] = `Bearer ${token}`;
+		}
+		return headers;
+	}
+
+	private async handleResponse<T>(response: Response): Promise<T> {
+		if (response.status === 401) {
+			authStore.logout();
+			if (typeof window !== 'undefined') {
+				window.location.href = '/login';
+			}
+			throw new Error('Unauthorized');
+		}
+
+		if (!response.ok) {
+			const error: ApiError = {
+				error: response.statusText,
+				status: response.status
+			};
+			try {
+				const body = await response.json();
+				error.error = body.error || body.message || response.statusText;
+			} catch {
+				// use default statusText
+			}
+			throw error;
+		}
+
+		return response.json() as Promise<T>;
+	}
+
+	async get<T>(path: string): Promise<T> {
+		const response = await fetch(`${BASE_URL}${path}`, {
+			method: 'GET',
+			headers: this.getHeaders()
+		});
+		return this.handleResponse<T>(response);
+	}
+
+	async post<T>(path: string, body?: unknown): Promise<T> {
+		const response = await fetch(`${BASE_URL}${path}`, {
+			method: 'POST',
+			headers: this.getHeaders(),
+			body: body ? JSON.stringify(body) : undefined
+		});
+		return this.handleResponse<T>(response);
+	}
+
+	async put<T>(path: string, body?: unknown): Promise<T> {
+		const response = await fetch(`${BASE_URL}${path}`, {
+			method: 'PUT',
+			headers: this.getHeaders(),
+			body: body ? JSON.stringify(body) : undefined
+		});
+		return this.handleResponse<T>(response);
+	}
+
+	async del<T>(path: string): Promise<T> {
+		const response = await fetch(`${BASE_URL}${path}`, {
+			method: 'DELETE',
+			headers: this.getHeaders()
+		});
+		return this.handleResponse<T>(response);
+	}
+}
+
+export const api = new ApiClient();
