@@ -81,6 +81,10 @@ function createTasksStore() {
 		selectedTaskId = id;
 	}
 
+	function updateTaskStatus(id: string, status: 'open' | 'running' | 'completed' | 'failed') {
+		tasks = tasks.map((t) => (t.id === id ? { ...t, status, updated_at: new Date().toISOString() } : t));
+	}
+
 	return {
 		get tasks() { return tasks; },
 		get selectedTaskId() { return selectedTaskId; },
@@ -88,7 +92,8 @@ function createTasksStore() {
 		get loading() { return loading; },
 		fetchTasks,
 		createTask,
-		selectTask
+		selectTask,
+		updateTaskStatus
 	};
 }
 

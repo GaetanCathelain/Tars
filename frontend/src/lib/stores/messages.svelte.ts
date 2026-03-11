@@ -1,6 +1,26 @@
-import type { Message } from '../types';
+import type { Message, WorkerSession } from '../types';
 
 const useMockData = true;
+
+// A timeline entry can be either a message or a worker event marker
+export interface WorkerEvent {
+	type: 'worker_event';
+	id: string;
+	task_id: string;
+	session_id: string;
+	event: 'start' | 'end';
+	created_at: string;
+}
+
+export type TimelineEntry = (Message & { type?: 'message' }) | WorkerEvent;
+
+const mockWorkerSession: WorkerSession = {
+	id: 'mock-worker-1',
+	task_id: 'task-2',
+	status: 'running',
+	command: 'claude-code',
+	started_at: '2026-03-10T16:01:05Z'
+};
 
 const mockMessages: Record<string, Message[]> = {
 	'task-1': [
@@ -84,10 +104,35 @@ const mockMessages: Record<string, Message[]> = {
 	]
 };
 
+// Mock worker events interleaved with messages
+const mockWorkerEvents: Record<string, WorkerEvent[]> = {
+	'task-2': [
+		{
+			type: 'worker_event',
+			id: 'we-1',
+			task_id: 'task-2',
+			session_id: 'mock-worker-1',
+			event: 'start',
+			created_at: '2026-03-10T16:01:05Z'
+		}
+	]
+};
+
 function createMessagesStore() {
 	let messages = $state<Message[]>([]);
+	let workerEvents = $state<WorkerEvent[]>([]);
 	let currentTaskId = $state<string | null>(null);
 	let loading = $state(false);
+
+	// Merged timeline: messages + worker events sorted by time
+	const timeline = $derived.by((): TimelineEntry[] => {
+		const entries: TimelineEntry[] = [
+			...messages.map((m) => ({ ...m, type: 'message' as const })),
+			...workerEvents
+		];
+		entries.sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
+		return entries;
+	});
 
 	async function fetchMessages(taskId: string) {
 		currentTaskId = taskId;
@@ -96,14 +141,17 @@ function createMessagesStore() {
 			if (useMockData) {
 				await new Promise((r) => setTimeout(r, 150));
 				messages = mockMessages[taskId] ? [...mockMessages[taskId]] : [];
+				workerEvents = mockWorkerEvents[taskId] ? [...mockWorkerEvents[taskId]] : [];
 				return;
 			}
 
 			const { api } = await import('../api');
 			messages = await api.get<Message[]>(`/tasks/${taskId}/messages`);
+			workerEvents = [];
 		} catch (e) {
 			console.error('Failed to fetch messages:', e);
 			messages = [];
+			workerEvents = [];
 		} finally {
 			loading = false;
 		}
@@ -147,19 +195,44 @@ function createMessagesStore() {
 		}
 	}
 
+	function addMessage(msg: Message) {
+		// Avoid duplicates
+		if (messages.find((m) => m.id === msg.id)) return;
+		messages = [...messages, msg];
+	}
+
+	function addWorkerEvent(taskId: string, sessionId: string, event: 'start' | 'end') {
+		const we: WorkerEvent = {
+			type: 'worker_event',
+			id: `we-${Date.now()}-${event}`,
+			task_id: taskId,
+			session_id: sessionId,
+			event,
+			created_at: new Date().toISOString()
+		};
+		workerEvents = [...workerEvents, we];
+	}
+
 	function clear() {
 		messages = [];
+		workerEvents = [];
 		currentTaskId = null;
 	}
 
 	return {
 		get messages() { return messages; },
+		get timeline() { return timeline; },
 		get currentTaskId() { return currentTaskId; },
 		get loading() { return loading; },
 		fetchMessages,
 		sendMessage,
+		addMessage,
+		addWorkerEvent,
 		clear
 	};
 }
 
 export const messagesStore = createMessagesStore();
+
+// Export mock worker session for use in WorkerCard
+export { mockWorkerSession };
