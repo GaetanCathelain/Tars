@@ -1,70 +1,21 @@
 import type { WorkerSession } from '$lib/types';
 import { api } from '$lib/api';
 
-const MOCK_MODE = false;
-
-const MOCK_WORKERS: Record<string, WorkerSession[]> = {
-	'task-1': [
-		{
-			id: 'ws-auth-001',
-			task_id: 'task-1',
-			status: 'completed',
-			command: 'claude-code --task "implement auth system"',
-			exit_code: 0,
-			started_at: '2025-03-10T14:01:00Z',
-			finished_at: '2025-03-10T15:30:00Z'
-		}
-	],
-	'task-2': [
-		{
-			id: 'ws-api-002',
-			task_id: 'task-2',
-			status: 'running',
-			command: 'claude-code --task "build REST API endpoints"',
-			started_at: '2025-03-10T16:01:00Z'
-		}
-	]
-};
-
 function createWorkersStore() {
 	let sessions = $state<Record<string, WorkerSession[]>>({});
 
 	async function fetchWorkers(taskId: string): Promise<void> {
-		if (MOCK_MODE) {
-			sessions = { ...sessions, [taskId]: MOCK_WORKERS[taskId] || [] };
-			return;
-		}
 		const workers = await api.get<WorkerSession[]>(`/tasks/${taskId}/workers`);
 		sessions = { ...sessions, [taskId]: workers };
 	}
 
 	async function spawnWorker(taskId: string, command: string): Promise<WorkerSession> {
-		if (MOCK_MODE) {
-			const worker: WorkerSession = {
-				id: `ws-${Date.now()}`,
-				task_id: taskId,
-				status: 'running',
-				command,
-				started_at: new Date().toISOString()
-			};
-			sessions = { ...sessions, [taskId]: [...(sessions[taskId] || []), worker] };
-			return worker;
-		}
 		const worker = await api.post<WorkerSession>(`/tasks/${taskId}/workers`, { command });
 		sessions = { ...sessions, [taskId]: [...(sessions[taskId] || []), worker] };
 		return worker;
 	}
 
 	async function killWorker(taskId: string, workerId: string): Promise<void> {
-		if (MOCK_MODE) {
-			sessions = {
-				...sessions,
-				[taskId]: (sessions[taskId] || []).map((w) =>
-					w.id === workerId ? { ...w, status: 'failed' as const, finished_at: new Date().toISOString() } : w
-				)
-			};
-			return;
-		}
 		await api.delete(`/tasks/${taskId}/workers/${workerId}`);
 		await fetchWorkers(taskId);
 	}
@@ -73,12 +24,40 @@ function createWorkersStore() {
 		return sessions[taskId] || [];
 	}
 
+	function addWorker(worker: WorkerSession): void {
+		const taskId = worker.task_id;
+		const existing = sessions[taskId] || [];
+		// Avoid duplicates
+		if (existing.some((w) => w.id === worker.id)) return;
+		sessions = { ...sessions, [taskId]: [...existing, worker] };
+	}
+
+	function updateWorkerStatus(sessionId: string, status: string, exitCode?: number): void {
+		const updated: Record<string, WorkerSession[]> = {};
+		for (const [taskId, workers] of Object.entries(sessions)) {
+			updated[taskId] = workers.map((w) => {
+				if (w.id === sessionId) {
+					return {
+						...w,
+						status: status as WorkerSession['status'],
+						exit_code: exitCode ?? w.exit_code,
+						finished_at: status !== 'running' ? new Date().toISOString() : w.finished_at
+					};
+				}
+				return w;
+			});
+		}
+		sessions = updated;
+	}
+
 	return {
 		get sessions() { return sessions; },
 		fetchWorkers,
 		spawnWorker,
 		killWorker,
-		getWorkers
+		getWorkers,
+		addWorker,
+		updateWorkerStatus
 	};
 }
 
