@@ -23,6 +23,50 @@ type workerOutputResponse struct {
 	CreatedAt time.Time `json:"created_at"`
 }
 
+func (s *Server) HandleListWorkers(w http.ResponseWriter, r *http.Request) {
+	idStr := chi.URLParam(r, "id")
+	taskID, err := uuid.Parse(idStr)
+	if err != nil {
+		writeError(w, "invalid task id", http.StatusBadRequest)
+		return
+	}
+
+	rows, err := s.DB.Query(r.Context(),
+		`SELECT id, task_id, message_id, status, command, exit_code, started_at, finished_at
+		 FROM worker_sessions WHERE task_id = $1 ORDER BY started_at DESC`, taskID)
+	if err != nil {
+		slog.Error("query workers", "error", err)
+		writeError(w, "internal error", http.StatusInternalServerError)
+		return
+	}
+	defer rows.Close()
+
+	type workerRow struct {
+		ID         uuid.UUID  `json:"id"`
+		TaskID     uuid.UUID  `json:"task_id"`
+		MessageID  *uuid.UUID `json:"message_id,omitempty"`
+		Status     string     `json:"status"`
+		Command    string     `json:"command"`
+		ExitCode   *int       `json:"exit_code,omitempty"`
+		StartedAt  time.Time  `json:"started_at"`
+		FinishedAt *time.Time `json:"finished_at,omitempty"`
+	}
+
+	workers := []workerRow{}
+	for rows.Next() {
+		var wr workerRow
+		if err := rows.Scan(&wr.ID, &wr.TaskID, &wr.MessageID, &wr.Status, &wr.Command, &wr.ExitCode, &wr.StartedAt, &wr.FinishedAt); err != nil {
+			slog.Error("scan worker", "error", err)
+			writeError(w, "internal error", http.StatusInternalServerError)
+			return
+		}
+		workers = append(workers, wr)
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(workers)
+}
+
 func (s *Server) HandleCreateWorker(w http.ResponseWriter, r *http.Request) {
 	if s.WorkerManager == nil {
 		writeError(w, "worker manager not configured", http.StatusInternalServerError)

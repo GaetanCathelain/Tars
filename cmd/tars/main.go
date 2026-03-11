@@ -82,6 +82,7 @@ func main() {
 
 	// Public routes
 	r.Get("/api/health", srv.HandleHealth)
+	r.Get("/hey", srv.HandleHey)
 	r.Post("/api/auth/register", srv.HandleRegister)
 	r.Post("/api/auth/login", srv.HandleLogin)
 
@@ -96,6 +97,7 @@ func main() {
 		r.Get("/api/tasks/{id}", srv.HandleGetTask)
 		r.Get("/api/tasks/{id}/messages", srv.HandleListMessages)
 		r.Post("/api/tasks/{id}/messages", srv.HandleCreateMessage)
+		r.Get("/api/tasks/{id}/workers", srv.HandleListWorkers)
 		r.Post("/api/tasks/{id}/workers", srv.HandleCreateWorker)
 		r.Get("/api/workers/{id}/output", srv.HandleGetWorkerOutput)
 		r.Delete("/api/workers/{id}", srv.HandleKillWorker)
