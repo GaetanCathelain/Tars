@@ -1,37 +1,68 @@
-# Worker Engine — Changes
+# Changes: Terminal UI Integration
 
-## Added
+## Summary
+Added xterm.js terminal rendering and WebSocket real-time integration to the SvelteKit frontend for live worker output display.
 
-### PTY-based Worker Engine (`internal/worker/`)
+## New Files
 
-- **`manager.go`** — Worker lifecycle manager with thread-safe session tracking
-  - `NewManager(db, hub)` — constructor
-  - `SpawnWorker(ctx, taskID, messageID, prompt)` — creates PTY, spawns claude, inserts DB row, broadcasts `worker_start`, starts output capture + process wait goroutines
-  - `KillWorker(sessionID)` — terminates a running session
-  - `GetSession(sessionID)` / `ActiveSessions()` — query active sessions
-  - 15-minute timeout per session (auto-kill)
-  - Proper cleanup: close PTY, flush output, update DB, broadcast `worker_end`
+### `frontend/src/lib/stores/websocket.svelte.ts`
+WebSocket client store managing connection to the Go backend:
+- Connects with JWT token via `ws://host/ws?token=xxx`
+- Auto-reconnect with exponential backoff (1s → 2s → 4s → max 30s)
+- Subscribe/unsubscribe to task rooms
+- Dispatches events to messages, workers, and tasks stores
+- Connection status tracking: `connecting` | `connected` | `disconnected`
 
-- **`pty.go`** — Spawns `claude <prompt>` in a real PTY via `github.com/creack/pty` with xterm-256color, 120x40 terminal size
+### `frontend/src/lib/stores/workers.svelte.ts`
+Worker session store:
+- Tracks active/completed workers per task (`Map<taskId, WorkerSession[]>`)
+- `spawnWorker(taskId, prompt)` — POST to spawn API
+- `killWorker(sessionId)` — DELETE to kill API
+- `fetchOutput(sessionId)` — GET for replay data
+- Receives `worker_start` and `worker_end` events from WebSocket
 
-- **`capture.go`** — Reads PTY output in 4KB chunks, base64-encodes and broadcasts via WebSocket (`worker_output` events), buffers DB writes (flushes every 500ms or 8KB)
+### `frontend/src/lib/components/Terminal.svelte`
+xterm.js terminal component:
+- Read-only terminal with dark theme matching the app (`#0a0a0f` background)
+- FitAddon for auto-sizing with ResizeObserver
+- WebLinksAddon for clickable URLs
+- Exposes `write(data: Uint8Array)` for live output
+- Accepts `initialData` for replay of completed sessions
+- Custom scrollbar styling
 
-### HTTP Handlers (`internal/handler/workers.go`)
+### `frontend/src/lib/components/WorkerCard.svelte`
+Collapsible worker session card:
+- Header: worker name, status badge (pulsing green dot / ✓ / ✗), duration
+- Body: embedded Terminal component with live or replayed output
+- Fetches historical output on mount for completed workers
+- Subscribes to live WebSocket output for running workers
 
-- `POST /api/tasks/{id}/workers` — spawn a worker for a task (validates ownership)
-- `GET /api/workers/{id}/output` — replay all output chunks for a session (base64-encoded)
-- `DELETE /api/workers/{id}` — kill a running worker session
+## Modified Files
 
-### Integration (`cmd/tars/main.go`)
+### `frontend/src/lib/stores/messages.svelte.ts`
+- Added `WorkerEvent` type and `TimelineEntry` union type
+- Added `timeline` derived state: messages + worker events sorted chronologically
+- Added `addMessage()` for WebSocket-pushed messages
+- Added `addWorkerEvent()` for worker start/end markers
+- Added mock worker session and events for offline development
 
-- Worker manager created and wired into Server struct
-- New routes registered under auth middleware
+### `frontend/src/lib/stores/tasks.svelte.ts`
+- Added `updateTaskStatus()` method for WebSocket `task_status` events
 
-### Dependencies
+### `frontend/src/routes/+layout.svelte`
+- Imports and initializes WebSocket store on auth
+- Connection status indicator in sidebar footer (green/yellow/red dot)
 
-- Added `github.com/creack/pty v1.1.24`
+### `frontend/src/routes/tasks/[id]/+page.svelte`
+- Renders timeline (messages + WorkerCards interleaved)
+- Subscribes to task room via WebSocket on mount
+- Unsubscribes when switching tasks
+- WorkerCards appear inline in the conversation flow
 
-## Modified
+## Dependencies Added
+- `xterm` — terminal emulator
+- `@xterm/addon-fit` — auto-resize terminal to container
+- `@xterm/addon-web-links` — clickable links in terminal output
 
-- `internal/handler/auth.go` — Server struct now includes `WorkerManager *worker.Manager`
-- `cmd/tars/main.go` — imports worker package, creates manager, adds routes
+## Build Status
+✅ `npm run build` passes cleanly
