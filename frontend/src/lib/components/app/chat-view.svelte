@@ -3,6 +3,8 @@
 	import { tasksStore } from '$lib/stores/tasks.svelte';
 	import { messagesStore } from '$lib/stores/messages.svelte';
 	import { workersStore } from '$lib/stores/workers.svelte';
+	import { wsStore } from '$lib/stores/websocket.svelte';
+	import { auth } from '$lib/stores/auth.svelte';
 	import { Badge } from '$lib/components/ui/badge';
 	import { Button } from '$lib/components/ui/button';
 	import { Input } from '$lib/components/ui/input';
@@ -27,6 +29,23 @@
 			default: return 'outline';
 		}
 	}
+
+	// Connect WebSocket and manage task subscriptions
+	$effect(() => {
+		if (auth.token && wsStore.status === 'disconnected') {
+			wsStore.connect(auth.token);
+		}
+	});
+
+	$effect(() => {
+		const taskId = task?.id;
+		if (taskId) {
+			wsStore.subscribeToTask(taskId);
+		}
+		return () => {
+			wsStore.unsubscribeFromTask();
+		};
+	});
 
 	async function handleSend() {
 		if (!inputValue.trim() || !task) return;
@@ -54,9 +73,16 @@
 		<!-- Header -->
 		<div class="px-6 py-4 border-b border-border flex items-center justify-between shrink-0">
 			<h2 class="text-lg font-semibold text-foreground truncate">{task.title}</h2>
-			<Badge variant={statusVariant(task.status)}>
-				{task.status}
-			</Badge>
+			<div class="flex items-center gap-2">
+				{#if wsStore.status === 'connected'}
+					<div class="h-2 w-2 rounded-full bg-green-500" title="WebSocket connected"></div>
+				{:else}
+					<div class="h-2 w-2 rounded-full bg-zinc-500" title="WebSocket disconnected"></div>
+				{/if}
+				<Badge variant={statusVariant(task.status)}>
+					{task.status}
+				</Badge>
+			</div>
 		</div>
 
 		<!-- Messages Area -->
