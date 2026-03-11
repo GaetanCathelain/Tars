@@ -101,13 +101,29 @@ func main() {
 		r.Delete("/api/workers/{id}", srv.HandleKillWorker)
 	})
 
-	// Static files
+	// SPA static files with fallback to index.html
 	webContent, err := fs.Sub(tars.WebFS, "web")
 	if err != nil {
 		slog.Error("failed to create sub filesystem", "error", err)
 		os.Exit(1)
 	}
-	r.Handle("/*", http.FileServer(http.FS(webContent)))
+	staticFS := http.FS(webContent)
+	r.Handle("/*", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// Try to serve the file directly
+		path := r.URL.Path
+		if path == "/" {
+			path = "/index.html"
+		}
+		f, err := webContent.Open(path[1:]) // strip leading /
+		if err == nil {
+			f.Close()
+			http.FileServer(staticFS).ServeHTTP(w, r)
+			return
+		}
+		// Fallback: serve index.html for SPA routing
+		r.URL.Path = "/"
+		http.FileServer(staticFS).ServeHTTP(w, r)
+	}))
 
 	httpServer := &http.Server{
 		Addr:    ":" + port,

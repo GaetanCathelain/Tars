@@ -1,7 +1,7 @@
 import type { Message } from '$lib/types';
 import { api } from '$lib/api';
 
-const MOCK_MODE = true;
+const MOCK_MODE = false;
 
 const MOCK_MESSAGES: Record<string, Message[]> = {
 	'task-1': [

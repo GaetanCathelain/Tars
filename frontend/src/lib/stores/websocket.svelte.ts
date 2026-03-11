@@ -1,4 +1,4 @@
-const MOCK_MODE = true;
+const MOCK_MODE = false;
 
 type ConnectionStatus = 'connected' | 'disconnected' | 'connecting';
 

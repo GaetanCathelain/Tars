@@ -1,7 +1,7 @@
 import type { WorkerSession } from '$lib/types';
 import { api } from '$lib/api';
 
-const MOCK_MODE = true;
+const MOCK_MODE = false;
 
 const MOCK_WORKERS: Record<string, WorkerSession[]> = {
 	'task-1': [

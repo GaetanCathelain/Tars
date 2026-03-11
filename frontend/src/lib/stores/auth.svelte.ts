@@ -1,7 +1,12 @@
-import type { User, AuthResponse } from '$lib/types';
+import type { User } from '$lib/types';
 import { api } from '$lib/api';
 
-const MOCK_MODE = true;
+const MOCK_MODE = false;
+
+function decodeJwtPayload(token: string): { user_id: string; username: string } {
+	const base64 = token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/');
+	return JSON.parse(atob(base64));
+}
 
 function createAuthStore() {
 	let token = $state<string | null>(null);
@@ -30,22 +35,24 @@ function createAuthStore() {
 			localStorage.setItem('auth_user', JSON.stringify(user));
 			return;
 		}
-		const res = await api.post<AuthResponse>('/auth/login', { username, password });
+		const res = await api.post<{ token: string }>('/auth/login', { username, password });
 		token = res.token;
-		user = res.user;
+		const payload = decodeJwtPayload(res.token);
+		user = { id: payload.user_id, username: payload.username, created_at: new Date().toISOString() };
 		localStorage.setItem('auth_token', res.token);
-		localStorage.setItem('auth_user', JSON.stringify(res.user));
+		localStorage.setItem('auth_user', JSON.stringify(user));
 	}
 
 	async function register(username: string, password: string): Promise<void> {
 		if (MOCK_MODE) {
 			return login(username, password);
 		}
-		const res = await api.post<AuthResponse>('/auth/register', { username, password });
+		const res = await api.post<{ token: string }>('/auth/register', { username, password });
 		token = res.token;
-		user = res.user;
+		const payload = decodeJwtPayload(res.token);
+		user = { id: payload.user_id, username: payload.username, created_at: new Date().toISOString() };
 		localStorage.setItem('auth_token', res.token);
-		localStorage.setItem('auth_user', JSON.stringify(res.user));
+		localStorage.setItem('auth_user', JSON.stringify(user));
 	}
 
 	function logout() {
