@@ -229,6 +229,24 @@ func (m *Manager) waitForExit(ctx context.Context, cancel context.CancelFunc, cm
 	})
 }
 
+// ShutdownAll kills all active worker sessions. Called during graceful shutdown.
+func (m *Manager) ShutdownAll() {
+	m.mu.Lock()
+	sessions := make([]*Session, 0, len(m.active))
+	for _, s := range m.active {
+		sessions = append(sessions, s)
+	}
+	m.mu.Unlock()
+
+	for _, s := range sessions {
+		slog.Info("shutting down worker", "session_id", s.ID)
+		s.Cancel()
+		if s.Process != nil {
+			s.Process.Kill()
+		}
+	}
+}
+
 func (m *Manager) updateSessionStatus(sessionID uuid.UUID, status string, exitCode *int) {
 	_, err := m.db.Exec(context.Background(),
 		`UPDATE worker_sessions SET status = $1, exit_code = $2 WHERE id = $3`,

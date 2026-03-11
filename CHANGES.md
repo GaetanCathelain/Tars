@@ -1,38 +1,40 @@
-# Design Overhaul: Linear + Obsidian Aesthetic
+# Docker + Integration Polish
 
 ## Summary
-Complete visual redesign of the TARS WebUI from SpacetimeDB-inspired dark/cyan theme to a refined Linear + Obsidian inspired aesthetic. Zero functionality changes.
+Multi-stage Docker build, CORS middleware, graceful shutdown improvements, and project infrastructure files.
 
 ## Files Changed
 
 | File | What Changed |
 |------|-------------|
-| `frontend/src/app.css` | New theme palette, 13px base font, Inter font features, ultra-thin scrollbars, focus-visible rings |
-| `frontend/src/app.html` | Added Google Fonts import for Inter and JetBrains Mono |
-| `frontend/src/routes/+layout.svelte` | Sidebar: subtle wordmark, tiny uppercase section labels, smaller status dots, ghost new-task button, 150ms transitions |
-| `frontend/src/routes/tasks/[id]/+page.svelte` | Chat: comment-style messages (no bubbles), small round avatars with initials, system messages as italic text, tighter spacing |
-| `frontend/src/lib/components/WorkerCard.svelte` | Elevated surface card, refined status badges with icons, subtle shadow |
-| `frontend/src/lib/components/Terminal.svelte` | Matched ANSI colors to new palette (indigo blues, muted reds/greens), #0a0a0a background |
-| `frontend/src/routes/login/+page.svelte` | Centered card layout with border + subtle shadow, smaller type |
-| `frontend/src/routes/register/+page.svelte` | Same card treatment as login |
-| `frontend/src/routes/tasks/+page.svelte` | Cleaner empty state with avatar circle instead of emoji |
+| `Dockerfile` | Multi-stage: node:22-alpine → golang:1.24-alpine → alpine:3.21. Builds frontend, embeds into Go binary, tini entrypoint |
+| `docker-compose.yml` | Renamed db→postgres, added healthcheck, port 3333, service_healthy dependency |
+| `.dockerignore` | New: excludes .git, node_modules, .svelte-kit, build artifacts, markdown (except README) |
+| `.env.example` | Updated port to 3333 |
+| `cmd/tars/main.go` | Added CORS middleware (go-chi/cors), default port→3333, worker ShutdownAll on SIGINT/SIGTERM |
+| `internal/worker/manager.go` | Added ShutdownAll() — kills all active workers during graceful shutdown |
+| `go.mod` / `go.sum` | Added github.com/go-chi/cors v1.2.2 |
+| `README.md` | Full rewrite: quick start (Docker + manual), architecture, API table |
+| `Makefile` | New: dev, build, frontend-build, docker, docker-down, clean targets |
 
-## Color Palette
+## Review Notes
 
-| Token | Old | New |
-|-------|-----|-----|
-| bg-primary | `#0a0a0f` | `#111113` |
-| bg-secondary | `#12121a` | `#18181b` |
-| bg-tertiary | `#1a1a2e` | `#1c1c20` |
-| border | `#2a2a3e` | `#27272a` |
-| text-primary | `#e0e0e8` | `#fafafa` |
-| text-secondary | `#8888a0` | `#a1a1aa` |
-| accent | `#00d4ff` (cyan) | `#818cf8` (indigo) |
-| success | `#00ff88` | `#34d399` |
-| warning | `#ffaa00` | `#fbbf24` |
-| danger | `#ff4466` | `#f87171` |
+### Graceful Shutdown
+- Signal handling: SIGINT, SIGTERM → kills all active workers → HTTP server shutdown (10s timeout) → DB pool close
+- Worker manager ShutdownAll iterates active sessions, cancels contexts, kills processes
 
-**New tokens:** `bg-elevated`, `border-subtle`, `text-tertiary`, `accent-muted`, `running`
+### CORS
+- AllowedOrigins: `*` (dev-friendly, restrict in production)
+- AllowCredentials: true
+- AllowedHeaders: Accept, Authorization, Content-Type, X-Request-ID
 
-## Build
-`npm run build` passes cleanly.
+### Error Handling (already solid)
+- All handlers use `writeError()` → consistent `{"error":"..."}` JSON responses
+- Proper HTTP status codes throughout (400, 401, 403, 404, 409, 500)
+- slog structured logging on all errors
+- chi Recoverer middleware prevents panics from crashing the server
+
+### Dockerfile Notes
+- Uses golang:1.24-alpine (latest stable Go image; go.mod says 1.26.1 but Docker Hub doesn't have 1.26 images yet — build still works with toolchain directive)
+- tini as PID 1 for proper signal forwarding
+- claude CLI not included in image — must be mounted or installed separately for worker functionality

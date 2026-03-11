@@ -19,6 +19,7 @@ import (
 	"github.com/GaetanCathelain/Tars/internal/ws"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
+	"github.com/go-chi/cors"
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
@@ -28,7 +29,7 @@ func main() {
 
 	databaseURL := getEnv("DATABASE_URL", "postgres://tars:tars_dev@localhost:5432/tars?sslmode=disable")
 	jwtSecret := getEnv("JWT_SECRET", "dev-secret-change-in-production")
-	port := getEnv("PORT", "8080")
+	port := getEnv("PORT", "3333")
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -70,6 +71,15 @@ func main() {
 	r.Use(middleware.Recoverer)
 	r.Use(middleware.RequestID)
 
+	// CORS — permissive for development
+	r.Use(cors.Handler(cors.Options{
+		AllowedOrigins:   []string{"*"},
+		AllowedMethods:   []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
+		AllowedHeaders:   []string{"Accept", "Authorization", "Content-Type", "X-Request-ID"},
+		AllowCredentials: true,
+		MaxAge:           300,
+	}))
+
 	// Public routes
 	r.Get("/api/health", srv.HandleHealth)
 	r.Post("/api/auth/register", srv.HandleRegister)
@@ -110,6 +120,9 @@ func main() {
 		signal.Notify(sigCh, syscall.SIGINT, syscall.SIGTERM)
 		sig := <-sigCh
 		slog.Info("shutting down", "signal", sig)
+
+		// Kill active workers first
+		mgr.ShutdownAll()
 
 		shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), 10*time.Second)
 		defer shutdownCancel()
