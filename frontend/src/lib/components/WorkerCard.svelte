@@ -58,31 +58,31 @@
 	});
 </script>
 
-<div class="my-2 rounded-lg border border-border bg-bg-tertiary overflow-hidden shadow-[0_1px_2px_rgba(0,0,0,0.3)]">
+<div class="my-2 bg-zinc-900/50 border border-zinc-800 rounded-xl shadow-md overflow-hidden">
 	<!-- Header -->
 	<button
 		onclick={() => (collapsed = !collapsed)}
-		class="w-full flex items-center justify-between px-3.5 py-2 hover:bg-bg-elevated/50 transition-all duration-150 cursor-pointer"
+		class="w-full flex items-center justify-between px-4 py-3 border-b border-zinc-800/50 hover:bg-zinc-800/30 transition-colors duration-150 cursor-pointer"
 	>
-		<div class="flex items-center gap-2">
-			<span class="text-[11px] font-mono text-text-tertiary">Worker</span>
-			<span class="text-[11px] font-mono text-text-secondary">{session.command || 'claude-code'}</span>
+		<div class="flex items-center gap-3">
+			<span class="text-sm text-zinc-500">Worker:</span>
+			<span class="text-sm font-medium text-zinc-300">{session.command || 'claude-code'}</span>
 
 			{#if isRunning}
-				<span class="inline-flex items-center gap-1.5 px-1.5 py-0.5 rounded text-[10px] font-medium text-running">
-					<span class="w-1.5 h-1.5 rounded-full bg-running animate-pulse"></span>
+				<span class="inline-flex items-center gap-2 text-sm text-indigo-400">
+					<span class="w-2 h-2 rounded-full bg-indigo-400 animate-pulse"></span>
 					Running
 				</span>
 			{:else if isCompleted}
-				<span class="inline-flex items-center gap-1.5 px-1.5 py-0.5 rounded text-[10px] font-medium text-success">
-					<svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+				<span class="inline-flex items-center gap-2 text-sm text-emerald-400">
+					<svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
 						<path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
 					</svg>
 					{#if duration}Completed in {duration}{:else}Completed{/if}
 				</span>
 			{:else if isFailed}
-				<span class="inline-flex items-center gap-1.5 px-1.5 py-0.5 rounded text-[10px] font-medium text-danger">
-					<svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+				<span class="inline-flex items-center gap-2 text-sm text-red-400">
+					<svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
 						<path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
 					</svg>
 					{#if duration}Failed after {duration}{:else}Failed{/if}
@@ -90,14 +90,14 @@
 			{/if}
 
 			{#if isFailed && session.exit_code !== undefined}
-				<span class="text-[10px] font-mono text-danger">
+				<span class="text-xs font-mono text-red-400">
 					exit {session.exit_code}
 				</span>
 			{/if}
 		</div>
 
 		<svg
-			class="w-3.5 h-3.5 text-text-tertiary transition-transform duration-200 {collapsed ? '' : 'rotate-180'}"
+			class="w-4 h-4 text-zinc-500 transition-transform duration-200 {collapsed ? '' : 'rotate-180'}"
 			fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"
 		>
 			<path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7" />
@@ -106,7 +106,7 @@
 
 	<!-- Terminal body -->
 	{#if !collapsed}
-		<div class="border-t border-border transition-all duration-200">
+		<div class="transition-all duration-200">
 			{#if loaded}
 				<Terminal
 					bind:this={terminalRef}
@@ -114,8 +114,8 @@
 					{initialData}
 				/>
 			{:else}
-				<div class="px-4 py-8 text-center">
-					<p class="text-[11px] font-mono text-text-tertiary animate-pulse">Loading output...</p>
+				<div class="px-4 py-10 text-center">
+					<p class="text-sm text-zinc-500 animate-pulse">Loading output...</p>
 				</div>
 			{/if}
 		</div>

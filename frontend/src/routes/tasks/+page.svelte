@@ -13,21 +13,19 @@
 
 <div class="flex-1 flex flex-col items-center justify-center text-center px-6">
 	{#if tasksStore.loading}
-		<p class="text-text-tertiary text-[13px]">Loading tasks...</p>
+		<p class="text-zinc-500 text-sm">Loading tasks...</p>
 	{:else if tasksStore.tasks.length === 0}
-		<div class="max-w-sm">
-			<div class="w-10 h-10 rounded-full bg-bg-elevated flex items-center justify-center mx-auto mb-4">
-				<span class="text-text-tertiary text-lg">T</span>
-			</div>
-			<h2 class="text-[15px] font-semibold text-text-primary mb-1.5 tracking-[-0.01em]">No tasks yet</h2>
-			<p class="text-[13px] text-text-secondary mb-4 leading-relaxed">
+		<div class="max-w-sm space-y-4">
+			<div class="text-4xl">🤖</div>
+			<h2 class="text-lg font-medium text-zinc-200">No tasks yet</h2>
+			<p class="text-sm text-zinc-400 leading-relaxed">
 				Create your first task to start orchestrating Claude Code sessions.
 			</p>
-			<p class="text-[11px] text-text-tertiary">
+			<p class="text-xs text-zinc-500">
 				Use the "+ New Task" button in the sidebar to get started.
 			</p>
 		</div>
 	{:else}
-		<p class="text-text-tertiary text-[13px]">Select a task from the sidebar</p>
+		<p class="text-zinc-500 text-sm">Select a task from the sidebar</p>
 	{/if}
 </div>

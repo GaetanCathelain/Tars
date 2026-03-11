@@ -82,19 +82,19 @@
 
 	function senderAvatarClass(type: string): string {
 		switch (type) {
-			case 'tars': return 'bg-accent-muted text-accent';
-			case 'user': return 'bg-bg-elevated text-text-secondary';
-			default: return 'bg-bg-tertiary text-text-tertiary';
+			case 'tars': return 'bg-indigo-500/15 text-indigo-400';
+			case 'user': return 'bg-zinc-800 text-zinc-300';
+			default: return 'bg-zinc-800/50 text-zinc-500';
 		}
 	}
 
 	function statusBadgeClass(status: string): string {
 		switch (status) {
-			case 'open': return 'text-text-tertiary border-border bg-bg-tertiary';
-			case 'running': return 'text-running border-running/30 bg-running/10';
-			case 'completed': return 'text-success border-success/30 bg-success/10';
-			case 'failed': return 'text-danger border-danger/30 bg-danger/10';
-			default: return 'text-text-tertiary border-border bg-bg-tertiary';
+			case 'open': return 'text-zinc-400 border-zinc-700 bg-zinc-800/50';
+			case 'running': return 'text-indigo-400 border-indigo-500/30 bg-indigo-500/10';
+			case 'completed': return 'text-emerald-400 border-emerald-500/30 bg-emerald-500/10';
+			case 'failed': return 'text-red-400 border-red-500/30 bg-red-500/10';
+			default: return 'text-zinc-400 border-zinc-700 bg-zinc-800/50';
 		}
 	}
 
@@ -125,13 +125,13 @@
 
 {#if !task}
 	<div class="flex-1 flex items-center justify-center">
-		<p class="text-text-tertiary text-[13px]">Task not found</p>
+		<p class="text-zinc-500 text-sm">Task not found</p>
 	</div>
 {:else}
 	<!-- Header -->
-	<header class="flex items-center gap-3 px-6 py-3 border-b border-border shrink-0">
-		<h2 class="text-[14px] font-medium text-text-primary truncate tracking-[-0.01em]">{task.title}</h2>
-		<span class="px-2 py-0.5 text-[11px] font-medium border rounded-md shrink-0 {statusBadgeClass(task.status)}">
+	<header class="flex items-center gap-3 px-6 py-4 border-b border-zinc-800/50 shrink-0">
+		<h2 class="text-base font-medium text-zinc-100 truncate">{task.title}</h2>
+		<span class="px-3 py-1 text-xs font-medium border rounded-full shrink-0 {statusBadgeClass(task.status)}">
 			{task.status}
 		</span>
 	</header>
@@ -139,18 +139,18 @@
 	<!-- Messages / Timeline -->
 	<div
 		bind:this={messagesContainer}
-		class="flex-1 overflow-y-auto px-6 py-4"
+		class="flex-1 overflow-y-auto px-6 py-5"
 	>
 		{#if messagesStore.loading}
-			<div class="flex justify-center py-8">
-				<p class="text-text-tertiary text-[13px]">Loading messages...</p>
+			<div class="flex justify-center py-12">
+				<p class="text-zinc-500 text-sm">Loading messages...</p>
 			</div>
 		{:else if messagesStore.timeline.length === 0}
-			<div class="flex flex-col items-center justify-center py-16 text-center">
-				<p class="text-text-tertiary text-[13px]">No messages yet. Send a message to start.</p>
+			<div class="flex flex-col items-center justify-center py-20 text-center">
+				<p class="text-zinc-500 text-sm">No messages yet. Send a message to start.</p>
 			</div>
 		{:else}
-			<div class="space-y-5">
+			<div class="space-y-6">
 				{#each messagesStore.timeline as entry (entry.id)}
 					{#if isWorkerEvent(entry) && entry.event === 'start'}
 						<!-- Worker Card inline in the timeline -->
@@ -158,27 +158,27 @@
 					{:else if !isWorkerEvent(entry)}
 						{@const message = entry as Message}
 						{#if message.sender_type === 'system'}
-							<div class="py-1">
-								<p class="text-[12px] italic text-text-tertiary">{message.content}</p>
+							<div class="py-2 border-l-2 border-zinc-800 pl-4">
+								<p class="text-xs italic text-zinc-500">{message.content}</p>
 							</div>
 						{:else}
-							<div class="flex gap-3">
+							<div class="flex gap-3.5">
 								<!-- Avatar -->
-								<div class="w-6 h-6 rounded-full flex items-center justify-center shrink-0 text-[10px] font-medium {senderAvatarClass(message.sender_type)}">
+								<div class="w-8 h-8 rounded-full flex items-center justify-center shrink-0 text-sm font-medium {senderAvatarClass(message.sender_type)}">
 									{senderInitial(message.sender_type)}
 								</div>
 
 								<!-- Content -->
 								<div class="flex-1 min-w-0">
-									<div class="flex items-baseline gap-2 mb-0.5">
-										<span class="text-[13px] font-medium text-zinc-300">
+									<div class="flex items-baseline gap-2 mb-1">
+										<span class="text-sm font-medium text-zinc-300">
 											{senderLabel(message.sender_type)}
 										</span>
-										<span class="text-[11px] text-text-tertiary">
+										<span class="text-xs text-zinc-500">
 											{formatTime(message.created_at)}
 										</span>
 									</div>
-									<div class="text-[13px] text-zinc-200 leading-[1.5] whitespace-pre-wrap">
+									<div class="text-sm text-zinc-300 leading-relaxed whitespace-pre-wrap">
 										{message.content}
 									</div>
 								</div>
@@ -191,21 +191,21 @@
 	</div>
 
 	<!-- Message input -->
-	<form onsubmit={handleSend} class="shrink-0 border-t border-border px-6 py-3">
-		<div class="flex gap-2">
+	<form onsubmit={handleSend} class="shrink-0 border-t border-zinc-800/50 px-6 py-4">
+		<div class="flex gap-3">
 			<input
 				type="text"
 				bind:value={messageInput}
 				onkeydown={handleKeydown}
 				placeholder="Send a message..."
-				class="flex-1 bg-bg-tertiary border border-border rounded-md px-3.5 py-2 text-[13px] text-text-primary
-					placeholder:text-text-tertiary focus:outline-none focus:border-accent transition-all duration-150"
+				class="flex-1 h-10 bg-zinc-900 border border-zinc-800 rounded-lg px-4 text-sm text-text-primary
+					placeholder:text-zinc-500 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/20 transition-colors duration-150"
 			/>
 			<button
 				type="submit"
 				disabled={!messageInput.trim()}
-				class="px-4 py-2 bg-accent text-white text-[13px] font-medium rounded-md
-					hover:bg-accent-hover disabled:opacity-30 disabled:cursor-not-allowed transition-all duration-150"
+				class="h-10 px-5 bg-indigo-500 text-white text-sm font-medium rounded-lg
+					hover:bg-indigo-600 disabled:opacity-30 disabled:cursor-not-allowed transition-colors duration-150"
 			>
 				Send
 			</button>

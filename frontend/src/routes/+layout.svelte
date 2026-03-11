@@ -34,7 +34,7 @@
 			case 'open':
 				return 'bg-text-tertiary';
 			case 'running':
-				return 'bg-running';
+				return 'bg-running animate-pulse';
 			case 'completed':
 				return 'bg-success';
 			case 'failed':
@@ -64,21 +64,22 @@
 </script>
 
 {#if !authStore.isAuthenticated}
-	<div class="min-h-screen flex items-center justify-center bg-bg-primary">
+	<div class="min-h-screen flex items-center justify-center bg-[#111113]">
 		{@render children()}
 	</div>
 {:else}
 	<div class="flex h-screen bg-bg-primary">
 		<!-- Sidebar -->
-		<aside class="w-64 flex flex-col bg-bg-secondary border-r border-border shrink-0">
+		<aside class="w-64 flex flex-col bg-bg-secondary border-r border-zinc-800/50 shrink-0">
 			<!-- App title -->
-			<div class="px-4 py-4">
-				<h1 class="text-sm font-semibold tracking-wide text-zinc-200">TARS</h1>
+			<div class="px-5 py-5 border-b border-zinc-800/50">
+				<h1 class="text-base font-semibold tracking-wide text-zinc-100">TARS</h1>
+				<p class="text-xs text-zinc-500 mt-0.5">Orchestrator</p>
 			</div>
 
 			<!-- Section label -->
-			<div class="px-4 pt-2 pb-1">
-				<span class="text-[10px] font-semibold uppercase tracking-widest text-text-tertiary">Tasks</span>
+			<div class="px-5 pt-4 pb-2">
+				<span class="text-[11px] font-semibold uppercase tracking-[0.1em] text-zinc-500">Tasks</span>
 			</div>
 
 			<!-- Task list -->
@@ -87,23 +88,23 @@
 					{@const isActive = page.url.pathname === `/tasks/${task.id}`}
 					<a
 						href="/tasks/{task.id}"
-						class="flex items-center gap-2.5 px-3 py-1.5 rounded-md text-[13px] transition-all duration-150
+						class="flex items-center gap-3 px-3 py-2.5 mx-0 rounded-lg text-sm transition-colors duration-150
 							{isActive
-								? 'bg-accent-muted text-text-primary'
-								: 'text-text-secondary hover:bg-bg-tertiary hover:text-text-primary'}"
+								? 'bg-indigo-500/10 text-zinc-100'
+								: 'text-zinc-400 hover:bg-zinc-800/50 hover:text-zinc-200'}"
 					>
-						<span class="w-1.5 h-1.5 rounded-full shrink-0 {statusColor(task.status)}"></span>
+						<span class="w-2 h-2 rounded-full shrink-0 {statusColor(task.status)}"></span>
 						<span class="truncate">{task.title}</span>
 					</a>
 				{/each}
 
 				{#if tasksStore.tasks.length === 0 && !tasksStore.loading}
-					<p class="px-3 py-6 text-[13px] text-text-tertiary text-center">No tasks yet</p>
+					<p class="px-3 py-8 text-sm text-zinc-500 text-center">No tasks yet</p>
 				{/if}
 			</nav>
 
 			<!-- New Task / User -->
-			<div class="border-t border-border p-3">
+			<div class="border-t border-zinc-800/50 p-3">
 				{#if showNewTask}
 					<div class="flex gap-2">
 						<input
@@ -111,13 +112,13 @@
 							bind:value={newTaskInput}
 							onkeydown={handleTaskKeydown}
 							placeholder="Task description..."
-							class="flex-1 bg-bg-primary border border-border rounded-md px-3 py-1.5 text-[13px] text-text-primary
-								placeholder:text-text-tertiary focus:outline-none focus:border-accent transition-all duration-150"
+							class="flex-1 h-10 bg-[#1c1c20] border border-zinc-800 rounded-lg px-3 text-sm text-text-primary
+								placeholder:text-text-tertiary focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/20 transition-colors duration-150"
 						/>
 						<button
 							onclick={handleCreateTask}
-							class="px-2.5 py-1.5 bg-accent text-white text-[13px] font-medium rounded-md
-								hover:bg-accent-hover transition-all duration-150"
+							class="h-10 px-3 bg-indigo-500 text-white text-sm font-medium rounded-lg
+								hover:bg-indigo-600 transition-colors duration-150"
 						>
 							+
 						</button>
@@ -125,23 +126,23 @@
 				{:else}
 					<button
 						onclick={() => (showNewTask = true)}
-						class="w-full py-1.5 text-[13px] text-text-tertiary border border-border rounded-md
-							hover:border-text-tertiary hover:text-text-secondary transition-all duration-150"
+						class="w-full h-10 text-sm text-zinc-400 border border-dashed border-zinc-700 rounded-lg
+							hover:border-zinc-500 hover:text-zinc-300 transition-colors duration-150"
 					>
 						+ New Task
 					</button>
 				{/if}
 
-				<div class="flex items-center justify-between mt-3 px-1">
-					<div class="flex items-center gap-2">
-						<span class="w-1.5 h-1.5 rounded-full {connectionDotClass}" title="WebSocket: {wsStore.status}"></span>
-						<span class="text-[11px] text-text-tertiary font-mono">
+				<div class="flex items-center justify-between mt-3 px-2">
+					<div class="flex items-center gap-2.5">
+						<span class="w-2 h-2 rounded-full {connectionDotClass}" title="WebSocket: {wsStore.status}"></span>
+						<span class="text-sm text-zinc-400">
 							{authStore.user?.username}
 						</span>
 					</div>
 					<button
 						onclick={() => { authStore.logout(); goto('/login'); }}
-						class="text-[11px] text-text-tertiary hover:text-danger transition-all duration-150"
+						class="text-sm text-zinc-500 hover:text-danger transition-colors duration-150"
 					>
 						Logout
 					</button>
