@@ -2,6 +2,7 @@
 	import '../app.css';
 	import { authStore } from '$lib/stores/auth.svelte';
 	import { tasksStore } from '$lib/stores/tasks.svelte';
+	import { wsStore } from '$lib/stores/websocket.svelte';
 	import { goto } from '$app/navigation';
 	import { page } from '$app/state';
 
@@ -13,6 +14,18 @@
 	$effect(() => {
 		if (authStore.isAuthenticated) {
 			tasksStore.fetchTasks();
+			wsStore.connect();
+		} else {
+			wsStore.disconnect();
+		}
+	});
+
+	const connectionDotClass = $derived.by(() => {
+		switch (wsStore.status) {
+			case 'connected': return 'bg-success';
+			case 'connecting': return 'bg-warning animate-pulse';
+			case 'disconnected': return 'bg-danger';
+			default: return 'bg-text-secondary';
 		}
 	});
 
@@ -115,9 +128,12 @@
 				{/if}
 
 				<div class="flex items-center justify-between mt-3 px-1">
-					<span class="text-xs text-text-secondary font-mono">
-						{authStore.user?.username}
-					</span>
+					<div class="flex items-center gap-2">
+						<span class="w-2 h-2 rounded-full {connectionDotClass}" title="WebSocket: {wsStore.status}"></span>
+						<span class="text-xs text-text-secondary font-mono">
+							{authStore.user?.username}
+						</span>
+					</div>
 					<button
 						onclick={() => { authStore.logout(); goto('/login'); }}
 						class="text-xs text-text-secondary hover:text-danger transition-colors"
