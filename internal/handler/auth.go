@@ -6,12 +6,14 @@ import (
 	"net/http"
 
 	"github.com/GaetanCathelain/Tars/internal/auth"
+	"github.com/GaetanCathelain/Tars/internal/ws"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 type Server struct {
 	DB        *pgxpool.Pool
 	JWTSecret string
+	Hub       *ws.Hub
 }
 
 type authRequest struct {
