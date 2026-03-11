@@ -80,7 +80,7 @@ function createWebSocketStore() {
 
 		status = 'connecting';
 		const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-		const wsUrl = `${protocol}//${window.location.host}/api/ws?token=${token}`;
+		const wsUrl = `${protocol}//${window.location.host}/ws?token=${token}`;
 
 		const socket = new WebSocket(wsUrl);
 
