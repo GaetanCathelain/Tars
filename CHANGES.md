@@ -1,39 +1,33 @@
-# CHANGES — Backend Foundation (Worker 1)
+# Changes — WebSocket + Real-time Layer
 
-## What was built
+## New Files
+- **`internal/ws/hub.go`** — WebSocket hub with room-based broadcasting
+- **`internal/handler/ws.go`** — HTTP→WS upgrade handler with JWT query param auth
 
-Complete Go backend foundation for the Tars WebUI.
+## Modified Files
+- **`internal/handler/auth.go`** — Added `Hub *ws.Hub` field to `Server` struct
+- **`internal/handler/messages.go`** — `HandleCreateMessage` now broadcasts to WS subscribers
+- **`cmd/tars/main.go`** — Creates hub, wires message handler, adds `/ws` route
+- **`go.mod` / `go.sum`** — Added `github.com/gorilla/websocket v1.5.3`
 
-### Structure
-- `cmd/tars/main.go` — Entry point with graceful shutdown, config from env
-- `embed.go` — Root-level embed for migrations and web assets
-- `internal/auth/` — JWT generation/validation (HS256, 24h expiry), bcrypt password hashing, Chi middleware
-- `internal/db/` — pgx pool setup, migration runner using golang-migrate with embedded SQL
-- `internal/handler/` — HTTP handlers for all API endpoints
-- `internal/model/` — Domain types (User, Task, Message, WorkerSession, WorkerOutput)
-- `internal/worker/` — Stub package (placeholder for Worker 4)
-- `internal/ws/` — Stub package (placeholder for Worker 3)
-- `migrations/` — PostgreSQL schema (users, tasks, messages, worker_sessions, worker_output)
-- `web/index.html` — Placeholder for embedded frontend
+## Architecture
 
-### API Endpoints
-| Method | Path | Auth | Status |
-|--------|------|------|--------|
-| GET | /api/health | No | ✅ |
-| POST | /api/auth/register | No | ✅ |
-| POST | /api/auth/login | No | ✅ |
-| GET | /api/tasks | Yes | ✅ |
-| POST | /api/tasks | Yes | ✅ |
-| GET | /api/tasks/{id} | Yes | ✅ |
-| GET | /api/tasks/{id}/messages | Yes | ✅ |
-| POST | /api/tasks/{id}/messages | Yes | ✅ |
-| POST | /api/tasks/{id}/workers | Yes | Stub (501) |
+### Hub (`internal/ws/hub.go`)
+- **Hub** — central goroutine processing register/unregister/broadcast channels
+- **Client** — wraps a `gorilla/websocket.Conn` with read/write pumps
+- **Rooms** — `map[uuid.UUID]map[*Client]bool` for task-scoped broadcast
+- **`BroadcastToTask(taskID, msg)`** — public API for broadcasting from any handler
+- **`OnMessage` callback** — pluggable handler for persisting chat messages from WS clients
+- Ping/pong: 30s ping interval, 60s pong timeout
+- Thread-safe: `sync.RWMutex` on rooms/clients maps
 
-### Infrastructure
-- `Dockerfile` — Multi-stage build (golang:1.23-alpine → alpine:3.19)
-- `docker-compose.yml` — PostgreSQL 16 + app service
-- `.env.example` — Config template
+### Protocol
+Client → Server: `subscribe`, `unsubscribe`, `message`
+Server → Client: `message`, `worker_start`, `worker_output`, `worker_end`, `task_status`
 
-### Build status
-- `go build ./...` ✅
-- `go vet ./...` ✅
+### Auth
+WebSocket connections authenticate via `?token=<jwt>` query parameter (browsers can't set headers on WS handshake). Token is validated using the existing `auth.ValidateToken()`.
+
+### Integration
+- REST `POST /api/tasks/{id}/messages` broadcasts via hub (both REST and WS clients see new messages)
+- WS `{"type":"message"}` persists to DB then broadcasts (same path, different entry point)

@@ -7,6 +7,7 @@ import (
 
 	"github.com/GaetanCathelain/Tars/internal/auth"
 	"github.com/GaetanCathelain/Tars/internal/model"
+	"github.com/GaetanCathelain/Tars/internal/ws"
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
 )
@@ -82,6 +83,15 @@ func (s *Server) HandleCreateMessage(w http.ResponseWriter, r *http.Request) {
 		slog.Error("create message", "error", err)
 		writeError(w, "internal error", http.StatusInternalServerError)
 		return
+	}
+
+	// Broadcast to WebSocket subscribers
+	if s.Hub != nil {
+		s.Hub.BroadcastToTask(msg.TaskID, &ws.OutgoingMessage{
+			Type:    "message",
+			TaskID:  msg.TaskID,
+			Message: msg,
+		})
 	}
 
 	w.Header().Set("Content-Type", "application/json")
