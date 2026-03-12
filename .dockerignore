@@ -1,7 +1,0 @@
-.git
-frontend/node_modules
-frontend/.svelte-kit
-frontend/build
-*.md
-!README.md
-workspaces/

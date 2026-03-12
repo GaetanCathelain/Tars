@@ -1,5 +1,0 @@
-DROP TABLE IF EXISTS worker_output;
-DROP TABLE IF EXISTS worker_sessions;
-DROP TABLE IF EXISTS messages;
-DROP TABLE IF EXISTS tasks;
-DROP TABLE IF EXISTS users;
