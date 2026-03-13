@@ -1,0 +1,21 @@
+FROM golang:1.22-alpine AS builder
+
+RUN apk add --no-cache git
+
+WORKDIR /app
+
+COPY backend/go.mod backend/go.sum ./
+RUN go mod download
+
+COPY backend/ .
+RUN CGO_ENABLED=0 GOOS=linux go build -o /tars-backend ./cmd/server
+
+FROM alpine:3.19
+
+RUN apk add --no-cache ca-certificates tzdata
+
+COPY --from=builder /tars-backend /usr/local/bin/tars-backend
+
+EXPOSE 8080
+
+ENTRYPOINT ["tars-backend"]
