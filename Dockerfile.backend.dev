@@ -1,0 +1,27 @@
+# syntax=docker/dockerfile:1
+# Dev image: air hot reload + Claude Code CLI for agent spawning
+FROM node:20-alpine
+
+RUN apk add --no-cache git ca-certificates wget
+
+# Install Go toolchain
+COPY --from=golang:1.24-alpine /usr/local/go /usr/local/go
+ENV PATH="/usr/local/go/bin:${PATH}"
+ENV GOPATH="/root/go"
+ENV PATH="${GOPATH}/bin:${PATH}"
+
+# Install air (hot reload) and Claude Code CLI
+RUN go install github.com/air-verse/air@latest && \
+    npm install -g @anthropic-ai/claude-code
+
+# Allow git worktree operations across any directory
+RUN git config --global --add safe.directory '*'
+
+WORKDIR /app/backend
+
+ENV MIGRATIONS_DIR=/app/backend/migrations \
+    WORKSPACES_DIR=/app/workspaces
+
+EXPOSE 8080
+
+CMD ["air", "-c", ".air.toml"]

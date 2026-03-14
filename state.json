@@ -1,0 +1,21 @@
+{
+  "taskId": "v2-phase1-foundation",
+  "repo": "GaetanCathelain/Tars",
+  "branch": "tars/v2-phase1-foundation",
+  "targetBranch": "main",
+  "status": "workers-running",
+  "agents": {
+    "backend-architect": {
+      "sessionKey": "agent:tars:subagent:f7746f78-33ea-48af-9c3b-ba55650dbd7b",
+      "label": "tars-backend-architect",
+      "status": "running"
+    },
+    "frontend-developer": {
+      "sessionKey": "agent:tars:subagent:e431c14b-9a9b-4394-abac-7d550bac4ff5",
+      "label": "tars-frontend-developer",
+      "status": "running"
+    }
+  },
+  "attempts": 1,
+  "startedAt": "2026-03-13T23:30:00Z"
+}

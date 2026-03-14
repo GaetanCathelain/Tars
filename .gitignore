@@ -1,0 +1,20 @@
+# Environment
+.env
+
+# Go
+backend/tmp/
+backend/vendor/
+*.test
+
+# Node / SvelteKit
+frontend/node_modules/
+frontend/.svelte-kit/
+frontend/build/
+
+# Docker
+*.tar
+
+# Editor
+.DS_Store
+.idea/
+.vscode/

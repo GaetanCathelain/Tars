@@ -1,0 +1,48 @@
+# syntax=docker/dockerfile:1
+# ── Stage 1: build ──────────────────────────────────────────────────────────
+FROM golang:1.24-alpine AS builder
+
+RUN apk add --no-cache git ca-certificates
+
+WORKDIR /app
+
+# Cache dependencies
+COPY backend/go.mod backend/go.sum ./backend/
+RUN cd backend && go mod download
+
+# Copy source and build
+COPY backend/ ./backend/
+RUN cd backend && CGO_ENABLED=0 GOOS=linux go build -trimpath -ldflags="-s -w" -o /bin/server ./cmd/server
+
+# ── Stage 2: runtime ────────────────────────────────────────────────────────
+FROM node:20-alpine
+
+# System deps: git (worktrees), wget (healthcheck), ca-certificates
+RUN apk add --no-cache git ca-certificates wget
+
+# Install Claude Code CLI globally
+RUN npm install -g @anthropic-ai/claude-code
+
+# Copy compiled Go binary
+COPY --from=builder /bin/server /app/server
+
+# Copy migrations so the server can find them at /app/migrations
+COPY backend/migrations/ /app/migrations/
+
+WORKDIR /app
+
+# Workspace root — agent repos live here as named sub-dirs
+# Each repo is cloned at /app/workspaces/<repoID>/
+# Worktrees are created at /app/workspaces/<repoID>/.tars/agents/<agentID>/
+RUN mkdir -p /app/workspaces && \
+    git config --global --add safe.directory '*'
+
+EXPOSE 8080
+
+HEALTHCHECK --interval=10s --timeout=3s --start-period=20s --retries=3 \
+  CMD wget -qO- http://localhost:8080/health || exit 1
+
+ENV MIGRATIONS_DIR=/app/migrations \
+    WORKSPACES_DIR=/app/workspaces
+
+CMD ["/app/server"]

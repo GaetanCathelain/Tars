@@ -1,0 +1,4 @@
+ALTER TABLE tasks  DROP CONSTRAINT IF EXISTS tasks_agent_id_fk;
+ALTER TABLE agents DROP CONSTRAINT IF EXISTS agents_task_id_fk;
+DROP TABLE IF EXISTS agents;
+DROP TABLE IF EXISTS tasks;

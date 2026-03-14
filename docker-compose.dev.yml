@@ -1,0 +1,40 @@
+name: tars
+
+# Dev overrides: hot reload for backend and frontend
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile.backend.dev
+    volumes:
+      - ./backend:/app/backend
+      - workspaces:/app/workspaces
+      - claude_config:/app/claude-config
+      - go_cache:/root/.cache/go-build
+      - go_pkg:/root/go/pkg/mod
+    environment:
+      ENV: development
+      MIGRATIONS_DIR: /app/backend/migrations
+      WORKSPACES_DIR: /app/workspaces
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      CLAUDE_CONFIG_DIR: /app/claude-config
+    # air provides hot reload — no healthcheck needed in dev
+    healthcheck:
+      disable: true
+
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile.frontend.dev
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    environment:
+      PUBLIC_API_URL: http://localhost:8080
+    # vite dev server
+    command: npm run dev -- --host 0.0.0.0
+
+volumes:
+  go_cache:
+  go_pkg:
+  claude_config:

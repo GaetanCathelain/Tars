@@ -1,0 +1,3 @@
+ALTER TABLE users DROP CONSTRAINT IF EXISTS users_email_unique;
+ALTER TABLE users DROP COLUMN IF EXISTS password_hash;
+ALTER TABLE users ALTER COLUMN github_id SET NOT NULL;
