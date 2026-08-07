@@ -293,12 +293,48 @@ which is where the answers live.
 | "no completion signal — Tars would hand-roll polling" | False at this layer. `worker_done` is a first-class message type with explicit `--outcome succeeded\|failed`, and `orchestration check --run <id> --wait --types worker_done,escalation,question --timeout-ms <n> --json` is a **single blocking call** that returns the instant it lands. Keepalive JSON on stderr every 15s distinguishes waiting from hanging. | capabilities §3; flags re-verified live in sequence-validation §1 item 4 |
 | "durable coordinator state across ssh calls that share no session" | Confirmed present *and* confirmed **not** session-bound: `--run <id>` works standalone on `task-list`/`worker-list`/`gate-list`/`check` with **no prior `run-use` bind**. `run-use`/`run-current` exist only so a long-lived coordinator terminal can omit `--run`. | capabilities §1; **`--run` on `check` measured 2026-08-07, see below** |
 
-### `--run <id>` standalone addressability — CONFIRMED, and the doubt is settled
+### `--run <id>` standalone addressability — ~~CONFIRMED~~ **DISPROVEN by the live E2E, 2026-08-07**
+
+> **CORRECTED POST-E2E.** Everything in this subsection below the next paragraph
+> was wrong. The adversarial reviewer it dismisses was **right**. Evidence:
+> `status/probes/wf5/apply-p3-orca-v2.md` §9.1.
+>
+> Reproduced independently from the VM over plain ssh, against this
+> subsection's own probe run:
+> `orca orchestration check --run run_24d000a3a6b6 --peek --json` →
+> `ok:false, error.code: **no_active_terminal**`, while
+> `task-list --run run_24d000a3a6b6 --json` → `ok:true`. The run is real and
+> resolvable; `check` specifically cannot bind it without terminal context.
+>
+> A terminal-less caller must pass an explicit handle:
+>
+> | Verb | Needs |
+> |---|---|
+> | `run-create` | `--from <TERMINAL_HANDLE>` — else `no_active_sender_terminal` |
+> | `task-create` | `--from <TERMINAL_HANDLE>` — the run id does not supply sender context |
+> | `worker-start` | `--from <TERMINAL_HANDLE>` |
+> | `check` (incl. `--wait` / `--ack`) | `--terminal <TERMINAL_HANDLE>`, **even when `--run` is given** |
+> | `task-list --run`, `worker-list --run`, `worker-show --dispatch` | nothing extra — these genuinely are standalone |
+>
+> `run-create --help` documents it: `Usage: orca orchestration run-create
+> --objective <text> [--from <handle>] [--json]`.
+>
+> The earlier measurement was almost certainly taken from a shell that already
+> carried Orca terminal context — an agent running inside an Orca-managed
+> terminal inherits it — not from "exactly Tars's stateless position".
+>
+> **The defensive fallback below could never fire:** it is keyed to
+> `run_not_found`, and the real error code is `no_active_terminal`.
+>
+> The design survives, but only because Tars resolves a live terminal handle
+> first. Open question it raises: Tars borrowed a handle belonging to the
+> `Tars/orchestrator` worktree, which couples a delegated run to whatever
+> terminal happens to be open. A durable, intentional sender terminal is unbuilt.
 
 An adversarial review argued that `check` binds to the invoking coordinator
 terminal, so a terminal-less ssh caller (exactly Tars's position) could never
-resolve `--run` — which would have been fatal to the design. **Measured, and it
-is wrong.**
+resolve `--run` — which would have been fatal to the design. ~~Measured, and it
+is wrong.~~ (It was not wrong. See the correction above.)
 
 From a plain non-Orca shell with zero shared state: `orca orchestration
 run-create --objective … --json` produced `run_24d000a3a6b6`; then from a
@@ -343,7 +379,23 @@ proven, not assumed: gateway PID 76255 ran continuously across an edit and
 `.skills_prompt_snapshot.json` regenerated with the file's post-edit
 `(mtime_ns, size)`. Verify pickup by comparing `os.stat(SKILL.md)` to the
 snapshot's `manifest['<relpath>/SKILL.md']` entry — `MATCH` means picked up.
-Skill count should stay 77 / 6-local (replacement, not an add).
+~~Skill count should stay 77 / 6-local (replacement, not an add).~~
+
+**Corrected 2026-08-07 at apply time.** Live baseline is **80 enabled / 7 local /
+66 builtin / 7 hub-installed**, and it did stay put across the replacement. But
+neither the count nor the manifest proves pickup:
+
+- The count cannot move on a replacement, so it proves nothing either way.
+- `.skills_prompt_snapshot.json` still held the pre-apply `(mtime_ns, size)`
+  immediately after the write — it only regenerates when the model next builds a
+  prompt, so `MATCH` is not available at apply time.
+- The `hermes skills list` **Category** column is derived from the on-disk path
+  (`skills/<category>/<name>/SKILL.md`), **not** from frontmatter — skills sitting
+  directly under `~/.hermes/skills/` render a blank category, so a frontmatter
+  `category:` change is invisible there and is not a pickup signal.
+
+**The only proof of pickup is behavioural**: run the E2E and confirm Tars drives
+`orca orchestration …` over ssh rather than the v1 `delegate.sh` wrapper.
 
 ## Known ceilings
 
@@ -374,12 +426,50 @@ Skill count should stay 77 / 6-local (replacement, not an add).
   worktree could notify Tars directly instead — untested, not built.
 - **Orca must be running.** Hard dependency, no plain-shell fallback. If the
   desktop app is closed, every command fails; `orca status --json` first, always.
-- **Unverified response field names.** `result.run.id` / `result.task.id` /
-  `result.dispatch.id` were never observed live. Nor was the **delivery id**:
-  an empty `check --peek --json` returns
-  `result.{messages, count, acknowledged, runId}`, and what names the delivery on
-  a non-empty batch is still unseen. Log the raw first responses and correct this
-  spec from them; the skill already tells Tars to report the real shape.
+- ~~**Unverified response field names.**~~ **RESOLVED by the live E2E,
+  2026-08-07** (`status/probes/wf5/apply-p3-orca-v2.md` §10):
+
+  | Thing | Field path | Shape |
+  |---|---|---|
+  | Run | `result.run.id` | `run_<12 hex>` |
+  | Task | `tasks[].id` | `task_<12 hex>` |
+  | Dispatch | `result.dispatch.id` / `workers[].dispatchId` | **`ctx_<12 hex>`** — *not* `dispatch_…` |
+  | Message / delivery | `messages[].id` | `msg_<12 hex>` |
+
+  **There is no separate delivery-id field** — the id to carry and `--ack` is the
+  message's own `id`. A non-empty batch message carries `id`, `run_id`,
+  `delivery_contract`, `from_handle`, `to_handle`, `subject`, `body`, `type`,
+  `priority`, `thread_id`, `payload`, `read`, `sequence`, `created_at`,
+  `delivered_at`, `sender_pane_key`.
+
+  Two traps found while measuring this: (1) a worker's reply is addressed
+  `to_handle: "run:<runId>"` — the run's home inbox — so `check --terminal
+  <some-other-handle> --run <id> --peek` returns `count: 0` even though the
+  message exists; `orchestration inbox --json` is what shows messages across
+  recipients. (2) The failure-mode table's `worker-show --dispatch <id>` →
+  `result.state` is **wrong**; the real path is **`result.worker.state`**
+  (`result.dispatch.status` is a separate field).
+
+- **`worker-start` reaching `ready` does NOT mean the agent started.** Found live:
+  Orca typed the brief into the Claude Code TUI and left it **unsubmitted**.
+  `workerState: ready` and `input_accepted` were both true while the agent had
+  not begun, so `check --wait` would have timed out forever on a job that never
+  started — indistinguishable from "still running". Gaetan caught it by opening
+  the worktree. The remedy, now in the live skill: after spawn, check the
+  terminal preview and send
+  `orca terminal send --terminal "<AGENT_TERMINAL_HANDLE>" --enter --json`, then
+  confirm activity with `worker-show` / `worktree ps` before waiting. **This fix
+  is unverified — no run has yet exercised it end to end.**
+
+- **The live skill is not a stable artifact — Tars rewrites it.** During the E2E
+  Tars called `skill_manage` and edited its own `SKILL.md` seven times (437 → 446
+  → 452 lines; mode narrowed 0664 → 0600). The edits were correct and were
+  sanctioned by Gaetan in-thread, but nothing in this design accounted for the
+  model mutating its own governing skill. Both versions are archived:
+  `artifacts/delegate-to-cooper-SKILL.md` (canonical v2, md5 `929b23de…`) and
+  `artifacts/delegate-to-cooper-SKILL-after-tars-selfedit.md` (live, md5
+  `60b9a244…`). Whether git and the VM get reconciled — and whether this
+  capability should exist at all — is Gaetan's call.
 - **The brief file path must be unique per run.** A fixed `/tmp/tars-brief.md` is
   silently clobbered by a concurrent delegation or by a retry, and `task-create
   --spec "$(cat …)"` then ships the wrong brief with no error. One `<slug>` per
@@ -389,7 +479,18 @@ Skill count should stay 77 / 6-local (replacement, not an add).
   mc-metarepo already carries 9 worktrees, several stale. v2's default is to
   *keep* the worktree (it is the work product) and report its path — so the pile
   grows unless someone prunes. Prune on Gaetan's word, not on Tars' initiative.
-- **Only `claude` and `codex`** are verified-usable `--agent` values on cooper.
+- ~~**Only `claude` and `codex`** are verified-usable `--agent` values on cooper.~~
+  **Corrected 2026-08-07: `claude` only.** `orca account list --json` shows
+  `result.codex.accounts: []` and `activeAccountId: null` — codex has no account
+  to run under on cooper. Active claude account: `009bfa67-…`.
+
+- **The landing path is not the predicted pattern, and it contains a literal
+  `null`.** The E2E worktree landed at
+  `/home/gaetan/dev/mc-metarepo/null/mc-metarepo/map-mc-metarepo-layout-readonly`,
+  not `/home/gaetan/orca/workspaces/mc-metarepo/<slug>`. Orca reports that path
+  itself in `effects[].id` and `worker.worktree_id`, so the `null` segment is
+  Orca's own path construction. The skill's standing rule — read `path` from the
+  JSON, never assume the pattern — is what kept the run working.
 
 ## The trust boundary moved — it did not disappear
 
