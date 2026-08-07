@@ -91,7 +91,6 @@ evaluate during WF1 rather than assume.
 
 ## Open items when the build starts
 
-- Run WF1 (recon fan-out) → commit the decision doc → spawn lane B.
-- Delete the `tars/v2-build` remote branch (pitch authorizes it).
-- WF1's Orca-control node decides: Orca orchestration gates/tasks vs plain SendMessage for the
-  lane rendezvous.
+Cleared 2026-08-07 at build start: `tars/v2-build` remote branch deleted; WF1 run by the
+orchestrator session (decision doc in `docs/recon/DECISION.md`, which also settles the
+Orca-gates-vs-SendMessage rendezvous question); lane B spawned per the contract.

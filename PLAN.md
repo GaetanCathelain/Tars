@@ -66,8 +66,8 @@ lands in SOPS/1Password — acquisition stays serial, testing never blocks it.
 
 | Phase | Mechanism | Notes |
 |---|---|---|
-| WF1 recon | 6 agents ∥, barrier, synthesis | Barrier justified: the Slack-personal verdict and Hermes install facts gate the whole plan. Output = decision doc committed here. |
-| Lane A creds | orchestrator session, serial + async probes | Order by what gates other work: GitHub first (VM needs it to clone mc-metarepo), Slack app tokens last (held for cutover). Store via SOPS/1Password, never in argv, never in this repo. |
+| WF1 recon | 6 agents ∥, barrier, synthesis | Barrier justified: the Slack-personal verdict and Hermes install facts gate the whole plan. R2/R6 read the mc-kestra prior art (below) before searching anywhere else. Output = decision doc committed here. |
+| Lane A creds | orchestrator session, serial + async probes | Order by what gates other work: GitHub first (VM needs it to clone mc-metarepo), Slack app tokens last (held for cutover). Follow the mc-kestra walkthroughs (below) — only the storage differs. Store via SOPS/1Password, never in argv, never in this repo. |
 | Lane B = WF2 | sequential chain, one ∥ plugin fan-out | Runs unattended in a spawned session. Each step consumes the previous verdict, not logs. Ends with its own smoke check. |
 | WF3 wire | 5 wiring agents ∥ after the join | Independent per service; each ends in its own probe. Includes the metarepo clone and Orca/SSH target wiring. |
 | Cutover | inline, gated, evidence-first | The only step touching the running personal Hermes. Nothing is deleted until the new side is provisioned, wired and smoke-tested. `/sethome` DM set here. |
@@ -77,15 +77,32 @@ lands in SOPS/1Password — acquisition stays serial, testing never blocks it.
 **Critical path:** WF1 → max(lane A, lane B) → WF3 → cutover → WF4. Lane A is the long pole —
 the only part that needs a human.
 
+### Prior art — mc-kestra auth walkthroughs
+
+`~/dev/mc-kestra/SETUP.md` §5 "Per-source setup" is a colleague-grade, step-by-step credential
+walkthrough — harvest → first run → healthy/failure signatures → gotchas — for **Slack
+(personal account: `xoxc-` token + `xoxd-` cookie harvested from the logged-in web tab),
+Gmail, Notion, GitHub, Linear**. `~/dev/mc-kestra/setup-calendar-section.md` is the same for
+**Google Calendar**. That pre-answers ~6 of the 8 credential targets, including R2's "Slack
+personal access method" question:
+
+- WF1's R2/R6 agents read those two files FIRST and verify fit for Tars' runtime (Hermes on
+  the new VM, not Kestra) instead of rediscovering methods from scratch.
+- Lane A follows the same harvest steps; only the storage differs (1Password/SOPS, never
+  mc-kestra's `.env` pattern).
+
 ## Execution model — hub-and-spoke (decided)
 
 One **orchestrator session** (the only one Gaetan touches):
 
 1. Runs WF1 in-process as a Workflow (fan-outs are what the Workflow tool is for) → commits the
    decision doc here.
-2. **Spawns lane B itself** as a second Orca session with a pointer prompt — own worktree,
-   unattended. Gaetan never manages it.
-3. Runs lane A interactively (browser + Gaetan) while lane B runs elsewhere.
+2. **Spawns lane B itself** as a second Orca session with a pointer prompt — own Orca
+   worktree, `orc-opus` (policy: sub-orchestrators run Opus), unattended. Gaetan never
+   manages it. Mechanics in the coordination contract below.
+3. Runs lane A interactively (browser + Gaetan) while lane B runs elsewhere. Gaetan's auth
+   waits are work time: pre-stage WF3 wiring specs, the Tars profile/system-prompt draft
+   (no-coding/no-PR rules baked in), and WF4 probe specs with background agents.
 4. On lane B's done-ping: WF3 in-process → hold for Gaetan's go at the cutover → WF4 in-process.
 
 Rejected alternatives, for the record:
@@ -108,22 +125,55 @@ Rejected alternatives, for the record:
     (1Password/SOPS item *names*, never values).
   - `status/lane-b.md` — lane-B session only. Provisioning verdicts: VM specs, tailscale
     hostname, SSH fingerprints, plugin versions, smoke-check evidence.
-- Both commit to `main`, `git pull --rebase` before push. No branch-per-lane ceremony.
-- **Done-signal:** lane B pings the orchestrator via SendMessage; the repo commit is the durable
-  fallback if either session is gone when the ping fires.
+- Both commit to `main`: `git pull --rebase origin main && git push origin HEAD:main` — a
+  worktree branch cannot check out `main` itself. No branch-per-lane ceremony.
+- **Spawn mechanics (hub → spoke):** `orca worktree create --name lane-b --repo
+  path:<repo-root> --base-branch main --json` → read the new worktree path → `orc-tab start
+  -w path:<new-path> orc-opus lane-b '<lane-B prompt below, hub session name filled in>'`.
+  The `orc-opus` launcher appends ORCHESTRATION-POLICY.md itself (see its §9 — peer
+  sessions); no binding line needed.
+- **Pings:** lane B SendMessages the orchestrator at each milestone — VM created · Hermes
+  installed · smoke pass (= the join signal) — and immediately on any blocker, not just a
+  final done. The orchestrator may SendMessage lane B to steer or query it. The repo commit
+  is the durable fallback if either session is gone when a ping fires.
 - No TODO.md / ROADMAP.md: the lanes' todos are the workflow phases above; a second tracking
   surface would drift from the first.
 
-### Lane prompts (pointer form)
+### Lane prompts
 
-> **Lane A / orchestrator:** "You are the Tars orchestrator. Read PLAN.md. Run WF1 if not done,
-> commit results. Then execute lane A (credential acquisition — you have my browser), logging to
-> status/lane-a.md. When lane B pings you done, run WF3, then hold for my go on the cutover."
+**Lane A / orchestrator** — canonical copy of the `/start-orca` prompt:
 
-> **Lane B:** "You are the Tars provisioning worker. Read PLAN.md and execute lane B (WF2) only.
-> Log verdicts to status/lane-b.md, commit as you go. When the smoke check passes, SendMessage
-> the orchestrator session and stop. Do not touch credentials, the browser, or personal Hermes
-> beyond read-only."
+> You are the Tars build orchestrator — the hub of the hub-and-spoke in PLAN.md, and lane A's
+> executor: this session owns Gaetan's logged-in browser and is the only one he touches;
+> nothing you spawn ever drives the browser. Read PLAN.md in full (run graph, prior art,
+> coordination contract, spawn mechanics), then docs/conversation-2026-08-07.md § Open items.
+> Then run the plan from the top:
+>
+> 1. Commit any pending PLAN.md amendments, push HEAD:main, clear the open items.
+> 2. WF1 recon as an in-process Workflow — recon agents read the mc-kestra walkthroughs
+>    (PLAN § prior art) first. Synthesize, commit the decision doc, push.
+> 3. Spawn lane B per the contract's spawn mechanics — own Orca worktree, orc-opus, pointer
+>    prompt with your session name filled in. Unattended; steer it via SendMessage only.
+> 4. Lane A interactively: serial credential acquisition in PLAN order, you driving the
+>    browser; pull Gaetan in only for passwords/2FA/consent screens. Each credential: async
+>    probe agent, then 1Password/SOPS — names only in status/lane-a.md. During Gaetan's
+>    waits, pre-stage WF3 wiring specs, the Tars profile draft, WF4 probe specs.
+> 5. On lane B's smoke-pass ping: WF3 wire in-process.
+> 6. STOP at the cutover — destructive (deletes the old Tars profile on personal Hermes).
+>    Evidence first, Gaetan's explicit "go" in this session, only then cut over; then WF4
+>    verify and the exercised report, committed.
+>
+> Secrets never in repo/argv/echo (op-pipe per your global prefs). Lane B and every agent:
+> read-only on personal Hermes. Ping Gaetan only at decision points; verdicts, not logs.
+
+**Lane B** — spawned by the orchestrator, hub session name filled in:
+
+> You are the Tars provisioning worker — a spoke. Read PLAN.md at the repo root; you execute
+> lane B (WF2) only. Log verdicts to status/lane-b.md — your only writable file — commit as
+> you go, push HEAD:main. SendMessage the orchestrator session "<HUB-SESSION-NAME>" at each
+> milestone (VM created · Hermes installed · smoke pass) and immediately on any blocker; stop
+> after the smoke-pass ping. Do not touch credentials, the browser, or personal Hermes beyond
+> read-only probes.
 
 ## Guardrails
 
