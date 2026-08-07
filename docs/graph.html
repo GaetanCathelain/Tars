@@ -1,0 +1,325 @@
+<title>Tars — graph-engineering plan</title>
+<style>
+  :root {
+    --paper: #FAF9F6;
+    --ink: #1E232B;
+    --muted: #5C6572;
+    --line: #D8D5CD;
+    --node: #FFFFFF;
+    --amber: #C4700F;
+    --amber-tint: #F8E9D4;
+    --green: #2F7A4D;
+    --green-tint: #E2F0E6;
+    --slate-bar: #6B7482;
+    --code-bg: #EFEDE8;
+  }
+  :root:not([data-theme="light"]) { }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --paper: #15181D;
+      --ink: #E6E4DF;
+      --muted: #9AA2AE;
+      --line: #3A404A;
+      --node: #1E232B;
+      --amber: #E89A3C;
+      --amber-tint: #3A2C17;
+      --green: #5CB57F;
+      --green-tint: #1C3324;
+      --slate-bar: #7C8592;
+      --code-bg: #23282F;
+    }
+  }
+  :root[data-theme="dark"] {
+    --paper: #15181D;
+    --ink: #E6E4DF;
+    --muted: #9AA2AE;
+    --line: #3A404A;
+    --node: #1E232B;
+    --amber: #E89A3C;
+    --amber-tint: #3A2C17;
+    --green: #5CB57F;
+    --green-tint: #1C3324;
+    --slate-bar: #7C8592;
+    --code-bg: #23282F;
+  }
+  body {
+    background: var(--paper);
+    color: var(--ink);
+    font: 15px/1.6 system-ui, -apple-system, "Segoe UI", sans-serif;
+    margin: 0;
+    padding: 2.5rem 1.25rem 4rem;
+  }
+  main { max-width: 900px; margin: 0 auto; }
+  .eyebrow {
+    font: 600 11px/1 ui-monospace, "SF Mono", Menlo, monospace;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--amber);
+    margin: 0 0 0.75rem;
+  }
+  h1 {
+    font: 700 30px/1.15 ui-monospace, "SF Mono", Menlo, monospace;
+    letter-spacing: -0.01em;
+    margin: 0 0 0.5rem;
+    text-wrap: balance;
+  }
+  .sub { color: var(--muted); max-width: 62ch; margin: 0 0 2rem; }
+  h2 {
+    font: 700 13px/1.3 ui-monospace, "SF Mono", Menlo, monospace;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    margin: 3rem 0 1rem;
+    color: var(--ink);
+  }
+  figure { margin: 2rem 0; }
+  .figwrap { overflow-x: auto; border: 1px solid var(--line); border-radius: 6px; background: var(--node); padding: 12px 6px; }
+  figure svg { display: block; min-width: 760px; max-width: 100%; height: auto; margin: 0 auto; }
+  figcaption { color: var(--muted); font-size: 13px; margin-top: 0.6rem; max-width: 70ch; }
+  table { border-collapse: collapse; width: 100%; font-size: 13.5px; }
+  th, td { text-align: left; padding: 0.5rem 0.75rem; border-top: 1px solid var(--line); vertical-align: top; }
+  th { font: 600 11px/1.3 ui-monospace, Menlo, monospace; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); border-top: none; }
+  td:first-child { white-space: nowrap; font: 600 12.5px/1.5 ui-monospace, Menlo, monospace; }
+  .tablewrap { overflow-x: auto; }
+  code { font: 12.5px ui-monospace, Menlo, monospace; background: var(--code-bg); padding: 0.1em 0.35em; border-radius: 4px; }
+  ul { padding-left: 1.2rem; }
+  li { margin: 0.45rem 0; max-width: 72ch; }
+  li strong { font-weight: 650; }
+  .crit {
+    border-left: 3px solid var(--amber);
+    background: var(--amber-tint);
+    padding: 0.75rem 1rem;
+    border-radius: 0 6px 6px 0;
+    font-size: 14px;
+    max-width: 70ch;
+  }
+</style>
+<main>
+<p class="eyebrow">Graph engineering · project Tars</p>
+<h1>Tars build — the run graph</h1>
+<p class="sub">Five chained workflows with the main session (me + you) as the decision point between them. Two constraints shape everything: auth needs your logged-in browser, which only the main session may drive — and the Slack-app cutover is destructive, so it is a gate, never an unattended node.</p>
+
+<figure>
+<div class="figwrap">
+<svg viewBox="0 0 960 1450" role="img" aria-label="Tars build graph: WF1 recon fan-out with barrier, then two parallel lanes (credential acquisition in main session, WF2 VM provisioning unattended), joining into WF3 wiring, a gated destructive Slack cutover, WF4 verification fan-out, and a later WF5 for assistant behaviors.">
+  <defs>
+    <marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0 0 L10 5 L0 10 z" fill="currentColor"/>
+    </marker>
+  </defs>
+  <g stroke="currentColor" fill="none" stroke-width="1.2" color="var(--muted)">
+    <!-- WF1 arrows to barrier -->
+    <line x1="113" y1="122" x2="113" y2="146" marker-end="url(#arr)"/>
+    <line x1="260" y1="122" x2="260" y2="146" marker-end="url(#arr)"/>
+    <line x1="407" y1="122" x2="407" y2="146" marker-end="url(#arr)"/>
+    <line x1="554" y1="122" x2="554" y2="146" marker-end="url(#arr)"/>
+    <line x1="701" y1="122" x2="701" y2="146" marker-end="url(#arr)"/>
+    <line x1="848" y1="122" x2="848" y2="146" marker-end="url(#arr)"/>
+    <!-- barrier to synthesis -->
+    <line x1="480" y1="158" x2="480" y2="180" marker-end="url(#arr)"/>
+    <!-- synthesis split to lanes -->
+    <path d="M400 244 C300 270, 250 270, 250 296" marker-end="url(#arr)"/>
+    <path d="M560 244 C660 270, 710 270, 710 296" marker-end="url(#arr)"/>
+    <!-- lane A internal -->
+    <line x1="250" y1="412" x2="250" y2="432" marker-end="url(#arr)"/>
+    <line x1="250" y1="490" x2="250" y2="510" marker-end="url(#arr)"/>
+    <line x1="250" y1="568" x2="250" y2="588" marker-end="url(#arr)"/>
+    <line x1="250" y1="646" x2="250" y2="666" marker-end="url(#arr)"/>
+    <!-- lane B internal -->
+    <line x1="710" y1="396" x2="710" y2="414" marker-end="url(#arr)"/>
+    <line x1="710" y1="454" x2="710" y2="472" marker-end="url(#arr)"/>
+    <line x1="710" y1="512" x2="710" y2="530" marker-end="url(#arr)"/>
+    <line x1="710" y1="570" x2="710" y2="588" marker-end="url(#arr)"/>
+    <line x1="710" y1="626" x2="710" y2="644" marker-end="url(#arr)"/>
+    <line x1="710" y1="684" x2="710" y2="702" marker-end="url(#arr)"/>
+    <!-- lanes to join -->
+    <path d="M250 790 C250 812, 350 812, 400 818" marker-end="url(#arr)"/>
+    <path d="M710 790 C710 812, 610 812, 560 818" marker-end="url(#arr)"/>
+    <!-- join to WF3 nodes -->
+    <line x1="180" y1="832" x2="120" y2="866" marker-end="url(#arr)"/>
+    <line x1="340" y1="832" x2="310 " y2="866" marker-end="url(#arr)"/>
+    <line x1="480" y1="832" x2="480" y2="866" marker-end="url(#arr)"/>
+    <line x1="620" y1="832" x2="650" y2="866" marker-end="url(#arr)"/>
+    <line x1="780" y1="832" x2="840" y2="866" marker-end="url(#arr)"/>
+    <!-- WF3 to gate -->
+    <line x1="480" y1="922" x2="480" y2="952" marker-end="url(#arr)"/>
+    <!-- gate to WF4 -->
+    <line x1="480" y1="1056" x2="480" y2="1086" marker-end="url(#arr)"/>
+    <!-- WF4 to report -->
+    <line x1="480" y1="1288" x2="480" y2="1312" marker-end="url(#arr)"/>
+    <!-- report to WF5 -->
+    <line x1="480" y1="1360" x2="480" y2="1382" marker-end="url(#arr)" stroke-dasharray="4 4"/>
+  </g>
+
+  <!-- ===== WF1 ===== -->
+  <text x="40" y="30" font-family="ui-monospace, Menlo, monospace" font-size="12" font-weight="700" fill="var(--muted)" letter-spacing="2">WF1 · RECON — 6 AGENTS IN PARALLEL</text>
+  <g font-family="ui-monospace, Menlo, monospace" font-size="10.5" text-anchor="middle" fill="var(--ink)">
+    <g stroke="var(--line)" fill="var(--node)">
+      <rect x="43" y="76" width="140" height="46" rx="5"/>
+      <rect x="190" y="76" width="140" height="46" rx="5"/>
+      <rect x="337" y="76" width="140" height="46" rx="5"/>
+      <rect x="484" y="76" width="140" height="46" rx="5"/>
+      <rect x="631" y="76" width="140" height="46" rx="5"/>
+      <rect x="778" y="76" width="140" height="46" rx="5"/>
+    </g>
+    <text x="113" y="95">Hermes deep-dive</text><text x="113" y="110" fill="var(--muted)">plugins · A2A · profiles</text>
+    <text x="260" y="95">Slack personal acct</text><text x="260" y="110" fill="var(--muted)">access methods</text>
+    <text x="407" y="95">p-Hermes probe</text><text x="407" y="110" fill="var(--muted)">how Tars app is wired</text>
+    <text x="554" y="95">Orca control</text><text x="554" y="110" fill="var(--muted)">start/stop surface</text>
+    <text x="701" y="95">Proxmox probe</text><text x="701" y="110" fill="var(--muted)">capacity · template</text>
+    <text x="848" y="95">Credential map</text><text x="848" y="110" fill="var(--muted)">8 services → probes</text>
+  </g>
+  <rect x="140" y="150" width="680" height="6" rx="3" fill="var(--slate-bar)"/>
+  <text x="830" y="160" font-family="ui-monospace, Menlo, monospace" font-size="10" fill="var(--muted)">barrier</text>
+  <rect x="330" y="186" width="300" height="56" rx="5" stroke="var(--ink)" fill="var(--node)" stroke-width="1.4"/>
+  <text x="480" y="209" font-family="ui-monospace, Menlo, monospace" font-size="11.5" font-weight="700" text-anchor="middle" fill="var(--ink)">SYNTHESIS → decision doc</text>
+  <text x="480" y="226" font-family="ui-monospace, Menlo, monospace" font-size="10.5" text-anchor="middle" fill="var(--muted)">settles the Slack-personal method</text>
+
+  <!-- ===== Lane A ===== -->
+  <rect x="40" y="296" width="420" height="494" rx="8" stroke="var(--amber)" stroke-dasharray="6 4" fill="none" stroke-width="1.4"/>
+  <text x="60" y="322" font-family="ui-monospace, Menlo, monospace" font-size="11.5" font-weight="700" fill="var(--amber)" letter-spacing="1.5">LANE A · MAIN SESSION + YOU</text>
+  <text x="60" y="338" font-family="ui-monospace, Menlo, monospace" font-size="10" fill="var(--muted)">serial — one browser, one human</text>
+  <g font-family="ui-monospace, Menlo, monospace" font-size="10.5" text-anchor="middle" fill="var(--ink)">
+    <g stroke="var(--amber)" fill="var(--amber-tint)">
+      <rect x="110" y="356" width="280" height="56" rx="5"/>
+      <rect x="110" y="434" width="280" height="56" rx="5"/>
+      <rect x="110" y="512" width="280" height="56" rx="5"/>
+      <rect x="110" y="590" width="280" height="56" rx="5"/>
+      <rect x="110" y="668" width="280" height="56" rx="5"/>
+    </g>
+    <text x="250" y="379">1 · GitHub OAuth + metarepo</text><text x="250" y="395" fill="var(--muted)">first — gates VM clone</text>
+    <text x="250" y="457">2 · Linear · Notion · Calendar</text><text x="250" y="473" fill="var(--muted)">token mints, quick wins</text>
+    <text x="250" y="535">3 · Gmail via Himalaya</text><text x="250" y="551" fill="var(--muted)">IMAP app password</text>
+    <text x="250" y="613">4 · Slack personal account</text><text x="250" y="629" fill="var(--muted)">method per WF1 verdict</text>
+    <text x="250" y="691">5 · Slack Tars app tokens</text><text x="250" y="707" fill="var(--muted)">held — attach at cutover only</text>
+  </g>
+  <text x="250" y="758" font-family="ui-monospace, Menlo, monospace" font-size="10.5" text-anchor="middle" fill="var(--green)">each cred → async probe agent ✓ → SOPS/1Password</text>
+
+  <!-- ===== Lane B ===== -->
+  <rect x="500" y="296" width="420" height="494" rx="8" stroke="var(--line)" fill="none" stroke-width="1.4"/>
+  <text x="520" y="322" font-family="ui-monospace, Menlo, monospace" font-size="11.5" font-weight="700" fill="var(--ink)" letter-spacing="1.5">LANE B · WF2 PROVISION</text>
+  <text x="520" y="338" font-family="ui-monospace, Menlo, monospace" font-size="10" fill="var(--muted)">unattended — runs while you auth</text>
+  <g font-family="ui-monospace, Menlo, monospace" font-size="10.5" text-anchor="middle" fill="var(--ink)">
+    <g stroke="var(--line)" fill="var(--node)">
+      <rect x="560" y="356" width="300" height="40" rx="5"/>
+      <rect x="560" y="414" width="300" height="40" rx="5"/>
+      <rect x="560" y="472" width="300" height="40" rx="5"/>
+      <rect x="560" y="530" width="300" height="40" rx="5"/>
+      <rect x="560" y="588" width="300" height="38" rx="5"/>
+      <rect x="560" y="644" width="300" height="40" rx="5"/>
+      <rect x="560" y="702" width="300" height="40" rx="5"/>
+    </g>
+    <text x="710" y="380">Proxmox: VM Tars 8c · 8G · 50G</text>
+    <text x="710" y="438">ubuntu + GUI · tailscale join</text>
+    <text x="710" y="496">SSH mesh: cooper · macOS · p-Hermes</text>
+    <text x="710" y="554">Hermes install · Tars default profile</text>
+    <text x="710" y="605" fill="var(--muted)">plugins ∥ rtk · hindsight · lcm · adhd</text>
+    <text x="710" y="668">Cloakbrowser</text>
+    <text x="710" y="726">smoke check → verdict</text>
+  </g>
+
+  <!-- ===== Join ===== -->
+  <rect x="400" y="820" width="160" height="6" rx="3" fill="var(--slate-bar)"/>
+  <text x="480" y="846" font-family="ui-monospace, Menlo, monospace" font-size="10" text-anchor="middle" fill="var(--muted)">join: VM up ∧ creds proven</text>
+
+  <!-- ===== WF3 ===== -->
+  <text x="40" y="862" font-family="ui-monospace, Menlo, monospace" font-size="12" font-weight="700" fill="var(--muted)" letter-spacing="2">WF3 · WIRE ∥</text>
+  <g font-family="ui-monospace, Menlo, monospace" font-size="10" text-anchor="middle" fill="var(--ink)">
+    <g stroke="var(--line)" fill="var(--node)">
+      <rect x="45" y="870" width="150" height="42" rx="5"/>
+      <rect x="215" y="870" width="150" height="42" rx="5"/>
+      <rect x="385" y="870" width="150" height="42" rx="5"/>
+      <rect x="555" y="870" width="150" height="42" rx="5"/>
+      <rect x="725" y="870" width="190" height="42" rx="5"/>
+    </g>
+    <text x="120" y="887">gmail · himalaya</text><text x="120" y="902" fill="var(--green)">wire + probe ✓</text>
+    <text x="290" y="887">linear · notion · cal</text><text x="290" y="902" fill="var(--green)">wire + probe ✓</text>
+    <text x="460" y="887">github + metarepo</text><text x="460" y="902" fill="var(--green)">clone + probe ✓</text>
+    <text x="630" y="887">slack personal</text><text x="630" y="902" fill="var(--green)">wire + probe ✓</text>
+    <text x="820" y="887">orca + ssh targets</text><text x="820" y="902" fill="var(--green)">wire + probe ✓</text>
+  </g>
+
+  <!-- ===== Gate ===== -->
+  <rect x="200" y="956" width="560" height="100" rx="8" stroke="var(--amber)" fill="var(--amber-tint)" stroke-width="2"/>
+  <g font-family="ui-monospace, Menlo, monospace" text-anchor="middle">
+    <text x="480" y="982" font-size="12" font-weight="700" fill="var(--amber)" letter-spacing="1.5">⛔ CUTOVER — GATED, MAIN SESSION, DESTRUCTIVE</text>
+    <text x="480" y="1004" font-size="10.5" fill="var(--ink)">capture p-Hermes evidence → delete old Tars profile</text>
+    <text x="480" y="1021" font-size="10.5" fill="var(--ink)">→ attach Slack app on new VM → /sethome DM</text>
+    <text x="480" y="1042" font-size="10" fill="var(--muted)">sequenced: new side fully ready before anything is deleted</text>
+  </g>
+
+  <!-- ===== WF4 ===== -->
+  <text x="40" y="1104" font-family="ui-monospace, Menlo, monospace" font-size="12" font-weight="700" fill="var(--muted)" letter-spacing="2">WF4 · VERIFY — 14 PROBES ∥ + CRITIC</text>
+  <g font-family="ui-monospace, Menlo, monospace" font-size="9.5" text-anchor="middle" fill="var(--ink)">
+    <g stroke="var(--green)" fill="var(--green-tint)">
+      <rect x="45" y="1116" width="166" height="30" rx="15"/>
+      <rect x="221" y="1116" width="166" height="30" rx="15"/>
+      <rect x="397" y="1116" width="166" height="30" rx="15"/>
+      <rect x="573" y="1116" width="166" height="30" rx="15"/>
+      <rect x="749" y="1116" width="166" height="30" rx="15"/>
+      <rect x="45" y="1156" width="166" height="30" rx="15"/>
+      <rect x="221" y="1156" width="166" height="30" rx="15"/>
+      <rect x="397" y="1156" width="166" height="30" rx="15"/>
+      <rect x="573" y="1156" width="166" height="30" rx="15"/>
+      <rect x="749" y="1156" width="166" height="30" rx="15"/>
+      <rect x="45" y="1196" width="166" height="30" rx="15"/>
+      <rect x="221" y="1196" width="166" height="30" rx="15"/>
+      <rect x="397" y="1196" width="166" height="30" rx="15"/>
+      <rect x="573" y="1196" width="166" height="30" rx="15"/>
+    </g>
+    <rect x="749" y="1196" width="166" height="30" rx="15" stroke="var(--ink)" fill="var(--node)"/>
+    <text x="128" y="1135">slack DM roundtrip</text>
+    <text x="304" y="1135" font-weight="700">only-Gaetan negative</text>
+    <text x="480" y="1135">channel read</text>
+    <text x="656" y="1135">gmail read</text>
+    <text x="832" y="1135">linear query</text>
+    <text x="128" y="1175">github api</text>
+    <text x="304" y="1175">metarepo read</text>
+    <text x="480" y="1175">notion · calendar</text>
+    <text x="656" y="1175">ssh cooper · macOS</text>
+    <text x="832" y="1175">ssh p-Hermes · tailnet</text>
+    <text x="128" y="1215">orca start/stop task</text>
+    <text x="304" y="1215">plugins live · rtk gain</text>
+    <text x="480" y="1215">hindsight write/read</text>
+    <text x="656" y="1215">a2a + hermes chat</text>
+    <text x="832" y="1215" font-weight="700">completeness critic</text>
+  </g>
+  <rect x="280" y="1246" width="400" height="6" rx="3" fill="var(--slate-bar)"/>
+  <text x="480" y="1270" font-family="ui-monospace, Menlo, monospace" font-size="10" text-anchor="middle" fill="var(--muted)">barrier — gaps loop back as new probes</text>
+  <rect x="330" y="1316" width="300" height="44" rx="5" stroke="var(--ink)" fill="var(--node)" stroke-width="1.4"/>
+  <text x="480" y="1336" font-family="ui-monospace, Menlo, monospace" font-size="11.5" font-weight="700" text-anchor="middle" fill="var(--ink)">exercised report → Tars repo</text>
+  <text x="480" y="1352" font-family="ui-monospace, Menlo, monospace" font-size="10" text-anchor="middle" fill="var(--muted)">every check: verdict + evidence</text>
+
+  <!-- ===== WF5 ===== -->
+  <rect x="280" y="1388" width="400" height="46" rx="5" stroke="var(--line)" stroke-dasharray="6 4" fill="none"/>
+  <text x="480" y="1408" font-family="ui-monospace, Menlo, monospace" font-size="11" text-anchor="middle" fill="var(--muted)">WF5 · later — kanban · dailys · reminders · Orca playbooks</text>
+  <text x="480" y="1424" font-family="ui-monospace, Menlo, monospace" font-size="10" text-anchor="middle" fill="var(--muted)">separate milestone, only once core is green (gbrain data also postponed)</text>
+</svg>
+</div>
+<figcaption>The run graph. Amber = human-in-the-loop (main session drives the browser; workflows can't pause for you). Green = a probe that must actually fire — "done is not exercised". Thick bars = barriers where all inputs must land before the next phase.</figcaption>
+</figure>
+
+<h2>Why this shape</h2>
+<ul>
+  <li><strong>Auth is a lane, not a node.</strong> Every credential needs your logged-in browser, and the browser is main-session-only (subagent typing lands in your active tab). So acquisition is serial human work — but each acquired credential immediately fans out an <em>async</em> probe agent, so testing never blocks acquiring the next one.</li>
+  <li><strong>Your hint, applied:</strong> WF2 (VM provisioning) needs zero credentials from lane A — Proxmox and tailscale access already exist on cooper. It runs fully unattended in parallel. Only the join (wiring creds into Hermes on the VM) needs both.</li>
+  <li><strong>The cutover is a gate, not a graph node.</strong> Deleting the old Tars profile on your personal Hermes is destructive and the Slack app can only live in one place. Sequenced so nothing is deleted until the new side is provisioned, wired, and smoke-tested — with before-evidence captured first.</li>
+  <li><strong>WF4 exists because of the silent-green rule.</strong> A wired integration that never fired counts as not done. Fourteen probes, each returning a schema verdict with evidence — including the negative test: a message from someone who isn't you must be ignored. A completeness critic asks what's untested; gaps loop back.</li>
+</ul>
+
+<h2>Phases</h2>
+<div class="tablewrap">
+<table>
+<tr><th>Phase</th><th>Mechanism</th><th>Notes</th></tr>
+<tr><td>WF1 recon</td><td>6 agents ∥, barrier, synthesis</td><td>Barrier is justified: the Slack-personal-account verdict and Hermes install facts gate the whole plan. Output = decision doc committed to the revamped Tars repo.</td></tr>
+<tr><td>Lane A creds</td><td>main session, serial + async probes</td><td>Order by what gates other work: GitHub first (VM needs it to clone the metarepo), Slack app tokens last (held for cutover). Store via SOPS/1Password, never in argv.</td></tr>
+<tr><td>Lane B = WF2</td><td>sequential chain, one ∥ plugin fan-out</td><td>Each step consumes the previous verdict, not logs. Ends with its own smoke check.</td></tr>
+<tr><td>WF3 wire</td><td>5 wiring agents ∥ after the join</td><td>Independent per service; each ends in its own probe. Includes the metarepo clone and Orca/SSH target wiring.</td></tr>
+<tr><td>Cutover</td><td>inline, gated, evidence-first</td><td>The only step that touches your running personal Hermes. <code>/sethome</code> DM set here.</td></tr>
+<tr><td>WF4 verify</td><td>14 probes ∥ + critic, barrier, report</td><td>The report is the deliverable: every capability exercised once, with evidence, before Tars is declared live.</td></tr>
+<tr><td>WF5 behaviors</td><td>later milestone</td><td>Kanban, dailys, reminders, reports, Orca orchestration playbooks. Not in the critical path; designed once Tars answers in Slack.</td></tr>
+</table>
+</div>
+
+<h2>Critical path</h2>
+<p class="crit">WF1 → <strong>max(lane A, lane B)</strong> → WF3 → cutover → WF4. Lane A is the long pole — it's the only part that needs you. Everything else is machine time, and I stay the orchestrator between workflows: read each phase's results, decide, launch the next.</p>
+</main>
