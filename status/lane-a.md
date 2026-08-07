@@ -10,7 +10,7 @@ Names only. Values live in `secrets/tars.sops.yaml` (SOPS+age, 2 recipients) or 
 | A1 | GitHub — `gh auth login` device-flow ON the VM (Gaetan's call; replaces the PAT) | — (VM gh store, never SOPS) | ☑ 2026-08-07 | ☑ `repo`+`read:org`, metarepo `.private=true` from the VM |
 | A1b | ChatGPT-sub OAuth (`openai-codex`, on the VM) | — (never stored; self-rotating `auth.json` 0600) | ☑ 2026-08-07 device-flow | ☑ `hermes auth status openai-codex` → logged in |
 | A2 | Linear API key (paste-file → SOPS → shred) | `LINEAR_API_KEY` | ☑ 2026-08-07 | ☑ 200, viewer = Gaëtan Cathelain |
-| A2 | Notion API token — official MCP path (r8; Gaetan's call) | `NOTION_API_TOKEN` | ☑ 2026-08-07 | ☑ valid (bot `Tars`, ws `Mobile Club`) — ⚠ SHARE-GAP: 0 pages connected |
+| A2 | Notion API token — official MCP path (r8; Gaetan's call) | `NOTION_API_TOKEN` | ☑ 2026-08-07 | ☑ valid (bot `Tars`, ws `Mobile Club`); share-gap closed — 5 objects visible (Care, Tech, Cleaq, About MCG, one page) |
 | A2 | Notion — reused from mc-kestra `.env` (Gaetan's call) | `NOTION_TOKEN_V2` `NOTION_FILE_TOKEN` `NOTION_SPACE_ID` | ☑ 2026-08-07 | ☑ token_v2 valid (loadUserContent 200 vs control 401); file_token deferred to first export. MCP-compat gate open (r8) |
 | A3 | Gmail app password (Tars-labelled, 2nd one) | `GMAIL_ADDRESS` `GMAIL_APP_PASSWORD` | ☑ 2026-08-07 | ☑ IMAP list, 11 folders |
 | A3 | Calendar (rides Gmail app password) | (same) | — | ☑ CalDAV 207 + inner 200 |

@@ -47,3 +47,35 @@ live Notion MCP query path will authenticate fine but return nothing.
 
 - **Workspace:** Mobile Club
 - **Integration/bot name:** Tars
+
+## Re-probe, 2026-08-07 (post share-gap fix)
+
+Gaetan connected pages to the `Tars` integration since the share-gap above was
+recorded. Re-ran `POST /v1/search` only (token re-decrypted fresh via
+`sops -d --extract '["NOTION_API_TOKEN"]'`, passed to `curl` through a
+`umask 077` `-K` config file, config `shred -u`'d immediately after the call;
+zero secret material below).
+
+### Call — `POST /v1/search` (`{"page_size":5}`)
+
+- **HTTP 200 — PASS**
+- `results`: length **5**
+
+| # | Object | Title |
+|---|---|---|
+| 1 | database | Care |
+| 2 | database | Tech |
+| 3 | database | Cleaq |
+| 4 | database | About Mobile Club Group |
+| 5 | page | Debt Collections Monthly Metrics Datasource |
+
+### Verdict
+
+| Check | Result |
+|---|---|
+| Token decrypts, non-empty | PASS |
+| `POST /v1/search` | **PASS** (200, 5 results) |
+| Content reachable | **PASS** — share-gap closed. The integration now sees 3 databases (`Care`, `Tech`, `Cleaq`) and 1 more database (`About Mobile Club Group`) plus at least 1 page (`Debt Collections Monthly Metrics Datasource`) shared to it. |
+
+**Status:** WF3's live Notion MCP query path is unblocked — search returns
+real content.
