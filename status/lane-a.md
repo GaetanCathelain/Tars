@@ -72,7 +72,26 @@ turns die after 3 continuation attempts (single-tool turns fine).
   addressed `run:<runId>` so `orchestration inbox` is needed; `--agent codex` is unusable on cooper
   (no accounts) — `claude` only.
 
-- 2026-08-07 — **OPEN: Tars rewrites its own rules.** The live
+- 2026-08-07 23:0xZ — **Self-edit reconciled, question still open.** git↔VM parity restored on
+  Gaetan's word (`2087890`, `6e972b9`): both at md5 `a6e0a4b5…`, 512 lines, mode back to 0664,
+  hub-verified. Base was Tars' own self-edited text (its structural fixes were right and were
+  independently checked); the stale claims it had left standing beside its own corrections were
+  stripped — notably the disproven "`--run` addressing works standalone" sentence sitting directly
+  beside Tars' contradicting `--terminal` fix. **A live race was caught and handled**: Tars edited
+  the file again at 22:55 mid-reconcile; the peer diffed the missed generation, folded both new
+  findings in (self-check gates before `worktree rm --force`; the worktree `preview` is unreliable —
+  use `terminal read`, bottom `❯` authoritative), and guarded the write with an md5 check that would
+  have aborted rather than clobber. Rollback ladder intact on the VM: current (`a6e0a4b5`) ·
+  `.bak-tars-selfedit` (`5cc32dfc`) · `.bak-p3` = v1 (`d61888ec`).
+  **Parity is a SNAPSHOT, not an invariant** — Tars holds `skill_manage` and rewrote this file seven
+  times in one turn; it can drift again on any run. The design question stands: *should the model be
+  able to rewrite its own governing skill?* Not closed by this lane.
+  Cooper v1 leftovers deleted 23:05Z, order deliberate (archive → verify → commit → push → delete);
+  every file survives verbatim in `status/probes/wf5/p3-cooper-v1-leftovers.md` (399 lines,
+  hub-verified) and `~/orca/workspaces/` now holds only `mc-metarepo/` and `Tars/`.
+  Still unverified: the `terminal send --enter` fix (no run has exercised it end to end).
+
+- 2026-08-07 — **OPEN (superseded above, kept for the record): Tars rewrites its own rules.** The live
   `~/.hermes/skills/delegate-to-cooper/SKILL.md` has drifted from the reviewed v2 and is still
   moving: applied 437 lines / md5 `929b23de`, archived post-self-edit 452 lines / `60b9a244`,
   measured by the hub at 22:50 → **460 lines / 26791 B / md5 `1bd36e2b`**, mode narrowed 664→600 by
