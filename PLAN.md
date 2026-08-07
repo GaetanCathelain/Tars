@@ -198,6 +198,9 @@ Where these conflict with the graph or prose above, they win. Detail in `docs/re
 - **D6 deviations 1–7 accepted** (Calendar rides the Gmail app password; Docker lands in B2;
   minimal X, no xrdp; tailscale additive on `workstation-vm`, LAN primary; GitHub PAT 1-year
   expiry + reminder; A2A inbound-only).
+- **SOUL.md v1: minimal + bilingual** — identity, the hard rules (no code, no PRs,
+  orchestrate/report only, answer only Gaetan), concise tone, mirror the incoming language
+  (FR/EN). Behaviors grow in WF5. WF4 probe set confirmed as planned (14 + critic).
 
 ## Guardrails
 
