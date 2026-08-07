@@ -7,8 +7,7 @@ Decision base: PLAN §Amendments (disable-only) + DECISION D2 (paths) + D5 (A5 t
    `ssh root@192.168.0.3` → `qm guest exec 103` → `runuser -u hermes`) → copy `xoxb-`/`xapp-`
    into the new VM's `.env` (from SOPS; Socket Mode, static, host-independent) → set
    `SLACK_ALLOWED_USERS` → start gateway on new VM → `/sethome` in the live DM.
-2. **`SLACK_ALLOWED_USERS`** = Gaetan's member ID, taken from A4's `auth.test` probe output
-   (DECISION Blocker 2).
+2. **`SLACK_ALLOWED_USERS=U08BDJAMSRZ`** — resolved by A4's probe 2026-08-07 (team `T7V1UGJ82`).
 3. **Rollback** = stop new gateway, re-enable old unit. Old profile is NOT deleted at cutover —
    deletion is a separate gated cleanup after WF4 + soak.
 4. **CloakBrowser stale-lock trap (lane B B7)**: `Restart=always` does not self-heal a stale

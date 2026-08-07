@@ -17,10 +17,9 @@ and WF4. Evidence is cited to the recon artifact that produced it; nothing here 
    SOPS** — rotating refresh token; copying risks invalidating the live p-Hermes session. Lane A
    runs the OAuth flow fresh on the new VM (A1b), records only "flow run, verified" in
    `status/lane-a.md`. Lane B still does not block on it; wired in WF3.
-2. **Which Slack workspace member ID is Gaetan's**, needed for `SLACK_ALLOWED_USERS` on the new
-   profile. R3 read the old profile's `.env` key names only (values redacted server-side, correctly).
-   Cheap to re-derive at cutover from the personal-Slack probe (`auth.test` returns `user`), but it
-   is not in hand today. **Owner: cutover step.**
+2. ~~Which Slack workspace member ID is Gaetan's~~ **RESOLVED 2026-08-07 by A4's probe:
+   `SLACK_ALLOWED_USERS=U08BDJAMSRZ`** (user `gaetan.cathelain`, team `Mobile Club` / `T7V1UGJ82`,
+   `mobileclub-squad.slack.com`). Cutover writes it into the new profile's `.env`.
 
 Everything else the recon flagged as a blocker is resolved below (op-signin → dropped by D5;
 tailnet ambiguity → resolved by D4; `/sethome` needing a live DM → correctly placed at the gate;
@@ -49,8 +48,10 @@ than code. Legacy workspace tokens are no longer issuable; UI automation is stri
   deployed config before declaring the wiring done.
 - Plan re-harvest at **~1 year**, not mc-kestra's stale "~5 years" (Slack cut cookie max TTL in
   Dec 2025). Failure mode is "re-harvest", never "debug".
-- Store the cookie **URL-decoded**; the consumer encodes. Confirm the server's own parsing with one
-  call during A4's probe (30 seconds, per R2's open question).
+- **CORRECTED by A4's probe (2026-08-07): the stored cookie is URL-ENCODED and works as-stored**
+  in a `Cookie: d=` header. D1's original "store decoded, consumer encodes" convention was wrong.
+  WF3 must confirm `korotovsky/slack-mcp-server` does not encode again on top (double-encoding
+  risk) — if it does, store a decoded copy instead.
 - Rate limits: the 2026 tightening scopes to registered apps, not the web-client auth path. Treated
   as ample for Tars' volume; inferential, not a cited number.
 

@@ -14,7 +14,7 @@ Names only. Values live in `secrets/tars.sops.yaml` (SOPS+age, 2 recipients) or 
 | A2 | Notion — reused from mc-kestra `.env` (Gaetan's call) | `NOTION_TOKEN_V2` `NOTION_FILE_TOKEN` `NOTION_SPACE_ID` | ☑ 2026-08-07 | ☑ token_v2 valid (loadUserContent 200 vs control 401); file_token deferred to first export. MCP-compat gate open (r8) |
 | A3 | Gmail app password (Tars-labelled, 2nd one) | `GMAIL_ADDRESS` `GMAIL_APP_PASSWORD` | ☑ 2026-08-07 | ☑ IMAP list, 11 folders |
 | A3 | Calendar (rides Gmail app password) | (same) | — | ☑ CalDAV 207 + inner 200 |
-| A4 | Slack personal xoxc/xoxd | `SLACK_TOKEN` `SLACK_COOKIE` | ☐ | ☐ |
+| A4 | Slack personal xoxc/xoxd (reused from mc-kestra) | `SLACK_TOKEN` `SLACK_COOKIE` | ☑ 2026-08-07 | ☑ auth.test ok, user_id `U08BDJAMSRZ`, 1-channel read ok |
 | A5 | Slack Tars app xoxb/xapp (held for cutover) | `SLACK_BOT_TOKEN` `SLACK_APP_TOKEN` | ☐ | ☐ |
 | — | Tailscale auth key (single-use) | never stored — spent + shredded | ☑ 2026-08-07 | ☑ VM joined: `tars` 100.116.31.76, ping 1ms, LAN primary |
 | — | Hindsight keys (2×) | — | ✗ SKIPPED for v1 (Gaetan, 2026-08-07) | — |
