@@ -19,7 +19,49 @@ Names only. Values live in `secrets/tars.sops.yaml` (SOPS+age, 2 recipients) or 
 | — | Tailscale auth key (single-use) | never stored — spent + shredded | ☑ 2026-08-07 | ☑ VM joined: `tars` 100.116.31.76, ping 1ms, LAN primary |
 | — | Hindsight keys (2×) | — | ✗ SKIPPED for v1 (Gaetan, 2026-08-07) | — |
 
+## WF3 wiring verdicts (2026-08-07, all evidence in `status/probes/`)
+
+Independent verifier (`wf3-verify.md`) re-ran every credential probe itself; CONFIRMED = its
+re-probe agreed with the wiring agent, not just the agent's claim.
+
+| § | Capability | Verdict | Evidence |
+|---|---|---|---|
+| 1 | Gmail via Himalaya **v2.0.0** (spec block was v1-era, re-derived) | PASS_WITH_DEVIATIONS (re-run; first attempt aborted on incident below) — envelope probe exit 0, `account check` imap+smtp OK, re-probed by orchestrator | `wf3-s1-gmail.md` (incident), `wf3-s1b-gmail.md` |
+| 2 | Linear + Notion + Calendar + **official Notion MCP** (24 tools) | CONFIRMED — Linear 200/viewer.id · Notion loadUserContent 200 · CalDAV 207 · live MCP tool call | `wf3-s2-linear-notion-calendar.md` |
+| 2b | `mcp/notion` digest-pinned (`@sha256:df0d67…`), mode-600 preserved | PASS | `wf3-s2b-notion-pin.md` |
+| 3 | GitHub `gh` + mc-metarepo clone (HEAD `4831253`, credential-grep 0) | CONFIRMED | `wf3-s3-github.md` |
+| 4 | Slack personal MCP `korotovsky/slack-mcp-server:v1.3.0` stdio + **`--no-cache`** (the D1 eager-cache switch; no env-var form exists) | CONFIRMED — connected 18 tools, 40 channels via live chat, auth.test ok ×3 over time, user `U08BDJAMSRZ` | `wf3-s4-slack.md` |
+| 5 | SSH mesh (3 legs, mac alias → tailnet name) + model backend `openai-codex`/`gpt-5.6-sol` — live `sol` reply closes R7's tier question | CONFIRMED | `wf3-s5-mesh-model.md` |
+
+Spec corrections found live (update `wf3-wiring.md`/`wf4-probes.md` before WF4 copies them):
+`hermes chat --oneshot` → `-Q -q` · `hermes mcp list` is registry-only, liveness = `hermes mcp
+test <name>` · tool prefix is `mcp__slack__*` not `mcp_slack_*` · hermes units are **`--user`**
+units (`hermes-gateway.service` disabled, `hermes-cloakbrowser.service` enabled) · §5's
+`TARS_VM_SSH_PRIVATE_KEY` extract step is dead (no such SOPS key; keypair lives on the VM, B3)
+· himalaya v2 schema + `-m` flag · `hermes auth add` did NOT write `model.base_url` (set
+explicitly, verified no openrouter left).
+
+Open, carried to cutover/WF4: Gmail rotation decision (incident below) · Tars→p-Hermes leg
+deliberately UNWIRED (needs Gaetan's confirm before WF4 probes assume it) · `NOTION_FILE_TOKEN`
+unprobed by design · hermes `notion` SKILL prompts for `NOTION_API_KEY` headless (decide: carry
+in gateway env or disable the skill) · tirith scanner enabled-but-unavailable (degraded,
+pre-existing) · rtk binary off non-interactive PATH (B5 plugin no-ops) · Codex multi-step chat
+turns die after 3 continuation attempts (single-tool turns fine).
+
 ## Log
+
+- 2026-08-07 — **INCIDENT (open — rotation decision pending with Gaetan):** the first WF3 gmail
+  agent ran whole-file `sops -d … | grep` despite the standing ban and printed the **full**
+  `GMAIL_ADDRESS` + `GMAIL_APP_PASSWORD` values into its own transcript (local file + model
+  context). It halted itself; a clean re-run did the wiring (per-key `--extract` only). The pair
+  stays in service and probes pass (IMAP, CalDAV 207). Options: **accept** (token_v2 precedent)
+  or **re-mint** the app password — 2-min browser step, then re-deliver only
+  `~/.hermes/.secrets/gmail_app_password` + re-merge `~/.hermes/.env` (both idempotent, no
+  config edits).
+
+- 2026-08-07 — WF3 run: 6-agent workflow (5 wiring + independent verifier) + 2 remediation
+  agents. All five capabilities wired on the VM; gateway still `disabled`+`inactive`; p-Hermes
+  untouched; verifier's secret-sweep of all evidence files CLEAN.
 
 - 2026-08-07 — **INCIDENT (closed — Gaetan accepted the risk 2026-08-07, no rotation):** a probe agent ran `sops -d … | head -c 200` while sanity-checking
   the age key and printed ~200 chars of `NOTION_TOKEN_V2` into its own transcript (local file +
