@@ -10,7 +10,7 @@ Names only. Values live in `secrets/tars.sops.yaml` (SOPS+age, 2 recipients) or 
 | A1 | GitHub — `gh auth login` device-flow ON the VM (Gaetan's call; replaces the PAT) | — (VM gh store, never SOPS) | ☑ 2026-08-07 | ☑ `repo`+`read:org`, metarepo `.private=true` from the VM |
 | A1b | ChatGPT-sub OAuth (`openai-codex`, on the VM) | — (never stored; self-rotating `auth.json` 0600) | ☑ 2026-08-07 device-flow | ☑ `hermes auth status openai-codex` → logged in |
 | A2 | Linear API key (paste-file → SOPS → shred) | `LINEAR_API_KEY` | ☑ 2026-08-07 | ☑ 200, viewer = Gaëtan Cathelain |
-| A2 | Notion API token — official MCP path (r8; Gaetan's call) | `NOTION_API_TOKEN` | ☑ 2026-08-07 | ◐ probe running |
+| A2 | Notion API token — official MCP path (r8; Gaetan's call) | `NOTION_API_TOKEN` | ☑ 2026-08-07 | ☑ valid (bot `Tars`, ws `Mobile Club`) — ⚠ SHARE-GAP: 0 pages connected |
 | A2 | Notion — reused from mc-kestra `.env` (Gaetan's call) | `NOTION_TOKEN_V2` `NOTION_FILE_TOKEN` `NOTION_SPACE_ID` | ☑ 2026-08-07 | ☑ token_v2 valid (loadUserContent 200 vs control 401); file_token deferred to first export. MCP-compat gate open (r8) |
 | A3 | Gmail app password (Tars-labelled, 2nd one) | `GMAIL_ADDRESS` `GMAIL_APP_PASSWORD` | ☑ 2026-08-07 | ☑ IMAP list, 11 folders |
 | A3 | Calendar (rides Gmail app password) | (same) | — | ☑ CalDAV 207 + inner 200 |
@@ -20,6 +20,13 @@ Names only. Values live in `secrets/tars.sops.yaml` (SOPS+age, 2 recipients) or 
 | — | Hindsight keys (2×) | — | ✗ SKIPPED for v1 (Gaetan, 2026-08-07) | — |
 
 ## Log
+
+- 2026-08-07 — **INCIDENT (open):** a probe agent ran `sops -d … | head -c 200` while sanity-checking
+  the age key and printed ~200 chars of `NOTION_TOKEN_V2` into its own transcript (local file +
+  model context). Not the credential it was probing; no other key exposed. Scope: partial value of
+  the Notion web-session cookie. Decision pending with Gaetan: rotate (Notion → log out of all
+  sessions; also invalidates mc-kestra's copy → re-harvest there) or accept. Probe procedure was
+  already file-only for the target token; the leak was a pre-probe sanity check.
 
 - 2026-08-07 — SOPS store bootstrapped (`scripts/tars-secret`, `.sops.yaml`); dummy-roundtrip
   verified. VM age key enrolled as 2nd recipient (canary: 2 recipients in metadata, cooper
