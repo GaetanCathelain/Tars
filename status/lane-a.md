@@ -15,7 +15,7 @@ Names only. Values live in `secrets/tars.sops.yaml` (SOPS+age, 2 recipients) or 
 | A3 | Gmail app password (Tars-labelled, 2nd one) | `GMAIL_ADDRESS` `GMAIL_APP_PASSWORD` | ☑ 2026-08-07 | ☑ IMAP list, 11 folders |
 | A3 | Calendar (rides Gmail app password) | (same) | — | ☑ CalDAV 207 + inner 200 |
 | A4 | Slack personal xoxc/xoxd (reused from mc-kestra) | `SLACK_TOKEN` `SLACK_COOKIE` | ☑ 2026-08-07 | ☑ auth.test ok, user_id `U08BDJAMSRZ`, 1-channel read ok |
-| A5 | Slack Tars app xoxb/xapp (held for cutover) | `SLACK_BOT_TOKEN` `SLACK_APP_TOKEN` | ☐ | ☐ |
+| A5 | Slack Tars app xoxb/xapp (harvested at cutover; files→SOPS→shred) | `SLACK_BOT_TOKEN` `SLACK_APP_TOKEN` | ☑ 2026-08-07 | ☑ gateway Socket Mode live, 0 auth errors (`cutover.md`) |
 | — | Tailscale auth key (single-use) | never stored — spent + shredded | ☑ 2026-08-07 | ☑ VM joined: `tars` 100.116.31.76, ping 1ms, LAN primary |
 | — | Hindsight keys (2×) | — | ✗ SKIPPED for v1 (Gaetan, 2026-08-07) | — |
 
@@ -50,6 +50,18 @@ pre-existing) · rtk binary off non-interactive PATH (B5 plugin no-ops) · Codex
 turns die after 3 continuation attempts (single-tool turns fine).
 
 ## Log
+
+- 2026-08-07 — **CUTOVER EXECUTED** (Gaetan's go in-session, evidence `status/probes/cutover.md`):
+  old `hermes-gateway-tars.service` on p-Hermes disabled+inactive via a prompt Gaetan piped to
+  p-Hermes itself (no pve root; `reset-failed` applied to that unit only) → A5 tokens + 
+  `SLACK_ALLOWED_USERS=U08BDJAMSRZ` merged into VM `.env` (10→13 keys, backup kept) → new
+  `hermes-gateway.service` (`--user`) active since 18:43:08, Socket Mode connected, allowlist in
+  effect, CloakBrowser healthy. Bonus: Tars→p-Hermes SSH leg wired after all (VM 103 =
+  `192.168.0.8`, user `hermes`, key-restricted `from=`), probe exit 0 — reverses the WF3-era
+  narrowing; WF4 MAY probe this leg. **`/sethome` pending in the live DM** (sets
+  `SLACK_HOME_CHANNEL`). Rollback unchanged: stop new unit, re-enable old.
+  Spec-stale note: `tars-profile.md` §3 still lists `GITHUB_PAT` — obsolete since A1's
+  device-flow rewrite; not a gap.
 
 - 2026-08-07 — **INCIDENT (closed — Gaetan accepted the risk 2026-08-07, no rotation; same
   ruling as token_v2):** the first WF3 gmail
