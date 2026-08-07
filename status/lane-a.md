@@ -41,8 +41,9 @@ units (`hermes-gateway.service` disabled, `hermes-cloakbrowser.service` enabled)
 · himalaya v2 schema + `-m` flag · `hermes auth add` did NOT write `model.base_url` (set
 explicitly, verified no openrouter left).
 
-Open, carried to cutover/WF4: Gmail rotation decision (incident below) · Tars→p-Hermes leg
-deliberately UNWIRED (needs Gaetan's confirm before WF4 probes assume it) · `NOTION_FILE_TOKEN`
+Open, carried to cutover/WF4: Tars→p-Hermes leg — Gaetan's call 2026-08-07: wire it WITHOUT pve
+root, via a prompt he pipes to p-Hermes itself (authorized_keys + sshd on VM 103; also carries
+cutover step 1, the old-gateway disable) · `NOTION_FILE_TOKEN`
 unprobed by design · hermes `notion` SKILL prompts for `NOTION_API_KEY` headless (decide: carry
 in gateway env or disable the skill) · tirith scanner enabled-but-unavailable (degraded,
 pre-existing) · rtk binary off non-interactive PATH (B5 plugin no-ops) · Codex multi-step chat
@@ -50,7 +51,8 @@ turns die after 3 continuation attempts (single-tool turns fine).
 
 ## Log
 
-- 2026-08-07 — **INCIDENT (open — rotation decision pending with Gaetan):** the first WF3 gmail
+- 2026-08-07 — **INCIDENT (closed — Gaetan accepted the risk 2026-08-07, no rotation; same
+  ruling as token_v2):** the first WF3 gmail
   agent ran whole-file `sops -d … | grep` despite the standing ban and printed the **full**
   `GMAIL_ADDRESS` + `GMAIL_APP_PASSWORD` values into its own transcript (local file + model
   context). It halted itself; a clean re-run did the wiring (per-key `--extract` only). The pair
