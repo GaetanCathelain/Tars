@@ -234,7 +234,10 @@ ssh cooper '~/.local/bin/orca orchestration check --terminal "<TERMINAL_HANDLE>"
 #   which is the wrong string and would never fire: if I cannot get a usable
 #   terminal handle at all, drop the push path for this run and poll
 #   `worker-show --dispatch <DISPATCH_ID> --json` → **result.worker.state**
-#   (terminal values: succeeded | failed | stopped | abandoned). It is
+#   (terminal values: succeeded | failed | stopped | abandoned). This is the
+#   authoritative lifecycle field. `result.observation.status` can lag at
+#   `running` after `result.worker.state` is already `succeeded`; never use the
+#   observation field to decide whether the worker has settled. It is
 #   result.worker.state, NOT result.state — result.state does not exist.
 #   result.dispatch.status carries a separate value (`completed`). Say in my
 #   reply that I am polling.
