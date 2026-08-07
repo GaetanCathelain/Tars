@@ -147,9 +147,10 @@ curl -s -o /dev/null -w '%{http_code}\n' -b "token_v2=$NOTION_TOKEN_V2" \
 curl -s -o /dev/null -w '%{http_code}\n' -u "$GMAIL_ADDRESS:$GMAIL_APP_PASSWORD" \
   -X PROPFIND -H "Depth: 0" "https://www.google.com/calendar/dav/$GMAIL_ADDRESS/events"
 ```
-Pass evidence: Linear → 200 with `viewer.id`; Notion → 200 with a results envelope (empty counts);
-Calendar → `207` Multi-Status (inner `HTTP/1.1 200 OK` — PROPFIND's success shape, never bare 200). All three run **from the VM**, not from cooper — the point is that the VM's copy
-of the secrets works.
+Pass evidence: Linear → 200 with `viewer.id`; Notion → bare `200` (the loadUserContent http_code —
+401 = dead token); Calendar → `207` Multi-Status (inner `HTTP/1.1 200 OK` — PROPFIND's success
+shape, never bare 200). All three run **from the VM**, not from cooper — the point is that the
+VM's copy of the secrets works.
 
 **Rollback**
 - Linear 401 → key revoked (they never expire on a schedule); re-mint in lane A.
@@ -269,7 +270,11 @@ after (b) as well if the container was left running.
 2. `~/.ssh/config` on the VM: one `Host` block per leg, `IdentityFile ~/.ssh/id_ed25519`,
    `BatchMode yes`. Legs:
    - **cooper ↔ Tars** — LAN, `192.168.0.4` ↔ `<TARS_IP>`, both directions. Required.
-   - **Tars → `<MACOS_HOST>`** — over tailscale if the tailnet leg landed (D4: additive). Optional;
+   - **Tars → `<MACOS_HOST>`** — the tailnet leg LANDED (2026-08-07: VM is `tars` /
+     100.116.31.76 on tail6e788b.ts.net). MANDATORY EDIT (lane B handoff): the VM's
+     `~/.ssh/config` `mac` alias points at DHCP 192.168.0.23, which WILL drift (cooper's own
+     config already holds one dead lease) and would surface mid-WF4 as an unexplained mesh
+     failure — repoint it at the Mac's stable tailnet name before probing. Optional;
      record as a deviation if absent, not a failure.
    - **Tars → p-Hermes — deliberately NOT wired.** The only path to VM 103 is
      `ssh root@192.168.0.3` → `qm guest exec 103` (r3: the VM refuses direct SSH), i.e. hypervisor
