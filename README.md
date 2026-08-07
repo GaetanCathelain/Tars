@@ -8,7 +8,9 @@ mc-metarepo), Notion, Calendar, the machines on the tailnet, and Orca on the coo
 Tars orchestrates and reports; it never implements. Coding work is delegated to cooper/Orca.
 No PR is ever created by Tars.
 
-**Status: planning.** Build not started.
+**Status: LIVE** since 2026-08-07 — built, cut over, and verified 15/15
+(`status/wf4-report.md`). Repo guide for working sessions: `CLAUDE.md`;
+operational facts: `docs/facts.md`.
 
 | Doc | What |
 |---|---|
