@@ -17,6 +17,7 @@ Decision base: PLAN §Amendments (disable-only) + DECISION D2 (paths) + D5 (A5 t
 5. **Config shadowing check** before debugging any guardrail: no stray top-level `platforms:`
    block may exist (it silently overrides `gateway.platforms.*`). Verified absent at B7.
 6. **Bots don't auto-join**: re-invite the Tars app to each needed channel post-attach.
-7. **Open decision (pre-live)**: `hermes doctor` reports 6 npm vulnerabilities in bundled
-   workspaces (agent-browser 2, web 3, ui-tui 1) — pre-existing upstream, not build-introduced.
-   Gaetan decides accept/patch before Tars is declared live.
+7. **RESOLVED 2026-08-07**: the 6 npm vulnerabilities are fixed on the VM (patch bumps only, no
+   `--force`; doctor clean; evidence in `status/npm-vulns-fix.md`). Residual, accepted: the
+   unused `apps/desktop` Electron workspace carries 5 unrelated vulns needing major bumps —
+   out of Tars' runtime surface, left untouched.
