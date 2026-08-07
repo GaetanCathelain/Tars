@@ -12,8 +12,8 @@ Spec: `PLAN.md` §Amendments + `docs/recon/DECISION.md` D2 / D4 / D6.
 | B3 | SSH mesh: cooper · macOS · p-Hermes (read-only) | **PASS** |
 | B4 | Hermes install — base profile `~/.hermes` **is** Tars (D2/D6-4) | **PASS** |
 | B5 | plugins ∥: rtk · hindsight · hermes-lcm · i-have-adhd | **PASS** (hindsight partial — credential) |
-| B6 | CloakBrowser | pending |
-| B7 | smoke check → verdict | pending |
+| B6 | CloakBrowser | **PASS** |
+| B7 | smoke check → verdict | **PASS** (credential-gated items by design) |
 
 Milestone pings to the hub: VM created · Hermes installed · smoke pass. Blockers ping immediately.
 
@@ -260,3 +260,92 @@ secret undecryptable **on the Tars VM**, failing inside WF3's decrypt steps rath
   no project secret. The VM side is known-good before WF3 relies on it.
 - Hub owns the follow-up: adding the recipient does **not** retroactively rewrap existing files —
   `sops updatekeys secrets/tars.sops.yaml` must run and be committed before WF3's decrypt steps.
+
+## 2026-08-07 — B6 CloakBrowser: **PASS**
+
+**Two runbook steps were wrong and are dead.** The `[DOC]`-grade plan said `git clone` +
+`pip install -e .` + `playwright install chromium --with-deps`. Reality:
+
+- CloakBrowser is **on PyPI** — `pip install cloakbrowser` (0.5.5). No clone, no editable install.
+- It **ships its own patched Chromium** via `cloakbrowser install`. Playwright's chromium download
+  is not used. **No apt package and no sudo were needed anywhere in B6.**
+- The Hermes side is **native**: `browser.cdp_url` is a first-class v0.20.0 config key
+  (`tools/browser_cdp_tool.py`), already present-and-empty in the installer schema.
+- The bundled `browser-*` plugins are a **different thing** — three cloud backends
+  (browserbase / browser-use / firecrawl), all API-key-gated. Left `not enabled`.
+
+Verified by this session: unit `hermes-cloakbrowser.service` **enabled + active**; Chrome
+**146.0.7680.177** listening on **`127.0.0.1:9223` only** (loopback, not exposed); `hermes config
+get browser.cdp_url` → `http://127.0.0.1:9223`; live CDP fetch of `example.com` → HTTP 200 with
+real title/body; stealth live (`navigator.webdriver=False`, `platform=Win32` while headless on
+Linux).
+
+**D4's minimal-X rationale is confirmed dead.** Headless is sufficient, proven four ways —
+including **zero `DISPLAY` entries in the running process's `/proc/PID/environ`** and **no Xvfb
+process**. The X packages installed in B2 sit inert; nothing was built on them. Harmless, but a
+later simplification could drop `xserver-xorg`/`openbox`/`xvfb` entirely.
+
+**Started deliberately** (unlike the gateway): it consumes no credential, its entire env is
+`PYTHONUNBUFFERED=1`, and it binds loopback only.
+
+**Cutover gotcha:** `Restart=always` does **not** self-heal a stale profile lock — an orphaned
+Chromium holding 9223 makes the unit restart-loop with chrome exit 21. Hit once during testing.
+Fix is to kill the orphan, not to restart the unit harder.
+
+---
+
+## 2026-08-07 — B7 SMOKE CHECK: **PASS** (milestone: smoke pass — lane B complete)
+
+`hermes doctor` · `hermes status` · `hermes dump` · `hermes memory status`, plus direct config
+resolution. **Everything failing is credential-gated and owned by lane A / WF3 / the cutover.
+Nothing is broken.**
+
+**Healthy:** `version 0.20.0 [6e87d43a]`, `profile: default`, `hermes_home: ~/.hermes` (confirms
+the base profile IS Tars) · core toolset all ✓ — `file`, `terminal`, `memory`, `project`, `skills`,
+`session_search`, `todo`, `tts`, `desktop_ui`, `kanban` · Skills Hub OK, 1 hub skill · plugins
+`hermes-lcm` + `rtk-rewrite` enabled · CloakBrowser live.
+
+Config resolves as specified:
+
+| Key | Value |
+|---|---|
+| `context.engine` | `lcm` |
+| `memory.provider` | `hindsight` |
+| `browser.cdp_url` | `http://127.0.0.1:9223` |
+| `gateway.platforms.a2a.enabled` | `true` (port 9900, loopback) |
+| `gateway.platforms.slack.require_mention` | `true` |
+| `gateway.platforms.slack.strict_mention` | `true` |
+| `gateway.platforms.slack.unauthorized_dm_behavior` | `ignore` |
+
+**Checked the footgun found in B4:** no stray top-level `platforms:` block exists — the nested
+form is authoritative and unshadowed.
+
+### Outstanding — all by design, none lane B's to close
+
+1. **Model backend.** `hermes dump` reports `model: anthropic/claude-opus-4.6`, `provider: auto`,
+   and `OpenAI Codex ✗ not logged in`. This is the installer default, untouched per the profile
+   spec §4. **WF3 must OVERRIDE all three `model.*` keys after lane A's A1b OAuth** — an "add the
+   block" implementation silently leaves Tars on OpenRouter with no key.
+2. **Hindsight needs TWO credentials, not one.** `hermes memory status` names
+   **`HINDSIGHT_API_KEY`** *and* **`HINDSIGHT_LLM_API_KEY`** (endpoint
+   `ui.hindsight.vectorize.io`). B5 reported only the LLM one — correcting that here.
+   **`HINDSIGHT_MODE=local` does not remove the API-key requirement.** Plugin installed ✓,
+   status `not available ✗` purely for want of keys.
+3. **Slack tokens + `SLACK_ALLOWED_USERS` + `SLACK_HOME_CHANNEL`** — cutover's, by the
+   one-token-pair-one-live-gateway constraint. Gateway correctly `disabled` + `inactive`.
+4. **Tailscale** — deviation, agreed with the hub: LAN is primary (D4), the auth key needs a
+   browser, and the tailnet admin console was erroring. **Deferred to WF3.** Consequence: the
+   macOS SSH leg stays DHCP-fragile until then.
+
+### Flagged, outside lane B's mandate
+
+`hermes doctor` reports **6 npm vulnerabilities** across bundled workspaces (agent-browser 2,
+web 3, ui-tui 1). Not introduced by this build and not lane B's to patch, but it is an existing
+control worth a decision before Tars goes live.
+
+### What is NOT proven
+
+**The gateway has never run.** Every verdict above is install-, config- and registry-layer, plus
+CloakBrowser's live CDP fetch. No Slack round trip, no model call, no memory write, no A2A request
+has been exercised — by design, since all four need credentials lane B must not hold. **WF4 is
+where "done" becomes "exercised."**
