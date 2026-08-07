@@ -187,6 +187,11 @@ ssh cooper '~/.local/bin/orca status --json'
 #   the Orca app is not open on cooper — nothing below will work.
 ssh cooper '~/.local/bin/orca account list --json'
 #   an active claude (or codex) account with usage headroom.
+# For mc-metarepo, also count the kept worktrees before spawning:
+ssh cooper '~/.local/bin/orca worktree list --repo id:8099e312-3232-46f2-83a9-97aeaf5de5a2 --json'
+#   A delegation creates one more kept worktree. If current count + 1 would be
+#   greater than 12, flag cleanup to Gaetan before spawning; do not silently
+#   remove anything, and do not treat the warning as a request for permission.
 
 # ── 1. Brief onto cooper. ONE <slug> per delegation, unique — it names the
 #      brief file here AND the worktree at step 4. A fixed path like
