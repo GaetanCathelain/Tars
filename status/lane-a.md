@@ -51,6 +51,22 @@ turns die after 3 continuation attempts (single-tool turns fine).
 
 ## Log
 
+- 2026-08-07 — **WF4 negative test CLOSED as PASS-ALLOWLIST** (evening, teammate Nans):
+  allowlist rejected a real mentioned message in 0.445 s with the positive `Early reject`
+  WARNING; second human rejected ×2 unprompted. WF4 = **15/15**. Report amended.
+
+- 2026-08-07 — **WF5 now-items SHIPPED** (6-agent workflow, recon→implement→Slack-E2E ×2):
+  **Orca delegation v1** — `delegate-to-cooper` Hermes skill on the VM + dedicated cooper
+  sandbox `~/orca/workspaces/tars-delegated/` (`delegate.sh` fixed-flag entrypoint: Tars can
+  never pass permission-bypass flags; deny-rules `.claude/settings.json`; guardrail matrix
+  proven: write/run OK, rm/`~/.ssh`/curl DENIED). Slack E2E 43.4 s, real cooper artifacts.
+  **Kanban** — enabled via 6-line `toolsets:` addition (no restart), 12 `kanban_*` tools on
+  CLI+Slack, full lane proven incl. dispatcher spawning real workers (ready→running→done),
+  board archived clean. Specs: `docs/specs/wf5-orca-delegation.md`, `wf5-kanban.md`;
+  evidence `status/probes/wf5/*`. Kanban recon's central claim was wrong (said no config key
+  could do it) — implement agent measured and found the one-key fix; recon file carries the
+  correction.
+
 - 2026-08-07 — **WF4 CLOSED — Tars live and verified.** 15 probes exercised post-cutover:
   14 PASS, 0 FAIL, probe 3 (negative test) DEFERRED-OPEN — no teammate available; §16 stub
   ready, treated as build-blocking follow-up. Critic ran 4 cross-checks, marked 10 spec-stale
