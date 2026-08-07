@@ -10,7 +10,8 @@ between them. Two constraints shape everything:
 1. **Auth needs Gaetan's logged-in browser, and the browser is main-session-only** (subagent
    typing lands in the active tab). So credential acquisition is a serial human lane, never a
    workflow node.
-2. **The Slack-app cutover is destructive** (deletes the old Tars profile on personal Hermes).
+2. **The Slack-app cutover flips a live surface** (stops the old Tars gateway on personal
+   Hermes; the profile *delete* is deferred to a gated post-WF4 cleanup — see Amendments).
    It is a gated inline step, never inside an unattended graph.
 
 ## The graph
@@ -53,7 +54,7 @@ flowchart TB
   LA --> J(["join: VM up ∧ creds proven"])
   LB --> J
   J --> WF3["WF3 · WIRE — 5 agents ∥, each ends in its own probe<br/>gmail · linear/notion/cal · github+metarepo clone · slack-personal · orca+ssh"]
-  WF3 --> GATE{{"⛔ CUTOVER — gated, orchestrator session, destructive<br/>evidence → delete old Tars profile on p-Hermes<br/>→ attach Slack app on new VM → /sethome DM"}}
+  WF3 --> GATE{{"⛔ CUTOVER — gated, orchestrator session, reversible<br/>evidence → disable old tars gateway on p-Hermes<br/>→ attach Slack app on new VM → /sethome DM"}}
   GATE --> WF4["WF4 · VERIFY — 14 probes ∥ + completeness critic<br/>incl. the negative test: non-Gaetan message ignored"]
   WF4 --> REP["exercised report → this repo"]
   REP -.-> WF5["WF5 · later — kanban · dailys · reminders · Orca playbooks"]
@@ -76,7 +77,7 @@ WF3. Stored like every other credential — 1Password/SOPS, names only in status
 | Lane A creds | orchestrator session, serial + async probes | Order by what gates other work: GitHub first (VM needs it to clone mc-metarepo), Slack app tokens last (held for cutover). Follow the mc-kestra walkthroughs (below) — only the storage differs. Store via SOPS/1Password, never in argv, never in this repo. |
 | Lane B = WF2 | sequential chain, one ∥ plugin fan-out | Runs unattended in a spawned session. Each step consumes the previous verdict, not logs. Ends with its own smoke check. |
 | WF3 wire | 5 wiring agents ∥ after the join | Independent per service; each ends in its own probe. Includes the metarepo clone and Orca/SSH target wiring. |
-| Cutover | inline, gated, evidence-first | The only step touching the running personal Hermes. Nothing is deleted until the new side is provisioned, wired and smoke-tested. `/sethome` DM set here. |
+| Cutover | inline, gated, evidence-first | The only step touching the running personal Hermes: disable+stop the old tars gateway (frees the Slack token pair), attach the app on the new VM, `/sethome` DM. Rollback = re-enable the old unit. The profile *delete* is not here — it moved to a gated cleanup after WF4 + soak. |
 | WF4 verify | 14 probes ∥ + critic, barrier, report | Every capability exercised once with evidence before Tars is declared live ("done is not exercised"). Includes the negative test: a message from someone who isn't Gaetan must be ignored. Gaps found by the critic loop back as new probes. |
 | WF5 behaviors | later milestone | Kanban, dailys, reminders, reports, Orca orchestration playbooks. Off the critical path; designed once Tars answers in Slack. GBrain / mc-kestra data also postponed (per pitch). |
 
@@ -181,11 +182,30 @@ Rejected alternatives, for the record:
 > after the smoke-pass ping. Do not touch credentials, the browser, or personal Hermes beyond
 > read-only probes.
 
+## Amendments — 2026-08-07 grill (post-WF1, settled with Gaetan)
+
+Where these conflict with the graph or prose above, they win. Detail in `docs/recon/DECISION.md`.
+
+- **Model backend:** ChatGPT-subscription consumption is proven live — personal Hermes runs on
+  the ChatGPT 5.6 sub today. R7 (`docs/recon/r7-model-backend.md`) documents the wiring; lane A
+  *replicates* it on the new VM. DECISION Blocker 1 is a replication task, not a feasibility
+  question.
+- **Cutover:** disable-only (the Slack token pair frees when the old gateway stops). Profile
+  deletion is a separate, gated cleanup after WF4 passes + soak.
+- **Store:** SOPS+age only; 1Password is out of the build path (D5).
+- **Profile:** the new Hermes uses the **default profile** (`~/.hermes`) as Tars — never
+  `hermes profile create` (known bug class when no default profile exists). One agent per box.
+- **D6 deviations 1–7 accepted** (Calendar rides the Gmail app password; Docker lands in B2;
+  minimal X, no xrdp; tailscale additive on `workstation-vm`, LAN primary; GitHub PAT 1-year
+  expiry + reminder; A2A inbound-only).
+
 ## Guardrails
 
-- Credentials never land in this repo — SOPS/1Password; status files reference item names only.
-- Lane B never writes to personal Hermes (read-only probe only); the destructive profile delete
-  happens exactly once, inside the gated cutover, with before-evidence captured first.
+- Credentials never land in this repo unencrypted — SOPS/age (`secrets/tars.sops.yaml`); status
+  files reference item names only.
+- Lane B never writes to personal Hermes (read-only probe only); the cutover only *disables* the
+  old tars gateway (rollback = re-enable); the profile delete happens exactly once, in a gated
+  post-WF4 cleanup, with before-evidence captured first.
 - Tars never opens PRs, never implements — enforced later in its profile/system prompt (WF2
   scaffolds it, WF4 does not probe coding on purpose).
 - Orca's own orchestration layer (runs, tasks, workers, decision gates) is available on cooper —

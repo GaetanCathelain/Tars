@@ -7,15 +7,16 @@ and WF4. Evidence is cited to the recon artifact that produced it; nothing here 
 
 ## ⛔ Blockers — unresolved, read first
 
-1. **Model backend has no recon coverage and no credential path.** PLAN.md §Model backend commits
-   Tars to Gaetan's `gaetan.cathelain@mobile.club` ChatGPT subscription, model **GPT 5.6 Sol**.
-   R6's credential map has 8 targets and **does not include it**; R1 documents `hermes setup
-   --portal` (Nous Portal OAuth) and R3 shows the live p-Hermes profile keeps LLM credentials in
-   `auth.json` (`providers`, `credential_pool`) — but nothing anywhere establishes that Hermes
-   accepts a ChatGPT-subscription OAuth login as a provider, nor how it lands in `auth.json`.
-   **Owner: lane A, before WF3.** If it turns out Hermes needs an API key rather than a
-   subscription OAuth, the model backend decision itself has to be reopened. Lane B must **not**
-   block on it — B4 installs Hermes with `hermes setup` deferred/blank-slate, model wired in WF3.
+1. ~~Model backend has no recon coverage and no credential path.~~ **RESOLVED (grill + R7,
+   2026-08-07).** Gaetan corrected the premise: p-Hermes already runs on the ChatGPT 5.6
+   subscription. R7 (`r7-model-backend.md`) confirmed live: provider **`openai-codex`**,
+   ChatGPT-subscription OAuth via device-code flow — `hermes auth add openai-codex --type oauth`,
+   verify `hermes auth status openai-codex` → logged in; `model.default: gpt-5.6-sol`,
+   `base_url: https://chatgpt.com/backend-api/codex`, credential lands in the base profile's
+   `auth.json` and self-manages. **Do NOT copy p-Hermes' `auth.json` and do NOT store this in
+   SOPS** — rotating refresh token; copying risks invalidating the live p-Hermes session. Lane A
+   runs the OAuth flow fresh on the new VM (A1b), records only "flow run, verified" in
+   `status/lane-a.md`. Lane B still does not block on it; wired in WF3.
 2. **Which Slack workspace member ID is Gaetan's**, needed for `SLACK_ALLOWED_USERS` on the new
    profile. R3 read the old profile's `.env` key names only (values redacted server-side, correctly).
    Cheap to re-derive at cutover from the personal-Slack probe (`auth.test` returns `user`), but it
@@ -200,7 +201,7 @@ Naming: SOPS keys reuse mc-kestra's env-var names verbatim so the walkthrough pr
 | # | Credential | Harvest | Probe (secret never on argv) | SOPS key(s) |
 |---|---|---|---|---|
 | A1 | GitHub PAT (classic, `repo`+`read:org`) — gates the VM's mc-metarepo clone | github.com/settings/tokens | `curl -K` with an `Authorization` header file → `api.github.com/repos/mobile-club/metarepo` returns `.private == true`; then `git ls-remote` via `GIT_ASKPASS` | `GITHUB_PAT` |
-| A1b | **ChatGPT OAuth / model backend** — see Blocker 1, path unknown | api.openai.com or Hermes' own provider flow — TBD | `hermes model` / `hermes status` showing the provider live | TBD (`auth.json`, not `.env`) |
+| A1b | **ChatGPT-sub OAuth / model backend** (R7) | `hermes auth add openai-codex --type oauth` on the new VM — device-code flow completed in Gaetan's browser | `hermes auth status openai-codex` → logged in; then `model.default: gpt-5.6-sol` in config.yaml | **none — do not store** (self-rotating OAuth in `auth.json`; never copy from p-Hermes) |
 | A2 | Linear API key | linear.app → Settings → Security & access → Personal API keys | `-K` header file, GraphQL `{ viewer { id name } }` → 200. **Bare key, no `Bearer` prefix** | `LINEAR_API_KEY` |
 | A2 | Notion (3 fields, one item) | devtools on the Quick-Find `search` XHR: payload `spaceId`, cookie `token_v2`; `file_token` only appears **after one manual export** | replay the `search` XHR server-side → 200 with a results envelope. `file_token` is not cheaply probeable — first real export is its probe | `NOTION_TOKEN_V2`, `NOTION_FILE_TOKEN`, `NOTION_SPACE_ID` |
 | A3 | Gmail app password (**mint a second one, labelled for Tars** — independent blast radius from mc-kestra's) | myaccount.google.com/apppasswords, needs 2FA already on | `curl -s --url imaps://imap.gmail.com --user "$ADDR:$PW"` — cheapest auth check, works without Himalaya installed | `GMAIL_ADDRESS`, `GMAIL_APP_PASSWORD` |
