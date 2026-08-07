@@ -6,8 +6,10 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 Build + ops repo for **Tars**: Gaetan's personal Hermes agent on a dedicated
 Proxmox VM, **live in Slack since 2026-08-07** (DM-first, answers only Gaetan).
-Tars orchestrates and reports; it never implements — coding work is delegated
-to cooper/Orca, and Tars never creates a PR. This repo holds no application
+Tars orchestrates and reports; it never produces the deliverable itself — the
+work is delegated to Claude Code sessions driven through Orca on cooper, and
+Tars never merges, approves or pushes. A PR authored by a session Tars
+delegated to is fine; Tars authoring one is not. This repo holds no application
 code: it is the plan, the specs, the secrets store, and the exercised evidence
 that the wiring works. Operational truth sheet: `docs/facts.md`.
 
