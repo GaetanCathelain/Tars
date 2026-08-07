@@ -10,7 +10,7 @@ Spec: `PLAN.md` §Amendments + `docs/recon/DECISION.md` D2 / D4 / D6.
 | B1 | Proxmox VM 102 `tars` — 8c / 8G / 50G, cloud-image + cloud-init, `local-lvm`, `vmbr0` | **PASS** |
 | B2 | Ubuntu 24.04 + minimal X + **Docker** (D6-5) + tailscale (additive, D4) | **PASS** except tailscale (awaiting lane-A key) |
 | B3 | SSH mesh: cooper · macOS · p-Hermes (read-only) | **PASS** |
-| B4 | Hermes install — base profile `~/.hermes` **is** Tars (D2/D6-4) | pending |
+| B4 | Hermes install — base profile `~/.hermes` **is** Tars (D2/D6-4) | **PASS** |
 | B5 | plugins ∥: rtk · hindsight · hermes-lcm · i-have-adhd | pending |
 | B6 | CloakBrowser | pending |
 | B7 | smoke check → verdict | pending |
@@ -136,3 +136,58 @@ rather than by good behaviour.
    still points at a dead `192.168.0.34`). The stable fix is the tailnet address, which is gated on
    the auth key deferred to WF3. Until then this leg is LAN-DHCP-fragile — if it breaks later, the
    cause is almost certainly a new lease, not a credential.
+
+## 2026-08-07 — B4 Hermes install + base profile: **PASS** (milestone: Hermes installed)
+
+**`Hermes Agent v0.20.0 (2026.8.3)`** on Python 3.11.15, installed unattended via the vendor
+`install.sh` (exit 0; wizard auto-skipped, no TTY). Not pinned to p-Hermes' v0.19.0, per D2.
+
+Re-verified by this session directly on the VM:
+
+| D2 requirement | Observed |
+|---|---|
+| base profile IS Tars, no `hermes profile create` | `~/.hermes/profiles/` **absent**, `HERMES_HOME` **unset** |
+| identity in `SOUL.md` | `diff` vs `docs/specs/tars-profile.md` §1 → **IDENTICAL**, byte-for-byte |
+| Slack guardrails | `require_mention: true`, `strict_mention: true`, `unauthorized_dm_behavior: ignore` |
+| A2A inbound-only, port 9900 | `gateway.platforms.a2a` → `enabled: true`, `extra.port: 9900` |
+| `.env` 0600, empty at B4 | `600`, **0 bytes** |
+| no credentials touched | `~/.hermes/auth.json` **absent**; no OAuth flow run |
+| unit created, **not** enabled, **not** started | `is-enabled` → `disabled`, `is-active` → `inactive`, no enable symlink, no `override.conf` |
+
+### The A2A config-path question is settled: **use `gateway.platforms.a2a`**
+
+D2 said nested, live v0.19.0 looked top-level, and DECISION marked it UNCONFIRMED. The answer is
+that it was never a contradiction — **both paths parse, and top-level silently wins a conflict.**
+Established four independent ways: the v0.20.0 loader source (`gateway/config.py`) merges
+`gateway.platforms` first, then top-level `platforms`, with a comment stating top-level keeps
+precedence; an A/B/C experiment through the real loader in throwaway `HERMES_HOME`s (nested→8888,
+top-level→7777, both-and-conflicting→**top-level won**); the live profile resolving correctly; and
+the docs shipped inside v0.20.0 using the nested form.
+
+**Consequence worth carrying into WF3/WF4:** the nested form is the documented one and is what is
+written here, but a stray top-level `platforms:` block would override it *silently, with no error*.
+That is a real footgun for the cutover — if a guardrail ever appears not to apply, check for a
+top-level `platforms:` before debugging anything else.
+
+Same mechanism settles the spec's open Slack-nesting question. Related find: **`strict_mention`
+never appears in `PlatformConfig.extra`** — the Slack plugin exports it as the env var
+`SLACK_STRICT_MENTION` (verified `=true`). Anyone grepping the parsed config object for
+`strict_mention` will wrongly conclude the guardrail is missing.
+
+### Deviations and corrections
+
+1. **`config.yaml` was appended to, not replaced.** The installer ships a ~92 KB default with 21
+   sections of real defaults; a pristine copy is kept at `~/.hermes/config.yaml.installer-default`.
+2. **`model.*` is NOT absent — it holds installer defaults**, which is a stronger statement than
+   "lane B didn't write it". Live right now: `provider: auto`, `default: anthropic/claude-opus-4.6`,
+   `base_url: https://openrouter.ai/api/v1`. **WF3 must OVERRIDE these three keys, not add them** —
+   a WF3 step written as "add the model block" would leave OpenRouter/Opus-4.6 in place and Tars
+   would run on the wrong backend (or fail, since no OpenRouter key exists). Lane B deliberately
+   left them untouched per the profile spec's §4 table.
+3. **`[DOC]` facts checked: 12; wrong: 1.** The runbook's `hermes gateway install` flag list was
+   incomplete — `--no-start-now` and `--no-start-on-login` also exist, which is precisely what let
+   the "create but do not enable or start" constraint be satisfied cleanly rather than by
+   post-hoc `systemctl disable`.
+4. **p-Hermes was never contacted during B4.** The v0.20.0 tree ships its own source and docs on the
+   new VM, which is better evidence than reading a v0.19.0 config off the live box. The read-only
+   constraint held by not needing to read at all.
