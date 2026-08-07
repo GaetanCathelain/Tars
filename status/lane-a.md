@@ -15,7 +15,7 @@ Names only. Values live in `secrets/tars.sops.yaml` (SOPS+age, 2 recipients) or 
 | A3 | Calendar (rides Gmail app password) | (same) | — | ☐ |
 | A4 | Slack personal xoxc/xoxd | `SLACK_TOKEN` `SLACK_COOKIE` | ☐ | ☐ |
 | A5 | Slack Tars app xoxb/xapp (held for cutover) | `SLACK_BOT_TOKEN` `SLACK_APP_TOKEN` | ☐ | ☐ |
-| — | Tailscale auth key (single-use, → lane B/WF3) | not stored (0600 handoff file) | ☐ blocked: console 500 | — |
+| — | Tailscale auth key (single-use) | never stored — spent + shredded | ☑ 2026-08-07 | ☑ VM joined: `tars` 100.116.31.76, ping 1ms, LAN primary |
 | — | Hindsight keys (2×) | — | ✗ SKIPPED for v1 (Gaetan, 2026-08-07) | — |
 
 ## Log
