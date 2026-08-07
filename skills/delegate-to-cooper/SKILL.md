@@ -413,9 +413,10 @@ ssh cooper '~/.local/bin/orca orchestration check --terminal "<TERMINAL_HANDLE>"
   --types worker_done,escalation,question --timeout-ms 240000 --json' 2>/dev/null
 ```
 
-`<DELIVERY_ID>` is the **message's own `id`**, shaped `msg_<12 hex>` — measured
-2026-08-07. There is no separate delivery-id field to hunt for; if a message came
-back, its `id` is what I ack.
+`<DELIVERY_ID>` is the top-level **`result.deliveryId`**, shaped
+`delivery_<12 hex>` — measured on Orca 1.4.176, 2026-08-07. The nested
+message's `id` is a `msg_<12 hex>` address and is not accepted by `--ack`;
+using it returns `stale_delivery`.
 
 Only the **first** wait of a run omits `--ack` — nothing has been delivered yet.
 Every wait after a delivery carries the id of the delivery it handled. If the
