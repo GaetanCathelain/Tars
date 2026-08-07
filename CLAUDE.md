@@ -40,7 +40,12 @@ agents write new files under `status/probes/`.
   Hermes CLI: `~/.local/bin/hermes` (NOT on PATH over non-interactive ssh).
   Units are `--user` (`export XDG_RUNTIME_DIR=/run/user/$(id -u)`); logs in
   `~/.hermes/logs/` (journald carries WARNINGs only).
-- p-Hermes (VM 103): `ssh phermes` from the Tars VM. Never root on `192.168.0.3`.
+- **p-Hermes** (Gaetan's personal Hermes, Proxmox VM 103) = **192.168.0.8**,
+  user `hermes`: reach it with `ssh phermes` from the Tars VM. It runs Hermes
+  v0.19.0 (older than Tars' v0.20.0). Read-only unless Gaetan says otherwise.
+- **`192.168.0.3` is `pve`, the Proxmox HYPERVISOR — a different machine.**
+  Never root on it. (These two were previously adjacent here and read as one
+  host; the confusion misled an agent on 2026-08-07.)
 - Push flow (this worktree cannot check out `main`):
   `git pull --rebase origin main && git push origin HEAD:main`
 
