@@ -9,7 +9,7 @@ Spec: `PLAN.md` §Amendments + `docs/recon/DECISION.md` D2 / D4 / D6.
 |---|---|---|
 | B1 | Proxmox VM 102 `tars` — 8c / 8G / 50G, cloud-image + cloud-init, `local-lvm`, `vmbr0` | **PASS** |
 | B2 | Ubuntu 24.04 + minimal X + **Docker** (D6-5) + tailscale (additive, D4) | **PASS** except tailscale (awaiting lane-A key) |
-| B3 | SSH mesh: cooper · macOS · p-Hermes (read-only) | pending |
+| B3 | SSH mesh: cooper · macOS · p-Hermes (read-only) | **PASS** |
 | B4 | Hermes install — base profile `~/.hermes` **is** Tars (D2/D6-4) | pending |
 | B5 | plugins ∥: rtk · hindsight · hermes-lcm · i-have-adhd | pending |
 | B6 | CloakBrowser | pending |
@@ -99,3 +99,40 @@ If Hermes turns out to be memory-starved at B7, the one-line fix is `qm set 102 
 **Thin pool** after adding the 50 G thin volume: sum of thin volumes now 496 G against a 465 G
 VG. Thin-provisioned and fine today (real usage 3.3 G), but the host has **no autoextend
 threshold set** — flagged for Gaetan, outside lane B's mandate to change.
+
+## 2026-08-07 — B3 SSH mesh: **PASS** (all five legs, independently re-verified)
+
+One ed25519 keypair generated **on the Tars VM** (`tars@192.168.0.9`, fingerprint
+`SHA256:5shawRKsUq5JzYXazx5shAAhwBXyRGzc2euLaQv3FYk`). Public half appended — one line, grep-guarded
+for idempotency — to `authorized_keys` on cooper, pve and the Mac. No private key ever left the VM;
+no existing `authorized_keys` line was rewritten or removed.
+
+Verdicts re-run by this session directly, not taken from the agent's report:
+
+| Leg | Direction | Probe | Result |
+|---|---|---|---|
+| Tars → cooper | `ssh cooper true` | `-o BatchMode=yes -o ConnectTimeout=5` | exit 0 **PASS** |
+| Tars → pve | `ssh pve true` | idem | exit 0 **PASS** |
+| Tars → macOS | `ssh mac true` | idem | exit 0 **PASS** |
+| Tars → p-Hermes | `ssh pve 'qm guest exec 103 -- /bin/true'` | JSON `exitcode` | `0` **PASS** |
+| cooper → Tars | `ssh gaetan@192.168.0.9 true` | idem | exit 0 **PASS** (unbroken) |
+
+On the VM: `~/.ssh` 700, `id_ed25519` / `known_hosts` / `config` all 600; `known_hosts` pre-seeded
+via `ssh-keyscan` (9 lines = 3 key types × 3 hosts) so **no leg can ever hit an interactive
+fingerprint prompt**; `~/.ssh/config` carries three aliases — `cooper` / `pve` / `mac`.
+
+**p-Hermes remains untouched.** The only thing sent through `qm guest exec 103` was `/bin/true`.
+There is no SSH key on p-Hermes and none was installed — that leg is `root@pve` → `qm guest exec`
+by design (VM 103 refuses direct SSH), which is why lane B's read-only constraint holds structurally
+rather than by good behaviour.
+
+**Two durability notes, neither blocking:**
+
+1. **The Mac's TEMP key was still valid** — its first probe failed with `Host key verification
+   failed`, which is a `known_hosts` gap on cooper, *not* revocation. Worth knowing because the
+   failure mode looks identical to a revoked key at a glance. Now moot either way: the Tars VM has
+   its **own** key on the Mac, so revoking cooper's temp key no longer breaks this leg.
+2. **The Mac is at `192.168.0.23` by DHCP and has already drifted once** (cooper's `~/.ssh/config`
+   still points at a dead `192.168.0.34`). The stable fix is the tailnet address, which is gated on
+   the auth key deferred to WF3. Until then this leg is LAN-DHCP-fragile — if it breaks later, the
+   cause is almost certainly a new lease, not a credential.
