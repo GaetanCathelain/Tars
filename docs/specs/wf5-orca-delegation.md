@@ -1,6 +1,13 @@
 # WF5 — Orca delegation playbook v1
 
-Authoritative spec. Status: **implemented and verified 2026-08-07**.
+> **SUPERSEDED 2026-08-07 by v2 — see "[WF5 — Orca delegation v2
+> (authoritative)](#wf5--orca-delegation-v2-authoritative)" at the bottom of this
+> file.** v1 is kept for the record, not for execution: its mechanism
+> (`delegate.sh` wrapper, deny-rule `.claude/settings.json`, the
+> `~/orca/workspaces/tars-delegated/` sandbox) is dropped, not
+> deprecated-with-fallback. Read v2 before running anything.
+
+Status when written: **implemented and verified 2026-08-07**.
 Evidence: `status/probes/wf5/orca-implement.md`. Recon it builds on:
 `status/probes/wf5/orca-recon.md`, `status/probes/wf4/p15-delegation-cooper.md`.
 
@@ -161,3 +168,275 @@ Repo work via `additionalDirectories` scoped to one checkout; a background form
 with a poll command for jobs over the cap; and the `orca` orchestration layer
 if supervised multi-agent runs are ever actually needed. None of it is needed
 to close WF5.
+---
+
+# WF5 — Orca delegation v2 (authoritative)
+
+**Status: authoritative design, 2026-08-07. Everything above this line is v1 and
+is superseded** — kept for the record, not for execution. Decided by Gaetan in
+session; recon evidence in `status/probes/wf5/orca-v2-capabilities.md`,
+`orca-v2-layout.md`, `orca-v2-sequence-validation.md`, `orca-v2-current-skill.md`.
+
+## What changed, and why
+
+Gaetan's reframe, in his terms: **Tars is an orchestrator — "a secretary of
+work", a mirror/replacement of Gaetan himself.** What Gaetan does all day is
+prompt Claude Code; Tars should do that prompting for him, drive the Orca
+sessions, and help schedule his work. Tars may double-check facts. Tars must not
+do the implementation itself.
+
+The load-bearing correction: **"Tars doesn't do the work" is a
+separation-of-concerns guardrail, not a security guardrail.** It is fine for Tars
+to have root on cooper, by design, because Gaetan has root on cooper. Everything
+v1 built on the opposite reading is dropped:
+
+- no sandbox directory,
+- no fixed-flag wrapper script,
+- no command allowlist,
+- no deny-rule settings file,
+- **no rule forbidding `sudo`**, and no enumerated forbidden paths or commands.
+
+Stated positively, because the absence of a prohibition is not the same signal
+to a model as a permission: **any path, any command, `sudo` included, by
+design.** Gaetan has root on cooper; so does Tars. Tars does not ask permission
+to run what the job needs, and does not stop to litigate whether an exploratory
+`ls` or a file read outside the target repo is "really necessary". **Refusing to
+act, or stalling to ask whether it is allowed, is a failure mode exactly as real
+as doing the implementation itself** — both end with the work not happening. The
+skill says this in those words.
+
+What remains of the constraint is prose in the skill, correctly framed: Tars
+prompts, tracks, verifies and reports; the spawned coding agent implements. SOUL
+rules 1–3 (never write code, never open/review/merge a PR, never push) are
+unchanged and are exactly that division of labour.
+
+Three refinements to that prose, each closing a hole an adversarial read found:
+
+- **The deliverable is named by ROLE, not by file type.** "Code, patch, script,
+  config" is escapable — asked for documentation, Tars writes the markdown
+  itself and believes it is inside the rules. The rule now reads: whatever
+  Gaetan asked to exist is the delegated agent's to produce — code, patch,
+  script, config, documentation, README, migration notes, any artifact. "It's
+  only markdown" is the excuse the rule exists to refuse.
+- **Two carve-outs, so the rule does not induce paralysis.** Writing the *brief*
+  to disk is not doing the work (it is the instruction, not the deliverable),
+  and quoting the agent's output, code and errors back to Gaetan is required
+  evidence, not a violation.
+- **One beat before the irreversible.** Gaetan dropped confinement, not
+  prudence. For an action with no undo, Tars states what it is about to do and
+  leaves the beat to be stopped — a statement, not a request for permission. It
+  names no forbidden command, no path list, and no capability Tars lacks.
+
+**Secret hygiene is retained and is not confinement.** The v1 skill named
+concrete credential paths (`~/.ssh/`, `~/.aws/`, `~/.claude.json`,
+`~/.claude/.credentials.json`, `~/.config/sops/`, `~/.pgpass`, `*.key`, `.env`);
+both first-draft replacements dropped them, leaving the list nowhere. An
+abstract "don't touch credentials" does not make a model classify
+`~/.claude.json` as one. The list is restored in the skill, framed as *the
+contents never leave the machine* — not into a brief, a Slack reply, argv, or an
+evidence file — rather than as a place Tars may not go.
+
+Target shape: **Tars spawns work on the running Orca app on cooper, in real
+worktrees of real registered repos.** Default repo `mc-metarepo`
+(`id:8099e312-3232-46f2-83a9-97aeaf5de5a2`). All registered repos are fair game;
+Tars may register more (`orca repo add --path`) if the work genuinely needs one.
+
+## Mechanism
+
+```
+Slack → Tars (VM 192.168.0.9) → ssh cooper → orca CLI → Orca app
+        run-create → task-create → worker-start → check --wait → worker-read → worker-release
+                                                        ↑            │
+                                        check --ack <delivery> ──────┘  (every wait after the first)
+```
+
+Transport is **ssh + the `orca` CLI**. Corrected from the first draft, measured:
+`orca` **is** on the non-interactive PATH from the VM, as `/usr/local/bin/orca`
+(PATH = `/usr/local/sbin:/usr/local/bin:…`); `~/.local/bin/orca` is a wrapper on
+the same binary and also works because the remote shell expands `~`. What is
+absent from that PATH is `~/.local/bin`, not `orca` — the earlier claim had the
+right remedy for the wrong reason. Also measured: `ssh cooper` resolves from the
+VM to `192.168.0.4`, user `gaetan`, no prompt.
+
+Orca's web/RPC server on `0.0.0.0:6768` is E2EE + device-token authenticated and
+is deliberately **not** used — it would require pairing Tars as a device. The
+layer above `worktree create`/`terminal create` is what makes this work: those
+two attach no task and no dispatch, so they give no completion signal and no
+durable id.
+
+**`--ack` is mandatory, not hygiene.** `check --help`, verbatim: *"A bound Run
+replays the same Delivery until `--ack`; process every message before
+acknowledging."* An un-acked re-attach returns the batch already processed —
+Tars reports the same `worker_done` twice and never sees the next message, a
+loop that looks alive and is frozen. Only the first wait of a run omits `--ack`;
+every wait after a delivery carries the id of the delivery it handled, and
+`check --ack <id> --wait` does acknowledge-check-wait in one call. Read-only
+looks use `--peek` (never marks read); bare `check` marks the oldest batch read,
+which is how a batch gets consumed without being processed.
+
+**Answering a worker `question` is `reply --id <msg_id> --body <text>`**, not
+`send --to dispatch:<id>`. The worker is blocked inside `orchestration ask`; mail
+sent to the dispatch is only delivered on the worker's *next* `check`, which a
+blocked worker never issues — it errors on nothing and unblocks nothing. Flags
+re-read from `--help` on cooper 2026-08-07: `check`, `reply`, `send`,
+`worker-start`, `worker-show`.
+
+## The three v1 objections, refuted
+
+v1 rejected the Orca session layer on three grounds. All three were about the
+**terminal** layer; v1 never inventoried `orchestration worker-*`, one layer up,
+which is where the answers live.
+
+| v1 objection (§"Mechanism chosen") | Refutation | Evidence |
+|---|---|---|
+| "handles go stale (`terminal_handle_stale`)" | True of `term_*` handles, and still true. But `worker-start` returns a **durable `dispatch_id`** — a SQLite row in `worker_dispatches` — and `worker-show`/`worker-read` keep working by that id after the terminal is gone (release archives the transcript first). Worktree selectors (`id:`/`name:`/`branch:`/`path:`) are equally durable. | capabilities §2, §4 |
+| "no completion signal — Tars would hand-roll polling" | False at this layer. `worker_done` is a first-class message type with explicit `--outcome succeeded\|failed`, and `orchestration check --run <id> --wait --types worker_done,escalation,question --timeout-ms <n> --json` is a **single blocking call** that returns the instant it lands. Keepalive JSON on stderr every 15s distinguishes waiting from hanging. | capabilities §3; flags re-verified live in sequence-validation §1 item 4 |
+| "durable coordinator state across ssh calls that share no session" | Confirmed present *and* confirmed **not** session-bound: `--run <id>` works standalone on `task-list`/`worker-list`/`gate-list`/`check` with **no prior `run-use` bind**. `run-use`/`run-current` exist only so a long-lived coordinator terminal can omit `--run`. | capabilities §1; **`--run` on `check` measured 2026-08-07, see below** |
+
+### `--run <id>` standalone addressability — CONFIRMED, and the doubt is settled
+
+An adversarial review argued that `check` binds to the invoking coordinator
+terminal, so a terminal-less ssh caller (exactly Tars's position) could never
+resolve `--run` — which would have been fatal to the design. **Measured, and it
+is wrong.**
+
+From a plain non-Orca shell with zero shared state: `orca orchestration
+run-create --objective … --json` produced `run_24d000a3a6b6`; then from a
+**fresh separate process**, `orca orchestration check --run run_24d000a3a6b6
+--peek --json` returned `ok: true` with `runId` echoed back — not
+`run_not_found`. `task-list --run` and `worker-list --run` on the same run
+likewise returned `ok: true` (`legacyReadOnly: false`). `check --help`'s usage
+line documents `[--run <run_id>]` explicitly; the "bound Run" prose describes
+only the **default** when `--run` is omitted. The earlier `run_not_found` was on
+`run_legacy_local`, a legacy-adopted run with `coordinator_handle: null` — not
+representative.
+
+**Design kept as-is.** One defensive line survives in the skill and nothing
+more: if `run_not_found` ever appears on a run that `task-list --run` resolves,
+fall back to polling `orca orchestration worker-show --dispatch <id> --json` and
+read `result.state` (terminal: `succeeded|failed|stopped|abandoned`).
+
+What v1 got right and v2 keeps: `orca` hard-depends on the desktop runtime being
+up (`orca status --json` → `runtime.reachable` is step 0 of every sequence), and
+the **reporting duty** — verdict, exact command verbatim, and the run/dispatch
+ids in every reply. "I delegated it" is not a summary of a command.
+
+## Superseded v1 artifacts
+
+Everything below is dropped, not deprecated-with-fallback:
+
+- `/home/gaetan/orca/workspaces/tars-delegated/delegate.sh` — the fixed-flag
+  wrapper. Its whole premise (Tars must never type an agent flag) is void.
+- `/home/gaetan/orca/workspaces/tars-delegated/.claude/settings.json` — the
+  deny-rule layer, and the "Guardrails / Layer 1–2–3" section of v1 above.
+- The `~/orca/workspaces/tars-delegated/` sandbox itself, including its
+  no-git-remote and single-shared-directory properties, and the v1 rule "never a
+  path outside" it.
+- The v1 `~/.hermes/skills/delegate-to-cooper/SKILL.md`, replaced wholesale.
+  13 of its 77 lines encoded the dropped mechanism (inventory with line numbers:
+  `status/probes/wf5/orca-v2-current-skill.md` §5).
+
+Skill install is a straight content replacement at
+`~/.hermes/skills/delegate-to-cooper/SKILL.md` (renaming the directory is
+optional and is the orchestrator's call). **No gateway restart is required** —
+proven, not assumed: gateway PID 76255 ran continuously across an edit and
+`.skills_prompt_snapshot.json` regenerated with the file's post-edit
+`(mtime_ns, size)`. Verify pickup by comparing `os.stat(SKILL.md)` to the
+snapshot's `manifest['<relpath>/SKILL.md']` entry — `MATCH` means picked up.
+Skill count should stay 77 / 6-local (replacement, not an add).
+
+## Known ceilings
+
+- **300s command cap.** Hermes `code_execution.timeout` is 300s, so the blocking
+  wait is bounded at `--timeout-ms 240000`. Real coding work runs longer. This is
+  survivable *only* because the run/dispatch/delivery ids are durable: a timeout
+  is a **checkpoint**, Tars reports "still running, run `<id>`" and re-attaches
+  on a later turn with `check --ack <delivery> --wait` or a cheap `worker-show`.
+- **`worker-start` is a mutation with no guaranteed return.** It blocks until the
+  worker is `ready` and can outrun the 300s cap *after* creating the dispatch,
+  losing the id Tars needs. `--timeout-ms` exists on the verb (help-verified) and
+  the skill passes `200000`, but the recovery rule is the real fix: after any
+  apparent timeout, **do not assume nothing was created and do not re-run it** —
+  `worker-list --run <RUN_ID> --json` first, adopt any dispatch found.
+- **No outbound push, but Tars can wake itself.** Orca has no webhook, callback
+  or completion-push that leaves cooper; its internal agent-status push is real
+  HTTP but loopback-only (`127.0.0.1:${ORCA_AGENT_HOOK_PORT}`, per-pane token).
+  Tars always has to ask. What closes the loop is on the *Hermes* side, not
+  Orca's: nothing gives a Slack agent a later turn on its own, so the checkpoint
+  path schedules one —
+  `~/.local/bin/hermes cron create "5m" "<re-attach instruction>" --deliver slack --repeat 1`
+  (`docs/facts.md` §Hermes: the bare platform name delivers to
+  `SLACK_HOME_CHANNEL`; `/bg` always answers the invoking surface and can never
+  reach home; the hermes CLI is at `~/.local/bin/hermes` and is **not** on PATH
+  over non-interactive ssh). **When Gaetan asked to be told when it is done,
+  scheduling the re-check is not optional** — "I will re-attach" without it is a
+  broken promise. A caller-authored Claude Code `Stop` hook in the spawned
+  worktree could notify Tars directly instead — untested, not built.
+- **Orca must be running.** Hard dependency, no plain-shell fallback. If the
+  desktop app is closed, every command fails; `orca status --json` first, always.
+- **Unverified response field names.** `result.run.id` / `result.task.id` /
+  `result.dispatch.id` were never observed live. Nor was the **delivery id**:
+  an empty `check --peek --json` returns
+  `result.{messages, count, acknowledged, runId}`, and what names the delivery on
+  a non-empty batch is still unseen. Log the raw first responses and correct this
+  spec from them; the skill already tells Tars to report the real shape.
+- **The brief file path must be unique per run.** A fixed `/tmp/tars-brief.md` is
+  silently clobbered by a concurrent delegation or by a retry, and `task-create
+  --spec "$(cat …)"` then ships the wrong brief with no error. One `<slug>` per
+  delegation names both the brief file and the worktree.
+- **Worktrees accumulate.** Nothing self-cleans: an abandoned spawn leaves a
+  checkout, a branch, rows in `orchestration.db`, and a terminal-history file.
+  mc-metarepo already carries 9 worktrees, several stale. v2's default is to
+  *keep* the worktree (it is the work product) and report its path — so the pile
+  grows unless someone prunes. Prune on Gaetan's word, not on Tars' initiative.
+- **Only `claude` and `codex`** are verified-usable `--agent` values on cooper.
+
+## The trust boundary moved — it did not disappear
+
+Dropping the sandbox and the deny rules did not dissolve the trust boundary
+around Tars; it **relocated it to Slack**. With v2, anything that can get a
+message to Tars can transitively drive Orca on cooper, in real repos, as
+`gaetan`. `SLACK_ALLOWED_USERS` plus the adapter's early-reject
+(`adapter.py:5534-5550`, WARNING at `:5546`, 104 lines before the first
+mention/thread branch) is now the **only** control holding that line, with
+SOUL rule 4 as a model-level backstop.
+
+This is a note about a control that must not lapse, not an argument against the
+design. Concretely: `SLACK_ALLOWED_USERS` must stay populated and the early
+reject must keep firing — the positive WARNING line is the thing to grep for, and
+absence-of-reply is never evidence the gate held. Any future change that widens
+who can reach Tars (new channel, relaxed `strict_mention`, an added platform, a
+second adapter) is a change to *this* boundary and must be evaluated as one.
+
+## Phase 2 — not built yet
+
+Giving Tars **Gaetan's knowledge and preferences** — his metarepo, his coding
+standards, his project context, the shape of a brief he would have written
+himself — is a deliberately separate later phase. v2 makes Tars able to *drive*
+Orca correctly; it does not make Tars' briefs sound like Gaetan's. Scheduling
+work (what to run when, what is worth spawning at all) belongs to that phase too.
+Nothing in this section depends on it, and nothing in it should be smuggled in
+early.
+
+## PARKED, awaiting Gaetan
+
+Not ruled on. Nothing below blocks installing v2 as written; each is a knob that
+would change behaviour if turned, so none of them gets turned on an agent's
+initiative.
+
+- **`approvals.mode`** — `manual` | `smart` | `off`. The v2 skill does not set it
+  and the spawned agent runs on whatever the repo/worktree already implies. Under
+  the separation-of-concerns reading `off` is arguable (the agent is doing the
+  work Gaetan asked for, on Gaetan's machine); `smart` is the conservative pick;
+  `manual` strands a worker Tars cannot un-block except through `reply`. Needs
+  his call before any spawn relies on one.
+- **Renaming the skill to `drive-orca-on-cooper`.** `delegate-to-cooper` is the
+  v1 name and describes the dropped sandbox mechanism, not what v2 does. Install
+  is a content replacement at the existing path; renaming the directory is a
+  separate, optional move and would change the name Tars sees in its skill list.
+  Skill count should stay 77 / 6-local either way.
+- **Phase 2's landing surface for Gaetan's knowledge and preferences** — metarepo
+  content, coding standards, project context, the shape of a brief he would have
+  written himself. Whether that arrives as skills, as SOUL/profile text, as an
+  MCP-reachable store, or as repo files the spawned agent reads is undecided, and
+  it determines how much of it Tars carries in-context versus looks up.
