@@ -8,7 +8,7 @@ Spec: `PLAN.md` §Amendments + `docs/recon/DECISION.md` D2 / D4 / D6.
 | Step | What | State |
 |---|---|---|
 | B1 | Proxmox VM 102 `tars` — 8c / 8G / 50G, cloud-image + cloud-init, `local-lvm`, `vmbr0` | **PASS** |
-| B2 | Ubuntu 24.04 + minimal X + **Docker** (D6-5) + tailscale (additive, D4) | **PASS** except tailscale (awaiting lane-A key) |
+| B2 | Ubuntu 24.04 + minimal X + **Docker** (D6-5) + tailscale (additive, D4) | **PASS** |
 | B3 | SSH mesh: cooper · macOS · p-Hermes (read-only) | **PASS** |
 | B4 | Hermes install — base profile `~/.hermes` **is** Tars (D2/D6-4) | **PASS** |
 | B5 | plugins ∥: rtk · hindsight · hermes-lcm · i-have-adhd | **PASS** (hindsight partial — credential) |
@@ -349,3 +349,27 @@ control worth a decision before Tars goes live.
 CloakBrowser's live CDP fetch. No Slack round trip, no model call, no memory write, no A2A request
 has been exercised — by design, since all four need credentials lane B must not hold. **WF4 is
 where "done" becomes "exercised."**
+
+## 2026-08-07 — B2 tailscale: **PASS** (deferred item closed; lane B's last open deviation)
+
+Lane A minted the key and joined the VM; evidence in [`status/probes/tailscale-join.md`](probes/tailscale-join.md).
+Recorded here by the lane-B session as single writer of this file, **after independent
+re-verification** — not on the strength of the report:
+
+| Claim | Verified |
+|---|---|
+| node on the tailnet | `tailscale status` → `100.116.31.76  tars  gaetan.cathelain@  linux` |
+| identity / online | `Self.DNSName` `tars.tail6e788b.ts.net.`, `Self.Online` **true** |
+| reachable from cooper | `tailscale ping` → `pong from tars (100.116.31.76) in 1ms` |
+| **LAN stays primary (D4)** | the pong routed **`via 192.168.0.9:41641`** — the LAN address, not a DERP relay. Independently, `ip route get 192.168.0.4` on the VM still resolves `dev eth0 src 192.168.0.9`. Tailscale is additive exactly as D4 required. |
+| key spent + shredded | no `*authkey*` / `*tskey*` file anywhere under `/root`, `/home/gaetan`, `/tmp` |
+| gateway invariant survived | still `disabled` + `inactive` |
+
+**This closes the last open deviation in lane B.** B1–B7 are now unqualified PASS.
+
+**One follow-up it does *not* close, for WF3.** The macOS SSH leg is still LAN/DHCP-fragile: the
+VM's `~/.ssh/config` `mac` alias points at `192.168.0.23`, a DHCP lease that has already drifted
+once (cooper's own config still holds a dead `192.168.0.34`). Tars joining the tailnet makes the
+fix *possible* but does not apply it — repointing the `mac` alias at the Mac's stable tailnet
+address is a one-line WF3 edit. Until then the leg works (`ssh mac true` → exit 0, re-confirmed
+just now) but will break on the Mac's next lease change.
