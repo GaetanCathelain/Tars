@@ -51,6 +51,16 @@ turns die after 3 continuation attempts (single-tool turns fine).
 
 ## Log
 
+- 2026-08-07 — **WF4 CLOSED — Tars live and verified.** 15 probes exercised post-cutover:
+  14 PASS, 0 FAIL, probe 3 (negative test) DEFERRED-OPEN — no teammate available; §16 stub
+  ready, treated as build-blocking follow-up. Critic ran 4 cross-checks, marked 10 spec-stale
+  corrections, appended gap stubs §16–23 (`docs/specs/wf4-probes.md`). Exercised report:
+  `status/wf4-report.md`. Mid-WF4 incident fixed live: SOUL rule-4 identity gap made channel
+  turns return empty (5 calls/61s) — identity mapping + `·` rewording deployed, re-test
+  7.1s/1 call; rtk repaired (symlink + config, −62% measured). Probe 15 (added by Gaetan)
+  proved Tars→cooper delegation-lite via real terminal tool. A2A investigation queued in WF5
+  (PLAN.md). p-Hermes profile delete still gated — needs §23 byte-level before-evidence first.
+
 - 2026-08-07 — **CUTOVER EXECUTED** (Gaetan's go in-session, evidence `status/probes/cutover.md`):
   old `hermes-gateway-tars.service` on p-Hermes disabled+inactive via a prompt Gaetan piped to
   p-Hermes itself (no pve root; `reset-failed` applied to that unit only) → A5 tokens + 
