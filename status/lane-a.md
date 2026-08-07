@@ -21,12 +21,13 @@ Names only. Values live in `secrets/tars.sops.yaml` (SOPS+age, 2 recipients) or 
 
 ## Log
 
-- 2026-08-07 — **INCIDENT (open):** a probe agent ran `sops -d … | head -c 200` while sanity-checking
+- 2026-08-07 — **INCIDENT (closed — Gaetan accepted the risk 2026-08-07, no rotation):** a probe agent ran `sops -d … | head -c 200` while sanity-checking
   the age key and printed ~200 chars of `NOTION_TOKEN_V2` into its own transcript (local file +
   model context). Not the credential it was probing; no other key exposed. Scope: partial value of
   the Notion web-session cookie. Decision pending with Gaetan: rotate (Notion → log out of all
-  sessions; also invalidates mc-kestra's copy → re-harvest there) or accept. Probe procedure was
-  already file-only for the target token; the leak was a pre-probe sanity check.
+  sessions) judged not worth the mc-kestra re-harvest for a partial value scoped to the
+  bulk-export path. Probe procedure was already file-only for the target token; the leak was a
+  pre-probe sanity check. Standing fix: probe prompts now forbid any whole-file `sops -d` output.
 
 - 2026-08-07 — SOPS store bootstrapped (`scripts/tars-secret`, `.sops.yaml`); dummy-roundtrip
   verified. VM age key enrolled as 2nd recipient (canary: 2 recipients in metadata, cooper
