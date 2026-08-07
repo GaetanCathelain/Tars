@@ -147,11 +147,8 @@ walkthrough probes map 1:1 — which is why two of them are *renamed* on the way
 
 | `.env` key | Filled from | Lane A step |
 |---|---|---|
-| `GITHUB_PAT` | SOPS `GITHUB_PAT` | A1 |
+| `GITHUB_PAT` | **not set — `gh auth login` device-flow on the VM, self-managed, never in SOPS** (Gaetan's call; see `status/lane-a.md` A1) | A1 |
 | `LINEAR_API_KEY` | SOPS `LINEAR_API_KEY` | A2 |
-| `NOTION_TOKEN_V2` | SOPS `NOTION_TOKEN_V2` | A2 |
-| `NOTION_FILE_TOKEN` | SOPS `NOTION_FILE_TOKEN` | A2 |
-| `NOTION_SPACE_ID` | SOPS `NOTION_SPACE_ID` | A2 |
 | `GMAIL_ADDRESS` | SOPS `GMAIL_ADDRESS` | A3 |
 | `GMAIL_APP_PASSWORD` | SOPS `GMAIL_APP_PASSWORD` | A3 — Calendar rides on this, no key of its own (D6-2) |
 | `SLACK_MCP_XOXC_TOKEN` | SOPS **`SLACK_TOKEN`** | A4 — renamed for the MCP server's expected env name |
@@ -171,6 +168,13 @@ Not in `.env`, recorded so nobody goes looking:
   only "flow run, verified".
 - **`TARS_VM_SSH_PRIVATE_KEY`** — SOPS-stored, deployed to `~/.ssh/`, not a Hermes env var.
 - **Tailscale auth key** — minted fresh, single-use, spent on first `tailscale up`. Not stored (D5).
+- **`NOTION_TOKEN_V2` / `NOTION_FILE_TOKEN` / `NOTION_SPACE_ID`** — mc-kestra-reused bulk-export
+  path, **CANCELLED 2026-08-07 (Gaetan)**: Notion is MCP live-fetching only (`NOTION_API_TOKEN`,
+  above lane A2), no export path. Removed from the VM `.env` and from `secrets/tars.sops.yaml`
+  (`sops unset`, evidence `status/probes/cleanup-20260807.md`).
+- **`NOTION_API_KEY`** — the bundled hermes `notion` SKILL's own credential, distinct from
+  `NOTION_API_TOKEN` (the MCP server token, which stays). Dropped/never provisioned — the SKILL
+  is not in use.
 
 ---
 
