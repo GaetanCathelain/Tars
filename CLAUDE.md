@@ -25,7 +25,19 @@ PITCH.md → PLAN.md (run graph, §Amendments = settled decisions, §Phases = tr
                     lane-b.md = VM provisioning verdicts, wf4-report.md = verification
                     state, probes/ = one evidence file per probe/agent
   → secrets/        tars.sops.yaml (SOPS+age, 2 recipients: cooper + the VM)
+
+  SOUL.md           live mirror of ~/.hermes/SOUL.md on the VM
+  skills/<n>/SKILL.md  live mirror of ~/.hermes/skills/<n>/SKILL.md
 ```
+
+**Tars edits its own skills, and commits them here.** `skill_manage` lets Tars
+rewrite its own `SKILL.md` when a run teaches it something the file gets wrong —
+it did so 7 times during the first live Orca run. **SOUL rule 2 requires it to
+commit that edit to `skills/<name>/SKILL.md` and push, in the same turn.** So
+this mirror is authored by Tars as well as by us: when it and the VM disagree,
+find out which side moved before overwriting either. `artifacts/*-SKILL*.md` are
+frozen historical snapshots (what a proposal approved, what a rollback needs) —
+never the live copy.
 
 Specs are corrected in place when probes disprove them (marked "corrected
 post-WF4"); `status/lane-a.md` §Log is the authoritative timeline. Single

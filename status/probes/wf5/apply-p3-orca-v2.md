@@ -559,3 +559,88 @@ One thing that stays unresolved, and was already flagged: log
 was denied — so the file should have existed — but it was absent from the tree
 before the deletion. That discrepancy is now unfalsifiable on disk; the log text
 survives verbatim in the probe file.
+
+---
+
+## 15. Gaetan's ruling: keep `skill_manage`, but commit the edit
+
+> *"The model should still hold the skill manage possibility, it's just that it
+> should commit it too."*
+
+This closes §9.3 / §14.1's drift problem without taking the capability away. The
+edits Tars made were **right** — it corrected the file from live measurement,
+which is exactly the behaviour worth keeping. The defect was never the editing;
+it was that the edit lived nowhere reviewable.
+
+### 15.1 It required a SOUL change — rule 2 forbade it
+
+SOUL rule 2 read *"I never merge, approve or push."* Committing a skill edit is a
+push, so the instruction was **unimplementable as written**: rule 5 would have
+made Tars refuse in one line. Rule 2 now carries exactly one exception, scoped to
+Tars' own operating record and no further.
+
+Backup first, same discipline as P3: `~/.hermes/SOUL.md.bak-skillcommit`, md5
+`a9ea138590a97695352635e5efcf2f13`, `diff` empty. Applied under
+`flock ~/.hermes/.wf3.lock` by atomic rename at **2026-08-07T23:10:42Z**, no
+gateway restart. Rules verified still 1–8, in order, after the write.
+
+The new rule 2 states the duty (*an edit is not finished until it is committed —
+an uncommitted change to my own instructions is drift nobody can review, and the
+next person who reconciles the file silently destroys it*), carries the exact
+command sequence, and ends with the boundary: **"This exception covers my own
+skills and nothing else. It is not licence to push in a repo I was delegated work
+in — there, rule 2 stands whole."**
+
+The mechanism lives in SOUL rather than in a skill on purpose: `skill_manage` can
+fire in any turn, and SOUL is the only text guaranteed to be in context when it
+does.
+
+### 15.2 Verified by running it, not by reading it
+
+The flow in rule 2 was executed **verbatim, from the VM, as Tars would run it**:
+
+```bash
+N=delegate-to-cooper
+cat ~/.hermes/skills/$N/SKILL.md | ssh cooper "mkdir -p ~/dev/Tars/skills/$N && cat > ~/dev/Tars/skills/$N/SKILL.md"
+ssh cooper "cd ~/dev/Tars && git pull --rebase -q origin main \
+  && git add skills/$N/SKILL.md \
+  && git commit -q -m '…' && git push -q origin HEAD:main && echo PUSHED"
+```
+
+→ `PUSHED`. VM → cooper → commit → push works end to end, and that run is what
+seeded the mirror; it was not created by hand and then described as working.
+(`~/dev/Tars` on cooper is on `main` with remote
+`git@github.com:GaetanCathelain/Tars`. `mkdir -p` means the path self-bootstraps
+for any of the 7 Tars-editable local skills.)
+
+### 15.3 Repo layout — one canonical live copy, and frozen snapshots kept apart
+
+Two paths were doing one job, which is how the drift started. Now separated:
+
+| Path | Role | md5 |
+|---|---|---|
+| `skills/<name>/SKILL.md` | **live mirror**, = the VM. Tars writes here | `a6e0a4b5…` |
+| `SOUL.md` | **live mirror** of `~/.hermes/SOUL.md` | `13655395…` |
+| `artifacts/delegate-to-cooper-SKILL.md` | frozen: v2 exactly as P3 approved | `929b23de…` |
+| `artifacts/delegate-to-cooper-SKILL-after-tars-selfedit.md` | frozen: Tars' 22:50 self-edit | `60b9a244…` |
+| `artifacts/delegate-to-cooper-SKILL-v1-live.md` | frozen: v1, rollback | `d61888ec…` |
+
+`artifacts/delegate-to-cooper-SKILL.md` was **restored** to `929b23de…`. Several
+documents (`docs/proposals/P3-orca-v2-skill.md`, `docs/plans/apply-P3-orca-v2.md`,
+and §3/§7 above) describe that path as "the 437-line v2 replacement" — leaving
+the reconciled 512-line content there would have quietly falsified all of them.
+Frozen snapshots stay frozen; the live copy moved to `skills/`.
+
+`CLAUDE.md` records the mirror and the rule, including the warning that this tree
+is authored by Tars as well as by us — **when the mirror and the VM disagree,
+find out which side moved before overwriting either.**
+
+### 15.4 What this does and does not fix
+
+Fixed: an edit Tars makes is now reviewable, attributable and survivable. A future
+reconcile reads git instead of guessing, and `git log skills/` is the audit trail.
+
+Not fixed, and worth saying plainly: **this is a rule, not an enforcement.**
+Nothing prevents Tars from editing a skill and not committing it — the guarantee
+is only as strong as the model's compliance, exactly like SOUL rules 1–8. A hook
+on `skill_manage` would make it structural. Not built, not proposed here.
