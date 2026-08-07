@@ -148,7 +148,7 @@ curl -s -o /dev/null -w '%{http_code}\n' -u "$GMAIL_ADDRESS:$GMAIL_APP_PASSWORD"
   -X PROPFIND -H "Depth: 0" "https://www.google.com/calendar/dav/$GMAIL_ADDRESS/events"
 ```
 Pass evidence: Linear → 200 with `viewer.id`; Notion → 200 with a results envelope (empty counts);
-Calendar → `200`. All three run **from the VM**, not from cooper — the point is that the VM's copy
+Calendar → `207` Multi-Status (inner `HTTP/1.1 200 OK` — PROPFIND's success shape, never bare 200). All three run **from the VM**, not from cooper — the point is that the VM's copy
 of the secrets works.
 
 **Rollback**
