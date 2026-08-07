@@ -471,3 +471,91 @@ created in mc-metarepo, the delegated agent did real read-only work and reported
 back, and `worker-read` retrieved it. The unattended path was broken by 9.2 and
 is now fixed in the live skill — **that fix is unverified: no second run has
 exercised `terminal send --enter` end to end.**
+
+---
+
+## 14. Follow-up on Gaetan's word: reconcile git↔VM, remove the leftovers
+
+Both authorised explicitly after the E2E report.
+
+### 14.1 git↔VM reconciled — `a6e0a4b53a11b9f79d635c2ecf6cadc2`
+
+The live file and `artifacts/delegate-to-cooper-SKILL.md` now hold the same 512
+lines. Written under `flock ~/.hermes/.wf3.lock` by atomic rename; **mode
+restored `0600` → `0664`** (`skill_manage` had narrowed it). No gateway restart.
+`hermes skills list` after: entry enabled, totals still 80 enabled / 7 local.
+
+Base = Tars' self-edited version, because its structural fixes were right and I
+verified the central one independently. Removed from it the stale claims it left
+standing beside its own corrections:
+
+| Fixed | Was |
+|---|---|
+| Deleted *"a freshly created run answers `check --run … --peek` … `--run` addressing works standalone; that is the design"* | Sat **directly beside** Tars' contradicting `--terminal` correction — the single most dangerous line in the file |
+| Fallback trigger `no_active_terminal` | `run_not_found` — the wrong string, so the fallback could never fire |
+| `result.worker.state` | `result.state` — does not exist |
+| Id shapes marked CONFIRMED: `run_`/`task_`/`msg_` + **dispatch = `ctx_<hex>`** | "field name NOT confirmed live", and prose implying `dispatch_…` |
+| "the delivery id IS the message's own `id`, `msg_<hex>`" | "has not been observed live — take whatever names the delivery" |
+| Measured landing path (with its literal `null` segment) | A predicted `workspaces/mc-metarepo/<slug>` that is simply wrong |
+| `claude` is the only usable `--agent` | "only `claude` and `codex`" |
+| Failure table: added `no_active_terminal`, `no_active_sender_terminal`, the `count:0`-wrong-recipient case, and the unsubmitted-prompt trap | — |
+
+**A live race, caught.** Between my archive copy (22:50, `60b9a244…`) and the
+first reconcile write, Tars edited the file **again** at 22:55 (`5cc32dfc…`). I
+had based the reconcile on the stale copy. Rather than clobber, I diffed the
+generation I had missed and folded both of its findings back in:
+
+- **Three self-check gates before `orca worktree rm --force`** (clean
+  `--porcelain=v2 --untracked-files=all`, no unique commits via `rev-list
+  --left-right --count`, worker settled), plus the measured fact that
+  `worktree rm --force` can return `preservedBranch` and does **not** necessarily
+  delete the local branch.
+- **The worktree-level `preview` is unreliable** — it mixed stale
+  dispatch-prompt lines with later output while the input line was empty and
+  `agents[].state` was `done`. **This contradicted my own text**, which had told
+  Tars to judge the unsubmitted-prompt case from the preview. The remedy now
+  reads `terminal read --terminal <h> --limit 200 --json`, bottom `❯` line
+  authoritative.
+
+The second write carried an **md5 guard** that would abort rather than overwrite
+a further concurrent edit. It passed; live was still my own `967aa3ee…`.
+
+Rollback ladder on the VM, all three intact:
+
+| File | md5 | What it is |
+|---|---|---|
+| `SKILL.md` | `a6e0a4b5…` | reconciled canonical, = git |
+| `SKILL.md.bak-tars-selfedit` | `5cc32dfc…` | Tars' own final self-edit, 22:55 |
+| `SKILL.md.bak-p3` | `d61888ec…` | v1, pre-P3 |
+
+**Standing caveat: this can drift again at any time.** Tars holds `skill_manage`
+and rewrote this file seven times in one turn. git↔VM parity is a snapshot, not
+an invariant. Whether the model should be able to rewrite its own governing skill
+is an open design question, not something this lane settled.
+
+### 14.2 cooper v1 leftovers — REMOVED
+
+`~/orca/workspaces/tars-delegated/` is gone (`rm -rf`, 2026-08-07T23:05Z).
+
+Order of operations, deliberately: **archive → verify → commit → push → delete.**
+Nothing was removed until its content was durable in git.
+
+- Everything not already quoted verbatim in
+  `status/probes/wf5/p3-cooper-v1-leftovers.md` was appended verbatim first: all
+  six run logs, `first_10_primes.py`, and `NOTE.md` as it stood at removal.
+  (`delegate.sh` and `.claude/settings.json` were already there verbatim.)
+- A programmatic check confirmed **every** file's content is present in the doc
+  before the delete ran — `ALL PRESENT`.
+- Pre-delete checks: not a git repo (nothing tracked, no unpushed work), and
+  `orca worktree list` had **0** references to it.
+- Committed and pushed as `2087890` **before** the deletion.
+
+Removed: `delegate.sh`, `.claude/settings.json`, `first_10_primes.py`, six
+`logs/*.log`, `NOTE.md`, and the directory itself. `~/orca/workspaces/` now holds
+only `mc-metarepo/` and `Tars/`.
+
+One thing that stays unresolved, and was already flagged: log
+`20260807T202032Z.log` claimed it wrote `wf5-selftest.md` and that a `rm` on it
+was denied — so the file should have existed — but it was absent from the tree
+before the deletion. That discrepancy is now unfalsifiable on disk; the log text
+survives verbatim in the probe file.

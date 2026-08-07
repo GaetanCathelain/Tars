@@ -230,6 +230,13 @@ consequential.
 
 ## 7. What could be removed later (Gaetan's word required)
 
+> **UPDATE 2026-08-07T23:05Z — Gaetan gave the word, and the entire directory
+> `~/orca/workspaces/tars-delegated/` was removed.** Everything listed below was
+> first archived verbatim in §8 of this file, programmatically verified present,
+> and committed + pushed (`2087890`) **before** the delete ran. Pre-delete
+> checks: not a git repo, and `orca worktree list` held 0 references to it.
+> Details: `status/probes/wf5/apply-p3-orca-v2.md` §14.2.
+
 Bare paths, one-line risk note each. **Not removed — Gaetan's call only.**
 
 - `~/orca/workspaces/tars-delegated/delegate.sh` — the v1 entrypoint script itself; historical/reference value, low risk, but leave until v2 is confirmed stable.
