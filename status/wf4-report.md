@@ -6,16 +6,15 @@ Cutover: gateway first started **18:43:08Z**, `/sethome`-equivalent restart **18
 SOUL/rtk fix restart **19:40:45Z** (PID 76255). Every probe artifact is timestamped inside that
 window — no WF3 pre-run was reused as WF4 evidence.
 
-**Bottom line: Tars is live and verified, with one open security probe.** 14 of 15 probes PASS on
-evidence that survives an adversarial read — permalinks with matching ts, gateway INFO log lines
-tying Slack ts → session id → tool call → outbound send, and independent cross-checks rather than
-assertions. The one exception is **probe 3, the negative test**, deferred by Gaetan's decision for
-lack of a non-Gaetan sender: its configuration half is fully pinned and clean on all four D2
-controls, but no message from a foreign identity has ever hit the gate. **The residual risk is
-therefore precisely one thing: the allow-list has never been shown rejecting anyone.** Everything
-else — transport, gating on the mention axis, all nine credential rows, model, plugins, A2A, mesh,
-home-channel delivery, and Tars' own model→tool→ssh chain — is exercised. Ship, and treat probe
-16 (probe 3's re-run) as a build-blocking follow-up, not a nice-to-have.
+**Bottom line — AMENDED 20:26Z: Tars is live and verified, 15/15.** The open security probe
+closed the same evening as **PASS-ALLOWLIST** (`p16-negative-rerun.md`): a real teammate
+(Nans Brun Dumortier, `U05LKHLDV0A`) @mentioned Tars in `C08RWSTU9LK` at 20:18:15Z and the
+allowlist itself fired — `[Slack] Early reject of unauthorized user U05LKHLDV0A in channel
+C08RWSTU9LK` logged 0.445 s later, zero replies over 5.7 min, with an unprompted second reject
+(Jeremy Pinto, `U042B9WCSRF`, ×2) and in-window liveness (Tars answering Gaetan in the same
+channel at 20:23). The allow-list has now been shown rejecting real humans, twice. Residuals,
+accepted: the DM half of the negative test is inference (shared reject site, channel-only
+exercise) and the bot gate remains config-only. Ship.
 
 ---
 
@@ -25,7 +24,7 @@ home-channel delivery, and Tars' own model→tool→ssh chain — is exercised. 
 |---|---|---|---|---|
 | 1 | Slack DM round-trip | **PASS** | `p01` — `ping wf4-1` 19:01:31Z → `pong wf4-1` 19:01:37Z (6.04 s), both permalinks, `gateway.log` inbound+outbound, session store binds Slack ts → `20260807_190132_acf22e5f` | — |
 | 2 | Mention-gating | **PASS** | `p02` — mentioned msg dispatched (`inbound message: … chat=C08RWSTU9LK`); un-mentioned control produced **no inbound line at all** over 3m32s while the same PID ran probe 13's cron at 19:05:58 | — |
-| 3 | Negative test (non-Gaetan ignored) | **DEFERRED-OPEN** | `p03` — no send made; `claude_ai_Slack` connector proven to authenticate *as* `U08BDJAMSRZ`, so it would have been a positive test mislabelled. Config half pinned in full | WF3, build-blocking **if** it fails |
+| 3 | Negative test (non-Gaetan ignored) | **PASS-ALLOWLIST** (closed 20:26Z) | `p03` (config half) + `p16-negative-rerun` — real teammate mention rejected in 0.445 s with the positive `Early reject` WARNING; second human rejected ×2 unprompted; zero Tars replies; liveness in-window | — |
 | 4 | Gmail / Himalaya | **PASS** | `p04-08` §4 — 1 envelope, exit 0, himalaya v2.0.0 (`-m` not `-p`) | — |
 | 5 | Calendar CalDAV | **PASS** | `p04-08` §5 — HTTP **207** multistatus, never a bare 200 | — |
 | 6 | Linear | **PASS** | `p04-08` §6 — 200, `viewer.id` + `viewer.name` = Gaetan | — |
