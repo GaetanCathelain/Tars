@@ -44,9 +44,12 @@ post-cutover), send one message *without* @Tars, then one *with* it.
 **PASS evidence:** No reply to the unmentioned message (log/permalink showing silence within the
 wait window) and a reply to the mentioned one. Two permalinks + the matching gateway log lines.
 
-**FAIL:** WF3-owned if `slack.require_mention`/`slack.strict_mention` are missing from
-config.yaml (D2) — re-run config wiring, restart gateway. Cutover-owned if the bot was simply
-never invited to the test channel.
+**FAIL:** WF3-owned if the guardrails are missing — re-run config wiring, restart gateway.
+Cutover-owned if the bot was simply never invited to the test channel.
+**Probe trap (lane B B4):** `strict_mention` never appears in the parsed `PlatformConfig.extra` —
+the Slack plugin exports it as env var `SLACK_STRICT_MENTION` (verify `=true` in the gateway
+environment, not by grepping the config object). And if a guardrail appears not to apply, check
+for a stray top-level `platforms:` block first — it silently overrides `gateway.platforms.*`.
 
 **Timing:** Post-cutover only.
 

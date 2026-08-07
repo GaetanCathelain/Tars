@@ -95,9 +95,9 @@ gateway:
       require_mention: true            # copied from the live old profile (R3 §5)
       strict_mention: true             # ditto
       unauthorized_dm_behavior: ignore # ditto — this is what WF4's negative test targets
-    a2a:                               # PROVISIONAL NESTING — hypothesis, not evidence: live
-      enabled: true                    # v0.19.0 has `platforms:` top-level; lane B pins the real
-                                       # v0.20.0 path at B4 and its report overrides this block.
+    a2a:                               # CONFIRMED nesting (lane B B4, v0.20.0 loader source +
+      enabled: true                    # live A/B test). Trap: a top-level `platforms:` block
+                                       # silently WINS over gateway.platforms.* — never add one.
                                        # Inbound only (D2). No outbound toolset — YAGNI.
       extra:
         port: 9900                     # binds 127.0.0.1 by default while no A2A_BEARER_TOKEN is set

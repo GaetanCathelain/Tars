@@ -282,15 +282,21 @@ after (b) as well if the container was left running.
      assumes the leg exists.
 
 **Wire — model backend**
-3. `flock`-guarded edit of `~/.hermes/config.yaml`:
+3. `flock`-guarded edit of `~/.hermes/config.yaml`. **OVERRIDE, do not add-if-absent** (lane B
+   B4 verdict): the installer pre-fills `model.provider: auto`, `model.default:
+   anthropic/claude-opus-4.6`, `model.base_url: https://openrouter.ai/api/v1` — an "add the
+   block" step no-ops and leaves Tars pointed at OpenRouter with no key. Use `hermes config set`
+   (never assume a key is absent; the installer ships a ~92 KB default config — pristine copy at
+   `~/.hermes/config.yaml.installer-default`). Set all three:
    ```yaml
    model:
      provider: openai-codex
      default: gpt-5.6-sol
    ```
    `base_url` (`https://chatgpt.com/backend-api/codex`) is written by `hermes auth add` — **confirm
-   it is present, do not hand-write it** (R7 step 3). Do not copy p-Hermes' `tars` profile block:
-   it pins the stale `gpt-5.5`.
+   it REPLACED the openrouter value after the OAuth step; if the installer default survives,
+   `config set` it explicitly** (R7 step 3 + lane B B4). Do not copy p-Hermes' `tars` profile
+   block: it pins the stale `gpt-5.5`.
 4. Never copy p-Hermes' `auth.json`, never mirror it into SOPS (R7 §5 — rotating refresh token; a
    copied token can invalidate the live p-Hermes session).
 
