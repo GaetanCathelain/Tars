@@ -95,8 +95,8 @@ Orca-registered (P3) and absent from the VM; the SOUL sentence naming it stays a
 it is about preferences, and it is true. **Notion: no change** — the `notion` MCP server is *registered*
 (`hermes mcp list`); liveness was not re-tested for this proposal, and `hermes mcp list` is
 registry-only (`docs/facts.md`). **The 10 submodules: no** — uninitialized here, so product
-source is simply not in the KB; the SOUL sentence should say so, which is what kills the Q1
-"delegate a code read" reflex (P6-b).
+source is simply not in the KB — §1's SOUL sentence says so outright, which is what kills the
+Q1 "delegate a code read" reflex (P6-b).
 
 ## 1 — Search: name the clone in SOUL. The map waits for evidence.
 
@@ -259,7 +259,8 @@ worktree on cooper (repo `id:8099e312-…`, a *different* checkout).
 
 **The SOUL fix is measured through a proxy, not in place** — the path was named in the
 *question*, not in `SOUL.md`, and SOUL sits in a different prompt position and is always
-present. n=2. §Verify re-fires all five questions after the edit lands; if the win does not
+present — and it is two questions, one run each, no repeats. §Verify re-fires all five
+questions after the edit lands; if the win does not
 reproduce, that is the signal the map (or the map's *rules*) is doing real work after all.
 **LCM can still answer first from stale memory** — baseline Q5 was correct and read no file;
 precedence between `lcm_*` recall and a fresh `read_file` is untested. **Hit rate is bounded
