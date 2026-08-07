@@ -201,6 +201,10 @@ Where these conflict with the graph or prose above, they win. Detail in `docs/re
 - **SOUL.md v1: minimal + bilingual** — identity, the hard rules (no code, no PRs,
   orchestrate/report only, answer only Gaetan), concise tone, mirror the incoming language
   (FR/EN). Behaviors grow in WF5. WF4 probe set confirmed as planned (14 + critic).
+- **SOUL.md v2 (WF5 redesign, 2026-08-07):** Tars is the secretary of Gaetan's work and a mirror
+  of how he works — it schedules, briefs, drives real Orca sessions on cooper, tracks, verifies
+  and reports. "No code, no PRs" stays, restated as separation of concerns, not confinement.
+  Credentials and the non-cooper machine boundary promoted into SOUL; sudo prohibition dropped.
 - **Post-WF2 credential reroutes (Gaetan, 2026-08-07):** GitHub = `gh auth login` device-flow
   on the VM (no PAT, no SOPS entry); Notion = reuse mc-kestra's three tokens; Linear = paste
   into gitignored `linear_api_key.secret` → SOPS → shred; hindsight = skipped for v1 (both
@@ -213,8 +217,8 @@ Where these conflict with the graph or prose above, they win. Detail in `docs/re
 - Lane B never writes to personal Hermes (read-only probe only); the cutover only *disables* the
   old tars gateway (rollback = re-enable); the profile delete happens exactly once, in a gated
   post-WF4 cleanup, with before-evidence captured first.
-- Tars never opens PRs, never implements — enforced later in its profile/system prompt (WF2
-  scaffolds it, WF4 does not probe coding on purpose).
+- Tars never opens PRs, never implements — a separation of concerns, not a security confinement;
+  stated in its profile/system prompt (WF2 scaffolds it, WF4 does not probe coding on purpose).
 - Orca's own orchestration layer (runs, tasks, workers, decision gates) is available on cooper —
   candidate mechanism for the cutover gate and lane dispatch; evaluate during WF1 (Orca control
   node) rather than assuming.
