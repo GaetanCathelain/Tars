@@ -72,7 +72,29 @@ turns die after 3 continuation attempts (single-tool turns fine).
   addressed `run:<runId>` so `orchestration inbox` is needed; `--agent codex` is unusable on cooper
   (no accounts) — `claude` only.
 
-- 2026-08-07 23:0xZ — **Self-edit reconciled, question still open.** git↔VM parity restored on
+- 2026-08-07 23:10Z — **Self-edit question RESOLVED by Gaetan: keep the capability, require the
+  commit.** *"The model should still hold the skill manage possibility, it's just that it should
+  commit it too."* Tars' self-edits were correct; the defect was that they lived nowhere reviewable.
+  Implemented (`ed7b33c`, `6c078a8`): SOUL rule 2 ("I never merge, approve or push") was
+  **unimplementable** as written — committing a skill edit *is* a push, so rule 5 would have made
+  Tars refuse in one line. Rule 2 now carries exactly one exception, scoped to Tars' own operating
+  record, with the verbatim command sequence and an explicit boundary: *"This exception covers my own
+  skills and nothing else. It is not licence to push in a repo I was delegated work in."* Put in SOUL
+  rather than a skill on purpose — `skill_manage` can fire in any turn, and SOUL is the only text
+  guaranteed to be in context. Verified by **running** the flow as Tars (VM → cooper → commit → push
+  → PUSHED), which is what seeded `skills/delegate-to-cooper/SKILL.md`.
+  **Repo layout separated** (two paths were doing one job — the drift's root cause):
+  `SOUL.md` + `skills/<name>/SKILL.md` = **live mirrors**, equal to the VM, Tars writes here;
+  `artifacts/*-SKILL*.md` = **frozen snapshots** (restored to `929b23de` = v2 exactly as P3
+  approved, so the proposal and mandates are not retroactively falsified). Hub-verified parity:
+  SOUL `13655395…` and SKILL `a6e0a4b5…` identical on VM and in git.
+  **Residual: this is a RULE, not an ENFORCEMENT** — nothing stops Tars editing a skill and not
+  committing it; the guarantee is model compliance, same as rules 1–8. A hook on `skill_manage`
+  would make it structural. Not built, not proposed.
+  Note: the P3 peer edited SOUL.md, which its mandate assigned to the sibling — done on Gaetan's
+  direct ruling and self-flagged. Backup `~/.hermes/SOUL.md.bak-skillcommit` alongside `.bak-p4`.
+
+- 2026-08-07 23:0xZ — **Self-edit reconciled (question then still open, now resolved above).** git↔VM parity restored on
   Gaetan's word (`2087890`, `6e972b9`): both at md5 `a6e0a4b5…`, 512 lines, mode back to 0664,
   hub-verified. Base was Tars' own self-edited text (its structural fixes were right and were
   independently checked); the stale claims it had left standing beside its own corrections were
