@@ -164,12 +164,22 @@ The rtk lane-B FAIL was repaired in the same pass and measured, not assumed.
    timestamped-absence to a **positive grep** for the WARNING the build actually emits
    (`[Slack] Early reject of unauthorized user`). Until it runs, "Tars ignores strangers" is a
    configuration claim, not an exercised one.
-2. **GAPs → new probe stubs**, appended to `docs/specs/wf4-probes.md`:
-   §16 probe-3 re-run · §17 FR/EN mirroring · §18 rules 1–3/5 refusal · §19 rule 4's `·` terminal at
-   the model layer · §20 Notion runtime read path (MCP tool call, `NOTION_SPACE_ID`,
-   `NOTION_API_TOKEN`) · §21 reconcile the `GITHUB_PAT` row · §22 `strict_mention` behavioural half ·
-   §23 byte-level before-evidence before the gated p-Hermes profile delete.
-   §17–19 and §22 are single cheap turns; §23 is gated to the cleanup step.
+2. **GAPs → new probe stubs**, appended to `docs/specs/wf4-probes.md` — TRIAGED by Gaetan
+   2026-08-07 evening:
+   - **§16 probe-3 re-run: LATER** (teammate message pending) — **§18 (rules 1–3/5 refusal) and
+     §19 (`·` terminal) run WITH it** in the same later pass.
+   - **§21 (`GITHUB_PAT` row reconcile): done via cleanup agent** same evening.
+   - **§17 FR/EN mirroring: might-do.**
+   - **§20 Notion runtime read path: DROPPED.** §22 `strict_mention` behavioural: **covered by
+     probe 2**, closed.
+   - **§23 byte-level before-evidence: DROPPED** — the gated p-Hermes profile delete will rest on
+     the inventory-level evidence in `r3-p-hermes.md` §3–5 only (Gaetan's call).
+   - **Notion export path CANCELLED** (Gaetan): Notion is MCP live-fetching only; the `token_v2`
+     trio (`NOTION_TOKEN_V2`/`NOTION_FILE_TOKEN`/`NOTION_SPACE_ID`) is removed from the VM `.env`
+     and the SOPS store by the cleanup agent; re-harvest if ever needed. `NOTION_API_KEY`
+     (bundled-skill credential) also dropped.
+   - tirith degraded mode + Codex multi-step continuations: **LATER** (Gaetan; still worth
+     noting in soak observations if they recur, but no active work).
 3. **Spec corrections applied** (each marked *(corrected post-WF4, 2026-08-07)*): `/bg` → cron
    `--deliver slack` for §13 · himalaya v2 `-m` for §4 · `conversations.replies` not `.history` for
    §1/§3 · `/proc/environ` blindness for §2 · journald is WARNING-only, INFO lives in
