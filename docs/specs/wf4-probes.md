@@ -207,7 +207,7 @@ Tars VM — localhost-bound by default (D2/R1), not reachable remotely without a
 **PASS evidence:** 200 JSON agent card (name, capabilities, version). Inbound-only is correct —
 the outbound toolset staying disabled is not a failure (YAGNI, D2).
 
-**FAIL:** Lane-B-owned (B4) — `gateway.platforms.a2a.enabled` missing/false; fix config, restart
+**FAIL:** Lane-B-owned (B4) — a2a enable flag missing/false (config path per lane B's B4 report — `platforms:` may be top-level, not under `gateway:`); fix config, restart
 gateway.
 
 **Timing:** Pre-cutover capable.

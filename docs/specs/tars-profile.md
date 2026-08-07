@@ -129,7 +129,9 @@ caveat, all of these are LLM-summarized vendor reads, not byte-exact:
 `context.engine`'s exact value string · the `mcp_servers` block's real schema (stdio-`command` vs
 `url`) and the container's port · whether the three Slack guardrails nest under
 `gateway.platforms.slack` or a top-level `slack:` (R3 quoted them as `slack.require_mention`;
-`hermes config get` on the old profile settles it in one command at cutover).
+`hermes config get` on the old profile settles it in one command at cutover) · the a2a enable
+path likewise (lane B B2 report: live v0.19.0 has `platforms:` TOP-LEVEL, not under `gateway:` —
+lane B pins the v0.20.0 truth empirically at B4; take its report over this draft's nesting).
 
 ---
 
