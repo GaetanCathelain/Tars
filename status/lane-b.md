@@ -11,7 +11,7 @@ Spec: `PLAN.md` §Amendments + `docs/recon/DECISION.md` D2 / D4 / D6.
 | B2 | Ubuntu 24.04 + minimal X + **Docker** (D6-5) + tailscale (additive, D4) | **PASS** except tailscale (awaiting lane-A key) |
 | B3 | SSH mesh: cooper · macOS · p-Hermes (read-only) | **PASS** |
 | B4 | Hermes install — base profile `~/.hermes` **is** Tars (D2/D6-4) | **PASS** |
-| B5 | plugins ∥: rtk · hindsight · hermes-lcm · i-have-adhd | pending |
+| B5 | plugins ∥: rtk · hindsight · hermes-lcm · i-have-adhd | **PASS** (hindsight partial — credential) |
 | B6 | CloakBrowser | pending |
 | B7 | smoke check → verdict | pending |
 
@@ -191,3 +191,72 @@ never appears in `PlatformConfig.extra`** — the Slack plugin exports it as the
 4. **p-Hermes was never contacted during B4.** The v0.20.0 tree ships its own source and docs on the
    new VM, which is better evidence than reading a v0.19.0 config off the live box. The read-only
    constraint held by not needing to read at all.
+
+## 2026-08-07 — B5 plugins: **PASS** (hindsight partial, credential-blocked)
+
+Installed **one at a time, not fanned out** — four concurrent writers to a single `config.yaml`
+lose updates. Verified by this session against the live registry, not from the agent's report:
+
+| Plugin | Version | Registry state |
+|---|---|---|
+| rtk | 0.45.0 (curl installer, sha256-checked) → plugin `rtk-rewrite` 0.1.0 | **enabled** |
+| hermes-lcm | 0.21.0-rc2 | **enabled** |
+| i-have-adhd (skill) | scan verdict SAFE, no `--force` | **enabled** |
+| hindsight | client 0.9.0, `memory.provider` set | **partial** — see below |
+
+Config keys owned by B5 per the profile spec §4: `context.engine=lcm`,
+`memory.provider=hindsight`, `plugins.enabled=[hermes-lcm, rtk-rewrite]`. `.env` gained exactly
+one key: `HINDSIGHT_MODE`.
+
+### Documented flag spellings: 10 checked, **5 wrong**
+
+D2 warned these were LLM-summarized vendor docs. That warning earned its keep. Two failures are a
+dangerous class — **the command cancels unattended and still exits 0**:
+
+1. **`hermes memory setup` has zero non-interactive flags.** Headless, it cancels and returns 0.
+   Real path: `hermes config set memory.provider hindsight`. Any later step that shells this out
+   and tests `$?` will report success on a no-op.
+2. **`hermes skills install …` requires `--yes`** — identical exit-0-on-cancel trap.
+3. `HINDSIGHT_MODE=local` is a **legacy alias**; canonical is `local_embedded` (both accepted).
+4. `rtk init -g` is a genuine no-op for `--agent hermes` (dry-runs byte-identical).
+5. `rtk init --show` has no hermes branch — it reports "not found" **after a successful install**.
+   Verify with `hermes plugins list`, or a good install reads as a failure.
+
+`context.engine` is **`lcm`**, not `hermes-lcm`; the plugin README names both and requires both keys.
+
+### `config.yaml` was re-serialised — checked, not taken on trust
+
+The first `hermes config set` rewrote the file: **92,548 → 5,476 bytes, every comment stripped.**
+The agent asserted zero value loss. Re-derived independently by diffing *leaf keys* against
+`config.yaml.installer-default`: exactly one key vanished — **`max_concurrent_sessions`**. Its
+value was `null`, `hermes_cli/config_defaults.py` sets `None`, and it still resolves to `null`
+today. **No functional loss**, confirmed rather than assumed; the on-box documentation is
+genuinely gone, pristine copy retained at `~/.hermes/config.yaml.installer-default`.
+
+### Credential-blocked — WF3 owns it
+
+Hindsight's local-embedded extraction wants **`HINDSIGHT_LLM_API_KEY`**. This is a **distinct
+credential from Tars' model backend** — lane A's ChatGPT OAuth (A1b) does not satisfy it. Lane B
+supplied nothing and ran no auth flow.
+
+**Invariants re-checked after B5:** `auth.json` absent · gateway `disabled` + `inactive` ·
+`SOUL.md` still `diff`-identical to spec §1 · `model.*` untouched (still installer defaults).
+
+**Standing caveat:** none of B5 is runtime-proven. The gateway was deliberately never started, so
+every verdict above is config- and registry-layer. B7 states exactly what remains unexercised.
+
+## 2026-08-07 — SOPS: VM age keypair generated, sops installed, roundtrip proven
+
+Not in PLAN's B-chain but assigned to provisioning by D5 ("generated at provisioning"), and the
+lane-A SOPS store was bootstrapped without it — which would have made every already-encrypted
+secret undecryptable **on the Tars VM**, failing inside WF3's decrypt steps rather than here.
+
+- Keypair at `~/.config/sops/age/keys.txt` (dir 700, file 600). **Public half sent to the hub;
+  private half has never left the VM and was never printed.** Extracted with the documented
+  `grep -oE 'age1[0-9a-z]{58}'`, which structurally cannot match `AGE-SECRET-KEY-…`.
+- **sops 3.13.3** installed from the official .deb (not in Ubuntu repos) — WF3 must decrypt *on*
+  the VM, so the tool is a provisioning dependency.
+- **Encrypt→decrypt roundtrip proven on the VM with this key**, using a throwaway canary file and
+  no project secret. The VM side is known-good before WF3 relies on it.
+- Hub owns the follow-up: adding the recipient does **not** retroactively rewrap existing files —
+  `sops updatekeys secrets/tars.sops.yaml` must run and be committed before WF3's decrypt steps.
