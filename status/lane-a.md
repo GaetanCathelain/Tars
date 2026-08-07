@@ -51,6 +51,43 @@ turns die after 3 continuation attempts (single-tool turns fine).
 
 ## Log
 
+- 2026-08-07 22:32Z — **P3 + P4 APPLIED** (two peers, joint gate; Gaetan gave GO directly in each
+  tab). SOUL v2 live (`b1bcabf`), Orca v2 skill live (`290b7d4`), contradiction window ~2.5 min,
+  closed. First live mc-metarepo E2E **PASS** — Tars drove the `orca` CLI over ssh (never the v1
+  wrapper: the only behavioural proof of skill pickup), produced a real 22-directory map on branch
+  `GaetanCathelain/map-mc-metarepo-layout-readonly`, worktree kept per P3-a (mc-metarepo now at 10).
+  **Three defects found, all in evidence `status/probes/wf5/apply-p3-orca-v2.md`:**
+  (1) P3's load-bearing `--run` addressability claim is **DISPROVEN** — `check` needs
+  `--terminal <handle>` even with `--run`; the dismissed mechanical reviewer was right, the original
+  measurement was almost certainly taken inside an Orca-managed terminal. The skill's fallback was
+  keyed to the wrong error code and could never fire.
+  (2) `worker-start` reaching `ready` does **not** mean the agent started — Orca typed the brief
+  into the TUI and left it unsubmitted; `check --wait` would have hung forever, indistinguishable
+  from "still running". Gaetan caught it by pressing Enter himself. Remedy (`terminal send --enter`)
+  is in the skill but **UNVERIFIED**.
+  (3) **Tars self-edited its own governing SKILL.md** via `skill_manage` — sanctioned by Gaetan
+  in-thread, content correct, but unaccounted for by any spec. See the open decision below.
+  Also settled: no separate delivery-id field (`--ack` the message's own `msg_<12hex>`); dispatch
+  ids are `ctx_<12hex>`; `worker-show` state is at `result.worker.state`; a worker's reply is
+  addressed `run:<runId>` so `orchestration inbox` is needed; `--agent codex` is unusable on cooper
+  (no accounts) — `claude` only.
+
+- 2026-08-07 — **OPEN: Tars rewrites its own rules.** The live
+  `~/.hermes/skills/delegate-to-cooper/SKILL.md` has drifted from the reviewed v2 and is still
+  moving: applied 437 lines / md5 `929b23de`, archived post-self-edit 452 lines / `60b9a244`,
+  measured by the hub at 22:50 → **460 lines / 26791 B / md5 `1bd36e2b`**, mode narrowed 664→600 by
+  Tars. Both earlier versions are archived in `artifacts/`. Decisions for Gaetan: (a) keep the
+  self-edit capability or remove `skill_manage` from Tars' toolset; (b) reconcile git↔VM — adopt the
+  live file as authoritative or reset to the reviewed one; (c) the live file currently carries Tars'
+  `--terminal` correction immediately followed by the surviving, now-disproven "MEASURED … ok:true"
+  sentence, so it contradicts itself until someone edits it.
+
+- 2026-08-07 — **OPEN: allowlist reject UNVERIFIED post-P4.** Config unchanged, code path intact,
+  33 historical firings — but the newest is 20:46, before the apply, and with confinement dropped
+  this control is now the **sole** gate on transitive Orca access. Needs one message from a real
+  non-Gaetan Slack identity (the claude.ai connector cannot serve: it authenticates as Gaetan and is
+  dropped as a bot before the allowlist is reached).
+
 - 2026-08-07 — **WF4 negative test CLOSED as PASS-ALLOWLIST** (evening, teammate Nans):
   allowlist rejected a real mentioned message in 0.445 s with the positive `Early reject`
   WARNING; second human rejected ×2 unprompted. WF4 = **15/15**. Report amended.
