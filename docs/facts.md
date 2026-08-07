@@ -46,3 +46,69 @@ becomes N empty retries, a 61 s stall and a user-facing error. Rules must
 prescribe a minimal literal reply (Tars uses `·`) instead of "ignore in
 silence". The adapter allowlist rejects strangers before the model, so the
 model-level rule is a backstop only.
+
+## Thread behavior
+
+Verified 2026-08-07 (WF5). Hermes on the VM is a **source checkout**, not a venv
+install: `/home/gaetan/.hermes/hermes-agent/` (git `6e87d43`); `~/.local/bin/hermes`
+is a bash wrapper into it. All `adapter.py:N` below =
+`plugins/platforms/slack/adapter.py`. Evidence: `status/probes/wf5/`.
+
+### Gating — what wakes Tars
+
+| Fact | Evidence |
+|---|---|
+| **Gate order is allowlist → mention.** `SLACK_ALLOWED_USERS` early-reject at `adapter.py:5534-5550` (WARNING at `:5546`) runs **104 lines before** the first mention/thread branch (`:5654`); two more `_is_user_authorized` checks downstream (`gateway/run.py:14610` cold, `:8859` busy) exist against shared-thread injection. Live: a colleague's in-thread message produced the reject WARNING in 2 s | `wf5/log-forensics-reference-thread`, `wf5/source-gating` |
+| **Unmentioned messages are dropped with ZERO log output**, at any level — `strict_mention: true` hits a bare `return` with no logger call (`adapter.py:5707-5708`). Not a log-level artifact; never diagnose this from log silence | `wf5/log-forensics-reference-thread` |
+| **Thread participation buys nothing today.** In a thread where Tars had answered 13 s earlier, Gaetan's unmentioned replies were dropped; the mentioned ones answered in 6–17 s | `wf5/thread-behavior` §0 |
+| **Thread-follow already exists as dead code**: `_should_wake_on_unmentioned_message` (`adapter.py:5164`) implements 5 wake paths (bot-sent root, mentioned-thread memory, active session by thread ts, bot-authored root via API, parent-text mention), unreachable because `strict_mention` returns first. The knob is turning `strict_mention` **off**, keeping `require_mention: true` — top-level stays gated (`:5187-5188` needs a real `thread_ts`) | `wf5/source-gating`, `wf5/gating-verification` |
+| `strict_mention`/`require_mention` are **NOT env vars** — they live in `config.yaml` under `gateway.platforms.slack`. `strict_mention` is absent from the config.py shared-key bridge and reaches the adapter via `SLACK_STRICT_MENTION`, stamped under a `not os.getenv()` guard (`adapter.py:8994`); `_slack_strict_mention()` (`:8268`) reads `extra` first | `wf5/live-config-snapshot`, `wf5/source-gating` |
+| **A gateway RESTART is required to change it** — `PlatformConfig.extra` is built once at startup (`config.py:1441→671→706`, `base.py:2760`); no watcher rebuilds it for a connected adapter, and `ExecReload` is SIGUSR1 → full in-band restart. Live-reload does NOT cover this (it does cover most other keys) | `wf5/gating-verification` |
+| No plain-text name matching: `mention_patterns` unset, `_slack_mention_patterns` (`:8423`) has no bot-name default. Turning off `strict_mention` will not make Tars wake on the bare word "tars" | `wf5/gating-verification` |
+| `_mentioned_threads` is **RAM-only** (`adapter.py:975`), never persisted, and is not populated at all while `strict_mention: true` (`:5763-5768`) | `wf5/gating-verification` |
+| Message **edits** are a wake surface (`adapter.py:5291-5297`); `session_reset: {mode: none}` means no TTL path is reachable (`gateway/session.py:2210-2211`), so every past thread stays armed forever | `wf5/gating-verification` |
+| `allowed_channels` is unset. Read-only `users.conversations`: Tars is in exactly **one** channel (`C08RWSTU9LK` #gcn-sandbox, public) + 27 IMs — no MPIMs, no private channels. 1:1 DMs skip the gate block entirely (`:5654`) | `wf5/gating-verification` |
+
+### Context — what the model sees in a thread
+
+| Fact | Evidence |
+|---|---|
+| Session key (`gateway/session.py:1058`, non-DM `:1140-1173`): `agent:main:slack:<chat_type>:<team>:<channel>:<thread_ts>`. **User id is omitted when a thread ts is present** — a thread is one shared session. Top-level messages get a synthetic `thread_ts = ts` (`adapter.py:5588-5601`), so each starts its own session | `wf5/source-context`, `wf5/live-context-test-native` |
+| **Cold start fetches the real Slack thread**: `_fetch_thread_context` (`adapter.py:7197`) → `conversations.replies(limit=30+1, inclusive=True)` (`:7251`) on the cold branch (`:5800`), guarded by `_has_active_session_for_thread`; injected as a `[Thread context — …]` block (`:7340-7493`). **Steady state makes ZERO Slack calls** — context is Hermes' own transcript. No `conversations.history` anywhere in the gateway. Fails silently to `""` if the history scope is missing | `wf5/source-context` |
+| **A thread that predates Tars IS visible**, and so are messages Tars never *processed*. Proven live: a thread root Tars never received (it was connector-dropped) was recited verbatim by Tars on a cold mention — `tool_turns=0`, `history=0`, 7.66 s. Unmentioned ≠ unseen: invisible as a **trigger**, fully visible as **context** | `wf5/live-context-test-native` |
+| Injected block shape: `[Replying to: "…"]` + `[Thread context — prior messages in this thread (not yet in conversation history):]` / `[thread parent] <UID>: …` / `[End of thread context]` / `[New message]`. Inside the block senders render as **raw user IDs**, unlike the `[New message]` prefix `[{name} \| Slack user <@U…>]` (`run.py:16031-16034`). `[unverified]` tags non-allowlisted senders. **DMs get no prefix at all** | `wf5/live-context-test-native`, `wf5/source-context` |
+| Hydrate is **one-shot per thread session** at 31 messages — a deeper thread is not fully visible on cold read. Two watermark-scoped delta re-fetches exist (explicit @mention on a live thread; once-per-process restart rehydrate) | `wf5/source-context`, `wf5/live-context-test-native` |
+| `session_reset.mode: none` ⇒ **thread sessions never expire**; no turn cap. Only token-based trim: gateway hygiene at 0.85 of context (`run.py:16829`), agent compressor at 0.50 | `wf5/source-context` |
+| Canonical session store is **`~/.hermes/state.db`** (SQLite: `sessions`, `messages`, `messages_fts*`, `gateway_routing`). `~/.hermes/sessions/sessions.json` is a **legacy routing mirror only** — do not read it as truth. No `sqlite3` binary on the VM; use `python3 -c` with a `file:…?mode=ro` URI | `wf5/source-context`, `wf5/live-context-test-native` |
+| The 31-message window is not a real ceiling: Tars holds ~20 Slack MCP tools (`mcp__slack__conversations_replies`, `conversations_history`, search) on **Gaetan's user token**, and can read further whenever it decides to | `wf5/source-context` |
+
+### The claude.ai Slack connector CANNOT trigger Tars
+
+**Read-only for probing — channels and DMs alike.** `_event_declares_bot_sender`
+(`adapter.py:3130`) returns True for `app_id` set **and** `client_msg_id` absent
+(deliberate; the comment cites issue #35777) — exactly the shape of a connector
+post (`app_id=A08SF47R6P4`, no `client_msg_id`, no `bot_id`, `user=U08BDJAMSRZ`).
+It is then dropped at `adapter.py:5339` (`allow_bots == "none"`, the unset
+default); the `"mentions"` bypass at `:5341` is never reached, so **even an
+explicit `<@U0BBH85NAKH>` mention produces nothing**, and no log line is emitted
+(entry log is DEBUG-gated, level is INFO). The bot-sender filter precedes any
+`channel_type` branch, so DMs are affected too.
+
+⇒ Any live probe that needs a *response* must be sent **natively**, with the VM's
+`SLACK_MCP_XOXC_TOKEN` / `SLACK_MCP_XOXD_TOKEN` user credentials (tokens on stdin
+via `curl -K`, never argv). Verify with `auth.test` → `user_id U08BDJAMSRZ` first.
+The connector remains correct for *reading* Slack. Evidence:
+`wf5/connector-message-invisibility`, `wf5/live-context-test-native`.
+
+### Emoji / reaction triggers — the feature ships, it is switched off
+
+| Fact | Evidence |
+|---|---|
+| `reaction_added` **is already handled**: registered at `adapter.py:1996` → `_handle_slack_reaction()` (`:4773`). Shipped config key **`slack.reaction_triggers`** (list form triggers on ANY message, not only Tars' own). Kanban's 12 `kanban_*` tools are already live, so the *action* exists — only the *trigger* is off | `wf5/emoji-trigger` |
+| Full inbound event registry (`adapter.py:1952-2039`): `message`, `app_mention`, `app_home_opened`, `app_context_changed`, `file_shared`, `file_created`, `file_change`, `reaction_added`, `reaction_removed`, `assistant_thread_started`, `assistant_thread_context_changed`, + a `.*` catch-all no-op ack. Transport = **Socket Mode** (`adapter.py:1188`) | `wf5/emoji-trigger` |
+| **Sole blocker: `reactions:read` is not granted.** Live `auth.test` `x-oauth-scopes` shows 17 scopes, no `reactions:read`. Without it Slack never delivers the event | `wf5/emoji-trigger` |
+| **Pre-existing lapse: `reactions:write` is also absent**, so Tars' 👀 acknowledgement reaction has been silently failing since cutover | `wf5/emoji-trigger` |
+| Agent-class is **not** a blocker — Slack's AI-apps docs explicitly endorse subscribing to `reaction_added`, and Hermes' own manifest generator puts `reactions:read` + `reaction_added` in the base set for `messaging_experience: agent` (`hermes_cli/slack_cli.py:91`, `:104`) | `wf5/emoji-trigger` |
+| **It would answer in the right thread**: the handler resolves `item.ts` → true parent via `conversations.replies` (`adapter.py:4861-4877`) — reaction payloads carry no `thread_ts`. Verified live: passing a *reply's* ts returns the parent | `wf5/emoji-trigger` |
+| **Allowlist covers it** — the reaction synthesizes a message with the **reactor** as `user`, routed through the same `_handle_slack_message` auth chokepoint (`adapter.py:5528-5549`). It bypasses only the mention gate, via `_hermes_force_process` (`:4928`, `:5679`) | `wf5/emoji-trigger` |
+| Slack scopes are additive ⇒ adding one needs an app re-install but **no token change and no SOPS rotation expected**; confirm with `auth.test` after | `wf5/emoji-trigger` |

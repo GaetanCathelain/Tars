@@ -339,18 +339,102 @@ to file it" work, and it is also why the allowlist check above matters.
 Q1's gating behaviour was established from **existing** traffic (§0) — no probe
 messages were sent into the reference thread.
 
-### 4.2 The cold-thread context probe
+### 4.2 The cold-thread context probe — attempt 1 FAILED (invalid method)
 
 A fresh thread was seeded in `C08RWSTU9LK`, deliberately cold for Tars, to
-discriminate *adapter-injected context* from *model tool call*:
+discriminate *adapter-injected context* from *model tool call*. Both messages
+were sent **via the claude.ai Slack connector**:
 
-| ts | Content | Expectation |
+| ts | Content | Result |
 |---|---|---|
-| `1786136615.681079` | top-level, **no mention**, contains `TARSTHREAD-7Q4X` | silently dropped, zero log lines |
-| `1786136621.808629` | in-thread, **with** mention, asks for the code *without using any Slack tool* | cold-thread fetch injects the root ⇒ Tars can recite it |
+| `1786136615.681079` | top-level, **no mention**, contains `TARSTHREAD-7Q4X` | no reply (expected) |
+| `1786136621.808629` | in-thread, **WITH** `<@U0BBH85NAKH>` mention | **no reply — NOT expected** |
 
-Result and the decisive discriminator (did the model call a Slack MCP tool?):
-see `live-context-test.md`. _[filled in below once forensics landed]_
+Both landed in Slack, but the gateway logged **zero lines for either**, including
+the explicitly mentioned one, while it kept processing DM traffic normally.
+See `live-context-test.md`.
+
+### 4.3 Root cause — the connector cannot trigger Tars at all
+
+`_event_declares_bot_sender`, **`adapter.py:3130`**:
+
+```python
+if event.get("app_id") and not event.get("client_msg_id"):
+    return True   # comment cites issue #35777 — deliberate
+```
+
+Raw message metadata, fetched read-only via `conversations.replies`:
+
+| Field | connector-sent | natively typed |
+|---|---|---|
+| `app_id` | `A08SF47R6P4` | absent |
+| `client_msg_id` | **absent** | real UUID |
+| `bot_id` | absent (posts on Gaetan's *user* token) | absent |
+| `user` | `U08BDJAMSRZ` | `U08BDJAMSRZ` |
+
+So connector messages are flagged `sender_is_bot=True` and dropped at
+**`adapter.py:5339`** (`if allow_bots == "none": return`) — `SLACK_ALLOW_BOTS` /
+`config.extra.allow_bots` are unset on the VM, so the `"none"` default applies.
+The `"mentions"` bypass at `:5341` is **never reached**, which is why even an
+explicit mention produced nothing. No log line fires because the entry log is
+DEBUG-gated and the level is INFO.
+
+⇒ **The claude.ai Slack connector is READ-ONLY with respect to Tars.** It cannot
+trigger a reply in a channel *or* a DM (the bot-sender filter precedes any
+`channel_type` branch — same single `_handle_slack_message` for all `message`
+events). Any live probe needing a response must be sent **natively**, i.e. with
+the VM's `SLACK_MCP_XOXC_TOKEN` / `SLACK_MCP_XOXD_TOKEN` user credentials.
+See `connector-message-invisibility.md`.
+
+### 4.4 The cold-thread context probe — attempt 2, native Gaetan: **PASS**
+
+Sent with the VM's stored user credentials (tokens on stdin via `curl -K`, never
+on argv). `auth.test` → `ok:true`, `user_id U08BDJAMSRZ`, team `T7V1UGJ82` —
+native Gaetan, no `app_id`, no `*Sent using*` stamp. **Exactly one message sent**,
+into the *same* cold thread whose root Tars had never received.
+
+| | |
+|---|---|
+| probe ts | `1786137254.622319` (21:14:14.622 UTC) |
+| gateway saw it | **yes** — `21:14:15,752 gateway.run: inbound message: platform=slack user=U08BDJAMSRZ chat=C08RWSTU9LK … reply_to_id=1786136615.681079` |
+| Tars' answer | ts `1786137262.280399`, text **exactly `TARSTHREAD-7Q4X`** (`response=15 chars`) |
+| **tool calls** | **NONE** — `api_calls=1/500`, `tool_turns=0`, no `tool_executor` line; `mcp-stderr.log` unchanged (last entry 21:02:16, 12 min earlier) |
+| session | cold, `history=0` |
+| session key | `agent:main:slack:group:T7V1UGJ82:C08RWSTU9LK:1786136615.681079` (chat_type `group`) |
+| latency | **7.66 s** end-to-end (6.3 s gateway-internal) |
+
+The stored turn was read back from `state.db` (`mode=ro`). The model's **entire**
+1101-char input was:
+
+```
+[Replying to: "…TARSTHREAD-7Q4X…"]
+[Thread context — prior messages in this thread (not yet in conversation history):]
+[thread parent] U08BDJAMSRZ: …TARSTHREAD-7Q4X…
+U08BDJAMSRZ: …
+[End of thread context]
+[New message]
+…
+```
+
+Independently confirmed in Slack by reading the thread back: Tars' reply
+`TARSTHREAD-7Q4X` is present in-thread.
+
+**Verdict — §2 proven end to end.** The adapter injects real Slack thread history
+on cold start. Messages that were never *processed* — the connector-dropped root,
+and by the same mechanism any unmentioned message — remain **fully visible as
+context**, including history that predates Tars' participation. The connector
+stamp blocks *triggering*, not *visibility*. And Tars produced the code with
+**zero tool calls**, so this is adapter injection, not the model reading Slack.
+
+Two details worth recording:
+
+- No `[unverified]` tag appeared (both senders are allowlisted).
+- Inside the thread-context block, senders render as **raw user IDs**
+  (`U08BDJAMSRZ:`), not display names — distinct from the `[New message]` prefix
+  shape `[{name} | Slack user <@U…>]` (`run.py:16031-16034`). Relevant to the
+  identity-frame bug class in `docs/facts.md` §SOUL.
+- The hydrate is `conversations.replies(limit=31)`, **one-shot per thread
+  session** — a thread deeper than 30 replies is not fully visible on cold read.
 
 ---
 
