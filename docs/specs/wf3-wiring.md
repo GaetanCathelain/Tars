@@ -111,6 +111,13 @@ Mailbox list back = the credential is fine and the failure is Himalaya config.
 
 ## 2 — Linear + Notion + Calendar
 
+**GATE (Gaetan, 2026-08-07): before wiring Notion, verify the chosen Notion MCP server can
+consume the stored trio (token_v2 / file_token / space_id — internal web-session auth). Most MCP
+servers want a public-API integration token instead. Recon r8-notion-mcp.md answers this; if the
+verdict is integration-token, lane A mints one (2-min browser step, notion.so → integrations)
+and it lands in SOPS as NOTION_API_TOKEN before this agent runs.**
+
+
 **Preconditions**
 - SOPS: `LINEAR_API_KEY`; `NOTION_TOKEN_V2`, `NOTION_FILE_TOKEN`, `NOTION_SPACE_ID`;
   Calendar rides `GMAIL_ADDRESS` + `GMAIL_APP_PASSWORD` (D6-2 — no credential of its own).
