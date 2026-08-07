@@ -290,11 +290,14 @@ ssh cooper '~/.local/bin/orca orchestration check --terminal "<TERMINAL_HANDLE>"
 #   anything else, and carry it beside RUN_ID/TASK_ID/DISPATCH_ID. Every later
 #   check must acknowledge it — see "Acking, and why skipping it breaks the
 #   loop" below.
-#   OBSERVED LIVE 2026-08-07 — there is NO separate delivery-id field. The id I
-#   --ack is the message's own `id`, shaped msg_<12 hex>. A message carries:
-#   id, run_id, delivery_contract, from_handle, to_handle, subject, body, type,
-#   priority, thread_id, payload, read, sequence, created_at, delivered_at,
-#   sender_pane_key. (An empty batch carries only messages/count/acknowledged/runId.)
+#   CURRENT LIVE CONTRACT (Orca 1.4.176, measured 2026-08-07): capture the
+#   top-level `result.deliveryId`, shaped `delivery_<12 hex>`, and use that value
+#   with `--ack`. The nested message also has an `id` shaped `msg_<12 hex>`, but
+#   that is the message address, NOT the delivery acknowledgement token; passing
+#   it to `--ack` returns `stale_delivery`. A message carries: id, run_id,
+#   delivery_contract, from_handle, to_handle, subject, body, type, priority,
+#   thread_id, payload, read, sequence, created_at, delivered_at,
+#   sender_pane_key. (An empty batch has `deliveryId: null`.)
 #   TRAP: a worker's reply is addressed to_handle "run:<RUN_ID>" — the run's home
 #   inbox — so `check --terminal <a-handle-that-is-not-the-recipient>` returns
 #   count 0 while the message plainly exists. When I expect a message and get
