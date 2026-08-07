@@ -189,7 +189,9 @@ risks invalidating the live p-Hermes session).
 
 - **rtk:** `~/.config/rtk/config.toml` exists on the VM and the hermes hook has fired at least
   once — `rtk gain --history` shows an entry attributed to a hermes-proxied command.
-- **hindsight:** `hermes memory status` → provider `hindsight`, mode `local`.
+- **hindsight:** SKIPPED for v1 (Gaetan, 2026-08-07 — both HINDSIGHT_* keys deliberately absent).
+  Probe becomes: `hermes memory status` → provider `hindsight`, status `not available`, and the
+  gateway runs fine without it. A reply-works-without-memory check, not a memory check.
 - **hermes-lcm:** `context.engine: lcm` present in the profile's config.yaml; plugin shows active
   in `hermes plugins list`.
 - **i-have-adhd:** `hermes skills list` shows it installed, or invoking `/i-have-adhd` in a

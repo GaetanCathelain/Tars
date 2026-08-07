@@ -201,6 +201,10 @@ Where these conflict with the graph or prose above, they win. Detail in `docs/re
 - **SOUL.md v1: minimal + bilingual** — identity, the hard rules (no code, no PRs,
   orchestrate/report only, answer only Gaetan), concise tone, mirror the incoming language
   (FR/EN). Behaviors grow in WF5. WF4 probe set confirmed as planned (14 + critic).
+- **Post-WF2 credential reroutes (Gaetan, 2026-08-07):** GitHub = `gh auth login` device-flow
+  on the VM (no PAT, no SOPS entry); Notion = reuse mc-kestra's three tokens; Linear = paste
+  into gitignored `linear_api_key.secret` → SOPS → shred; hindsight = skipped for v1 (both
+  keys absent, memory `not available` accepted); the 6 bundled npm vulns get fixed on the VM.
 
 ## Guardrails
 

@@ -7,16 +7,16 @@ Names only. Values live in `secrets/tars.sops.yaml` (SOPS+age, 2 recipients) or 
 
 | # | Credential | SOPS key(s) | Harvested | Probed |
 |---|---|---|---|---|
-| A1 | GitHub PAT (`repo`+`read:org`, exp 2027-08-07) | `GITHUB_PAT` | ☐ | ☐ |
+| A1 | GitHub — `gh auth login` device-flow ON the VM (Gaetan's call; replaces the PAT) | — (VM gh store, never SOPS) | ◐ staged, awaiting authorize | ☐ |
 | A1b | ChatGPT-sub OAuth (`openai-codex`, on the VM) | — (never stored) | ☐ | ☐ |
-| A2 | Linear API key | `LINEAR_API_KEY` | ☐ | ☐ |
-| A2 | Notion (token_v2, file_token, space_id) | `NOTION_TOKEN_V2` `NOTION_FILE_TOKEN` `NOTION_SPACE_ID` | ☐ | ☐ |
+| A2 | Linear API key (paste-file `linear_api_key.secret` → SOPS → shred) | `LINEAR_API_KEY` | ☐ awaiting paste | ☐ |
+| A2 | Notion — reused from mc-kestra `.env` (Gaetan's call) | `NOTION_TOKEN_V2` `NOTION_FILE_TOKEN` `NOTION_SPACE_ID` | ☑ 2026-08-07 | ◐ probe running |
 | A3 | Gmail app password (Tars-labelled, 2nd one) | `GMAIL_ADDRESS` `GMAIL_APP_PASSWORD` | ☐ | ☐ |
 | A3 | Calendar (rides Gmail app password) | (same) | — | ☐ |
 | A4 | Slack personal xoxc/xoxd | `SLACK_TOKEN` `SLACK_COOKIE` | ☐ | ☐ |
 | A5 | Slack Tars app xoxb/xapp (held for cutover) | `SLACK_BOT_TOKEN` `SLACK_APP_TOKEN` | ☐ | ☐ |
 | — | Tailscale auth key (single-use, → lane B/WF3) | not stored (0600 handoff file) | ☐ blocked: console 500 | — |
-| — | Hindsight keys (2× — see tars-profile §3) | `HINDSIGHT_API_KEY` `HINDSIGHT_LLM_API_KEY` | ☐ decision pending | ☐ |
+| — | Hindsight keys (2×) | — | ✗ SKIPPED for v1 (Gaetan, 2026-08-07) | — |
 
 ## Log
 

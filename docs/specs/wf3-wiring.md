@@ -152,49 +152,37 @@ of the secrets works.
 
 ---
 
-## 3 — GitHub PAT + mc-metarepo clone
+## 3 — GitHub via `gh` CLI + mc-metarepo clone
+
+**REWRITTEN 2026-08-07 (Gaetan's call): no PAT, no SOPS entry.** `gh auth login` device-flow ran
+directly on the VM (lane A staged it; Gaetan authorized in his browser). The credential lives in
+the VM's gh store, self-managed, like A1b's OAuth.
 
 **Preconditions**
-- SOPS: `GITHUB_PAT` (classic, `repo` + `read:org`, 1-year expiry per D5).
-- Lane B: B2 done (`git` present). A1 is the gate for this whole agent.
+- `gh auth status` on the VM → logged in, scopes include `repo` (+ org access).
+- Lane B: B2 done (`git` present). The completed device-flow is the gate for this agent.
 
 **Wire**
-1. PAT into `.env` (conventions block).
-2. `GIT_ASKPASS` helper, 0700, so no token ever enters a URL or `.git/config`:
-   ```sh
-   umask 077; mkdir -p ~/.hermes/.secrets
-   cat > ~/.hermes/.secrets/gh-askpass <<'EOF'
-   #!/bin/sh
-   case "$1" in Username*) echo "GaetanCathelain" ;; *) printf '%s' "$GITHUB_PAT" ;; esac
-   EOF
-   chmod 700 ~/.hermes/.secrets/gh-askpass
-   ```
-3. Clone with the helper, HTTPS, never `https://<token>@github.com/...`:
-   ```sh
-   GIT_ASKPASS=~/.hermes/.secrets/gh-askpass git clone \
-     https://github.com/mobile-club/metarepo.git ~/dev/mc-metarepo
-   ```
-4. Persist for later pulls: `git -C ~/dev/mc-metarepo config core.askPass ~/.hermes/.secrets/gh-askpass`.
-   Do **not** enable `credential.helper store` — that writes the token to a second plaintext file.
-5. Report the PAT's expiry date in the verdict so the orchestrator can log the calendar reminder
-   (D5 — the one standing risk this build accepts).
+1. `gh auth setup-git` — routes git HTTPS auth through gh's credential helper; no token in any
+   URL, `.git/config`, or plaintext helper file.
+2. `git clone https://github.com/mobile-club/metarepo.git ~/dev/mc-metarepo`.
+3. Do **not** add `credential.helper store` and do not create askpass files — gh IS the helper.
 
 **Probe (ends the agent)**
 ```sh
-printf 'header = "Authorization: Bearer %s"\n' "$GITHUB_PAT" > /tmp/gh.cfg
-curl -s -K /tmp/gh.cfg https://api.github.com/repos/mobile-club/metarepo | jq .private; shred -u /tmp/gh.cfg
+gh auth status --hostname github.com
+gh api repos/mobile-club/metarepo --jq .private
 git -C ~/dev/mc-metarepo rev-parse --short HEAD
-grep -c 'ghp_\|github_pat_' ~/dev/mc-metarepo/.git/config
+grep -c 'ghp_\|github_pat_\|x-access-token' ~/dev/mc-metarepo/.git/config
 ```
-Pass evidence: `true` · a commit SHA · `0`. The third line is not optional — it is the check that
-the clone did not persist the credential.
+Pass evidence: logged-in status · `true` · a commit SHA · `0`. The last line stays non-optional —
+it is the check that the clone did not persist a raw credential.
 
 **Rollback**
-- `.private` not `true` → scopes wrong or the token cannot see the org; re-mint in lane A with
-  `repo` + `read:org`. Nothing on the VM to undo.
-- Clone fails after the API call passes → network/host-key issue, retry; do not re-mint.
-- Any grep hit ≠ 0 → `rm -rf ~/dev/mc-metarepo`, treat the PAT as leaked to disk, re-mint and
-  re-clone with the helper. Non-negotiable.
+- `.private` not `true` / 404 → the gh login lacks org access; re-run the device flow in lane A
+  (`gh auth refresh -s repo,read:org` first — cheaper than a full re-login). Nothing to undo.
+- Clone fails after the API call passes → network/host-key issue, retry; do not re-auth.
+- Any grep hit ≠ 0 → `rm -rf ~/dev/mc-metarepo`, `gh auth logout` + fresh device flow, re-clone.
 
 ---
 
