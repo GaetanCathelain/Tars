@@ -158,7 +158,7 @@ walkthrough probes map 1:1 — which is why two of them are *renamed* on the way
 | `SLACK_APP_TOKEN` | SOPS `SLACK_APP_TOKEN` | A5 — held until cutover |
 | `SLACK_ALLOWED_USERS` | **cutover-owned — no SOPS key.** Gaetan's Slack member ID, re-derived at cutover from A4's `auth.test` response (`user`). DECISION Blocker 2. | cutover |
 | `SLACK_HOME_CHANNEL` | **`.env` only, no SOPS key, not a secret.** Set/confirmed by `/sethome` in the live DM at cutover — messaging-only command, cannot be pre-scripted (R1). | cutover |
-| `HINDSIGHT_MODE` | not a secret — literal `local` (R1 §hindsight). Open item for WF3: local mode wants an LLM key, and the OAuth path has none. | WF3 |
+| `HINDSIGHT_MODE` | not a secret — `local_embedded` (canonical; `local` = legacy alias, lane B B5). Already written by B5. Open item for WF3: hindsight wants `HINDSIGHT_LLM_API_KEY` — a DISTINCT credential, not satisfied by A1b's ChatGPT OAuth; lane A mints/sources it before WF3. | WF3 |
 
 Not in `.env`, recorded so nobody goes looking:
 

@@ -84,11 +84,14 @@ Concretely:
   `override.conf`. R3 found it set in two places with unconfirmed precedence; one source of truth
   removes the question instead of answering it. `/sethome` in the live DM at cutover sets/confirms
   it (messaging-only command, cannot be pre-scripted).
-- Plugins (B5): `rtk init --agent hermes` after installing rtk via its direct `curl | sh` installer (lane B correction 2026-08-07: no Homebrew bootstrap for one binary); `hermes memory setup` →
-  hindsight in `HINDSIGHT_MODE=local`; `hermes plugins install stephenschoettler/hermes-lcm
-  --enable` + `context.engine:` per its own README; `hermes skills install
-  ayghri/i-have-adhd/skills/i-have-adhd`. Confirm exact flag spellings with `--help` before
-  scripting — R1's facts are LLM-summarized vendor docs, not byte-exact.
+- Plugins (B5): **as-executed spellings (lane B B5 verdict 2026-08-07 — 5 of 10 documented
+  spellings were wrong, two cancel-with-exit-0 headless):** rtk via its direct `curl | sh`
+  installer then `rtk init --agent hermes` (no `-g` — proven no-op; verify via `hermes plugins
+  list`, NOT `rtk init --show` which false-negatives); hindsight via `hermes config set
+  memory.provider hindsight` (NOT `hermes memory setup` — cancels headless with exit 0),
+  `HINDSIGHT_MODE=local_embedded` canonical (`local` is a legacy alias); `hermes plugins install
+  stephenschoettler/hermes-lcm --enable` + `context.engine: lcm` (not `hermes-lcm`); `hermes
+  skills install ayghri/i-have-adhd/skills/i-have-adhd --yes` (without `--yes`: exit-0 cancel).
 - A2A: enable **inbound only** at install (config key path UNCONFIRMED — live v0.19.0 has `platforms:` top-level, not under `gateway:`; lane B determines the v0.20.0 path empirically at B4. Port 9900,
   localhost-bound by default). Outbound toolset stays off until something concretely needs Tars to
   call another agent. YAGNI; flipping it later is one `hermes tools` call.

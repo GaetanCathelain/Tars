@@ -2,8 +2,10 @@
 # Amendments, docs/recon/DECISION.md D5). Public age keys are safe to commit;
 # private keys never leave ~/.config/sops/age/keys.txt on each machine.
 #
-# Tars VM's age key gets added as a second recipient + `sops updatekeys` when
-# lane B reports it (status/lane-b.md).
+# Recipients: cooper (2026-02-11 identity) + the Tars VM (enrolled 2026-08-07
+# from lane B's B5 report; VM-side roundtrip pre-verified by lane B).
 creation_rules:
   - path_regex: secrets/.*\.sops\.yaml$
-    age: age1rvzfqmq8csv8ksr8cztn4gla2tyn9ga43cv56j9uxrfs823s53jqgfjda4
+    age: >-
+      age1rvzfqmq8csv8ksr8cztn4gla2tyn9ga43cv56j9uxrfs823s53jqgfjda4,
+      age19wnmywuwenswzt2ycfq20v2xx0er8yvltkvp95kljmggqdz0dyrs88ws24
