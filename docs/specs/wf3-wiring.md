@@ -137,9 +137,11 @@ and it lands in SOPS as NOTION_API_TOKEN before this agent runs.**
 printf 'header = "Authorization: %s"\nheader = "Content-Type: application/json"\n' "$LINEAR_API_KEY" > /tmp/lin.cfg
 curl -s -K /tmp/lin.cfg -d '{"query":"{ viewer { id name } }"}' https://api.linear.app/graphql; shred -u /tmp/lin.cfg
 
-# Notion
-curl -s -b "token_v2=$NOTION_TOKEN_V2" -H "Content-Type: application/json" \
-  -d '{"query":"","spaceId":"'"$NOTION_SPACE_ID"'"}' https://www.notion.so/api/v3/search
+# Notion — loadUserContent with empty body, NOT /api/v3/search (its schema drifted; the search
+# probe 400s on ANY token. loadUserContent is auth-shaped: 200+recordMap valid, 401 invalid —
+# proven live 2026-08-07, status/probes/notion.md probes 4-5)
+curl -s -o /dev/null -w '%{http_code}\n' -b "token_v2=$NOTION_TOKEN_V2" \
+  -H "Content-Type: application/json" -d '{}' https://www.notion.so/api/v3/loadUserContent
 
 # Calendar (legacy DAV host — the only one that accepts Basic auth)
 curl -s -o /dev/null -w '%{http_code}\n' -u "$GMAIL_ADDRESS:$GMAIL_APP_PASSWORD" \

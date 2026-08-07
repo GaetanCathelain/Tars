@@ -7,10 +7,10 @@ Names only. Values live in `secrets/tars.sops.yaml` (SOPS+age, 2 recipients) or 
 
 | # | Credential | SOPS key(s) | Harvested | Probed |
 |---|---|---|---|---|
-| A1 | GitHub — `gh auth login` device-flow ON the VM (Gaetan's call; replaces the PAT) | — (VM gh store, never SOPS) | ◐ staged, awaiting authorize | ☐ |
+| A1 | GitHub — `gh auth login` device-flow ON the VM (Gaetan's call; replaces the PAT) | — (VM gh store, never SOPS) | ☑ 2026-08-07 | ☑ `repo`+`read:org`, metarepo `.private=true` from the VM |
 | A1b | ChatGPT-sub OAuth (`openai-codex`, on the VM) | — (never stored) | ☐ | ☐ |
-| A2 | Linear API key (paste-file `linear_api_key.secret` → SOPS → shred) | `LINEAR_API_KEY` | ☐ awaiting paste | ☐ |
-| A2 | Notion — reused from mc-kestra `.env` (Gaetan's call) | `NOTION_TOKEN_V2` `NOTION_FILE_TOKEN` `NOTION_SPACE_ID` | ☑ 2026-08-07 | ◐ probe running |
+| A2 | Linear API key (paste-file → SOPS → shred) | `LINEAR_API_KEY` | ☑ 2026-08-07 | ☑ 200, viewer = Gaëtan Cathelain |
+| A2 | Notion — reused from mc-kestra `.env` (Gaetan's call) | `NOTION_TOKEN_V2` `NOTION_FILE_TOKEN` `NOTION_SPACE_ID` | ☑ 2026-08-07 | ☑ token_v2 valid (loadUserContent 200 vs control 401); file_token deferred to first export. MCP-compat gate open (r8) |
 | A3 | Gmail app password (Tars-labelled, 2nd one) | `GMAIL_ADDRESS` `GMAIL_APP_PASSWORD` | ☐ | ☐ |
 | A3 | Calendar (rides Gmail app password) | (same) | — | ☐ |
 | A4 | Slack personal xoxc/xoxd | `SLACK_TOKEN` `SLACK_COOKIE` | ☐ | ☐ |
