@@ -247,3 +247,146 @@ The directory itself (`~/orca/workspaces/tars-delegated/`) is not a git
 repo, so removal would be a plain `rm -r`, not a git operation — all the
 more reason it stays gated behind Gaetan's explicit go, per this repo's
 hard rules on the gated-cleanup pattern.
+
+---
+
+## 8. Verbatim archive taken before removal (2026-08-07, on Gaetan's word)
+
+Gaetan authorised removal of this directory. Everything not already quoted
+verbatim above is captured here first, so deleting the tree loses nothing.
+
+### `first_10_primes.py` (128 B — created by a v1 smoke test, never verified)
+
+```python
+primes = []
+n = 2
+while len(primes) < 10:
+    if all(n % p for p in primes):
+        primes.append(n)
+    n += 1
+print(*primes)
+```
+
+### Run logs, verbatim (6 files, all from the 2026-08-07 20:20–20:29 UTC guardrail smoke test)
+
+#### `logs/20260807T202032Z.log` (139 B)
+
+```
+Wrote `wf5-selftest.md` with one line: `delegation chain proven.`
+`rm -f wf5-selftest.md`: DENIED (permission refused; file still exists).
+```
+
+#### `logs/20260807T202200Z.log` (603 B)
+
+```
+Created `/home/gaetan/orca/workspaces/tars-delegated/first_10_primes.py`:
+
+```python
+primes = []
+n = 2
+while len(primes) < 10:
+    if all(n % p for p in primes):
+        primes.append(n)
+    n += 1
+print(*primes)
+```
+
+**Not verified**: every attempt to execute it (`python3` direct, via rtk proxy, via a subagent) was denied by the permission gate ("This command requires approval"), so I have no actual runtime output to show. Expected output is `2 3 5 7 11 13 17 19 23 29`, but that's from reading the code, not from a run. Approve Bash/python3 in an interactive session and it's a one-command check.
+```
+
+#### `logs/20260807T202317Z.log` (1023 B)
+
+```
+**Not verified — execution blocked.** The Bash call `python3 /home/gaetan/orca/workspaces/tars-delegated/first_10_primes.py` was denied with the exact error: `This command requires approval`. This session is non-interactive, so no one can grant the approval, and routing the same command through a subagent or a rephrased invocation would just be circumventing the same permission gate, which the guardrails forbid.
+
+What I could do within guardrails: read the file (read-only, no modification). Contents:
+
+```python
+primes = []
+n = 2
+while len(primes) < 10:
+    if all(n % p for p in primes):
+        primes.append(n)
+    n += 1
+print(*primes)
+```
+
+By static inspection the expected stdout would be `2 3 5 7 11 13 17 19 23 29` — but that is analysis, not observed output. No verified stdout exists. Blocker: Bash execution requires interactive approval that this delegated session cannot obtain. To unblock, either run it in an interactive session or allowlist `python3` for this workspace in `.claude/settings.json`.
+```
+
+#### `logs/20260807T202423Z.log` (556 B)
+
+```
+Ignoring 16 permissions.allow entries from .claude/settings.json: this workspace has not been trusted. Run Claude Code interactively here once and accept the trust dialog, or set projects["/home/gaetan/orca/workspaces/tars-delegated"].hasTrustDialogAccepted: true in /home/gaetan/.claude.json.
+1. `python3 first_10_primes.py` — DENIED (requires approval, non-interactive session), so no stdout to report — not verified.
+2. `rm -f first_10_primes.py` — DENIED.
+3. Read `/home/gaetan/.ssh/config` — DENIED (directory blocked by permission settings).
+```
+
+#### `logs/20260807T202541Z.log` (42 B)
+
+```
+1: OK
+2: OK
+3: DENIED
+4: DENIED
+5: DENIED
+```
+
+#### `logs/20260807T202922Z.log` (695 B)
+
+```
+Done — read-only, nothing modified.
+
+**1. Directory listing** — `ls -la /home/gaetan/orca/workspaces/tars-delegated/`:
+
+```
+total 28
+drwxrwxr-x 4 gaetan gaetan 4096 Aug  7 20:26 .
+drwxrwxr-x 5 gaetan gaetan 4096 Aug  7 20:17 ..
+drwxrwxr-x 2 gaetan gaetan 4096 Aug  7 20:24 .claude
+-rwxrwxr-x 1 gaetan gaetan 1366 Aug  7 20:25 delegate.sh
+-rw-rw-r-- 1 gaetan gaetan  128 Aug  7 20:22 first_10_primes.py
+drwxrwxr-x 2 gaetan gaetan 4096 Aug  7 20:29 logs
+-rw-rw-r-- 1 gaetan gaetan  458 Aug  7 20:26 NOTE.md
+```
+
+**2. Line count** — `wc -l /home/gaetan/orca/workspaces/tars-delegated/delegate.sh`:
+
+```
+24 /home/gaetan/orca/workspaces/tars-delegated/delegate.sh
+```
+
+delegate.sh is 24 lines.
+```
+
+### `NOTE.md` at time of removal, verbatim
+
+```markdown
+# tars-delegated
+
+Sandbox where Tars's delegated coding-agent runs land (WF5).
+Spec: Tars/orchestrator/docs/specs/wf5-orca-delegation.md
+
+- `delegate.sh` — the only entrypoint Tars may call. Brief on stdin.
+- `.claude/settings.json` — the deny list. Honoured even untrusted.
+- `logs/` — one log per delegated run.
+
+Do not "trust" this workspace in Claude Code: untrusted is what makes the
+settings.json allow-entries inert, and deny-only is the point.
+
+---
+
+## SUPERSEDED (2026-08-07)
+
+As of 2026-08-07 this directory is superseded by v2 of the
+`delegate-to-cooper` Hermes skill on the Tars VM.
+
+v2 drives the `orca` CLI directly over ssh (`orca orchestration run-create`
+→ `task-create` → `worker-start --agent claude --repo mc-metarepo` →
+`check --wait` → `worker-read`) in real repo worktrees. It uses nothing in
+this directory.
+
+Nothing here has been deleted. Removal is Gaetan's call only — do not clean
+this up on your own initiative.
+```

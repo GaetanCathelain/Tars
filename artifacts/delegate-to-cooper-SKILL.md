@@ -197,33 +197,51 @@ ssh cooper 'cat > /tmp/tars-brief-<slug>.md' <<'BRIEF'
 BRIEF
 
 # ── 2. Durable run + task rows.
-ssh cooper '~/.local/bin/orca orchestration run-create --objective "<one line>" --json'
-#   -> the run id (expected at result.run.id — this field name is NOT confirmed
-#      live). Read the JSON myself; if that path is absent, take whatever id the
-#      response does carry and report the real shape in my reply.
+# First resolve a live Orca terminal handle to use as the sender. Plain SSH has
+# no active sender context on current Orca versions:
+ssh cooper '~/.local/bin/orca terminal list --worktree <selector> --json'
+# Pick a current terminal handle from the result and pass it explicitly:
+ssh cooper '~/.local/bin/orca orchestration run-create --objective "<one line>" --from "<TERMINAL_HANDLE>" --json'
+# Measured 2026-08-07: omitting --from from plain SSH returns
+# no_active_sender_terminal. -> the run id at result.run.id, shaped run_<12 hex>
+# (CONFIRMED live 2026-08-07, not a guess).
 ssh cooper '~/.local/bin/orca orchestration task-create --run "<RUN_ID>" \
-  --task-title "<short title>" --spec "$(cat /tmp/tars-brief-<slug>.md)" --json'
+  --from "<TERMINAL_HANDLE>" --task-title "<short title>" \
+  --spec "$(cat /tmp/tars-brief-<slug>.md)" --json'
 #   Single quotes around the whole remote command so $(cat …) expands ON COOPER.
-#   -> the task id (expected result.task.id, same caveat).
+#   Measured 2026-08-07: task-create also requires --from over plain SSH; the
+#   run id alone does not supply sender context.
+#   -> the task id, shaped task_<12 hex> (CONFIRMED live).
 
 # ── 3. Cheap checkpoint BEFORE committing to a long wait. --peek is read-only:
 #      it never marks a batch read, so it cannot consume a delivery I have not
 #      processed. [help-verified]
-ssh cooper '~/.local/bin/orca orchestration check --run "<RUN_ID>" --peek --json'
-#   Expect ok:true with runId echoed back (count 0 is fine — nothing has been
-#   sent yet). MEASURED 2026-08-07 from a plain shell with no Orca terminal and
-#   no run-use bind: a freshly created run answers `check --run … --peek`,
-#   `task-list --run` and `worker-list --run` with ok:true. --run addressing
-#   works standalone; that is the design.
-#   Only if `run_not_found` ever comes back on a run that `task-list --run` DOES
-#   resolve: `check` cannot bind it, so drop the push path for this run and poll
-#   `worker-show --dispatch <DISPATCH_ID> --json` → result.state instead
-#   (terminal values: succeeded | failed | stopped | abandoned). Say in my reply
-#   that I am polling.
+ssh cooper '~/.local/bin/orca orchestration check --terminal "<TERMINAL_HANDLE>" --run "<RUN_ID>" --peek --json'
+#   --terminal is MANDATORY here. MEASURED 2026-08-07, twice, independently:
+#   `check --run <id> --peek` from a plain ssh shell returns
+#   ok:false / error.code no_active_terminal, EVEN THOUGH --run is supplied and
+#   even though the run is real. `check` binds by TERMINAL identity; the run id
+#   alone never resolves it. (An earlier claim that --run addressing works
+#   standalone was measured from inside an Orca-managed terminal, which silently
+#   inherits that context — it does not describe my position. Deleted, not kept
+#   as a caveat, because believing it strands the whole loop.)
+#   What DOES work with no terminal context, measured: `task-list --run`,
+#   `worker-list --run`, `worker-show --dispatch`. So if `check` fails I am not
+#   blind — I still have a full polling path.
+#   Expect ok:true with runId echoed back; count 0 is fine, nothing has been sent
+#   yet.
+#   FALLBACK, and note the trigger is `no_active_terminal` — NOT `run_not_found`,
+#   which is the wrong string and would never fire: if I cannot get a usable
+#   terminal handle at all, drop the push path for this run and poll
+#   `worker-show --dispatch <DISPATCH_ID> --json` → **result.worker.state**
+#   (terminal values: succeeded | failed | stopped | abandoned). It is
+#   result.worker.state, NOT result.state — result.state does not exist.
+#   result.dispatch.status carries a separate value (`completed`). Say in my
+#   reply that I am polling.
 
 # ── 4. Spawn the worker in a real worktree of a real repo.
 ssh cooper '~/.local/bin/orca orchestration worker-start \
-  --run "<RUN_ID>" --task "<TASK_ID>" \
+  --run "<RUN_ID>" --task "<TASK_ID>" --from "<TERMINAL_HANDLE>" \
   --worktree new-top-level \
   --repo id:8099e312-3232-46f2-83a9-97aeaf5de5a2 \
   --name "<slug>" --agent claude --setup run --timeout-ms 200000 --json'
@@ -235,17 +253,35 @@ ssh cooper '~/.local/bin/orca orchestration worker-start \
 #   created, and do NOT re-run worker-start (that spawns a second worker).
 #   Recover the id first:
 #     ssh cooper '~/.local/bin/orca orchestration worker-list --run "<RUN_ID>" --json'
-#   Exits 0 ONLY when the worker reached `ready`. -> the dispatch id (expected
-#   result.dispatch.id, field name NOT confirmed live). THIS is the address I
-#   keep between turns.
-#   Predicted landing: /home/gaetan/orca/workspaces/mc-metarepo/<slug>
-#   Predicted branch:  GaetanCathelain/<slug>, off origin/main. Both are guesses
-#   — overwrite them with the `path`/`branch` the response actually returns.
-#   Only `claude` and `codex` are usable --agent values on cooper.
+#   Exits 0 ONLY when the worker reached `ready`. -> the dispatch id at
+#   result.dispatch.id (also workers[].dispatchId), CONFIRMED live 2026-08-07.
+#   Its shape is **ctx_<12 hex>**, NOT `dispatch_…` — do not pattern-match the
+#   prefix. THIS is the address I keep between turns.
+#   Measured 2026-08-07: worker-start can return state=ready/stage=input_accepted
+#   while Claude's prompt is only typed into the TUI and has NOT been submitted.
+#   The job then never starts and every wait times out looking like "still running".
+#   Do NOT judge this from the worktree-level `preview` — measured unreliable, it
+#   mixes stale dispatch-prompt lines with later output. Read the terminal itself:
+#     orca terminal read --terminal "<AGENT_TERMINAL_HANDLE>" --limit 200 --json
+#   The bottom `❯` line is authoritative. If the brief is sitting unsent there:
+#     orca terminal send --terminal "<AGENT_TERMINAL_HANDLE>" --enter --json
+#   Then confirm real activity (worker-show, or worktree ps -> agents[].state
+#   working) BEFORE beginning the wait.
+#   NEVER predict the landing path. Measured 2026-08-07, the first real run
+#   landed at
+#     /home/gaetan/dev/mc-metarepo/null/mc-metarepo/<slug>
+#   — a literal `null` segment, and nothing like the workspaces/ pattern I used
+#   to assume. Orca reports that path itself in effects[].id and
+#   worker.worktree_id, so it is Orca's construction, not a typo. Read `path`
+#   and `branch` out of the response and report those. Branch was
+#   GaetanCathelain/<slug>.
+#   `claude` is the only usable --agent value on cooper: measured, `orca account
+#   list --json` shows result.codex.accounts empty and activeAccountId null, so
+#   --agent codex has no account to run under.
 
 # ── 5. Block for completion. FIRST wait only — nothing has been delivered yet,
 #      so there is no delivery to acknowledge. See the cap below for why 240000.
-ssh cooper '~/.local/bin/orca orchestration check --run "<RUN_ID>" --wait \
+ssh cooper '~/.local/bin/orca orchestration check --terminal "<TERMINAL_HANDLE>" --run "<RUN_ID>" --wait \
   --types worker_done,escalation,question --timeout-ms 240000 --json' 2>/dev/null
 #   2>/dev/null drops the JSON keepalive lines Orca emits on stderr every 15s.
 #   Returns the moment worker_done lands, with an explicit outcome
@@ -253,10 +289,17 @@ ssh cooper '~/.local/bin/orca orchestration check --run "<RUN_ID>" --wait \
 #   IF IT RETURNED MESSAGES: capture the DELIVERY ID out of the response before
 #   anything else, and carry it beside RUN_ID/TASK_ID/DISPATCH_ID. Every later
 #   check must acknowledge it — see "Acking, and why skipping it breaks the
-#   loop" below. (The empty response carries messages/count/acknowledged/runId;
-#   the delivery id field name on a NON-empty batch has not been observed live —
-#   read the raw JSON, take whatever names the delivery, and report the real
-#   shape in my reply.)
+#   loop" below.
+#   OBSERVED LIVE 2026-08-07 — there is NO separate delivery-id field. The id I
+#   --ack is the message's own `id`, shaped msg_<12 hex>. A message carries:
+#   id, run_id, delivery_contract, from_handle, to_handle, subject, body, type,
+#   priority, thread_id, payload, read, sequence, created_at, delivered_at,
+#   sender_pane_key. (An empty batch carries only messages/count/acknowledged/runId.)
+#   TRAP: a worker's reply is addressed to_handle "run:<RUN_ID>" — the run's home
+#   inbox — so `check --terminal <a-handle-that-is-not-the-recipient>` returns
+#   count 0 while the message plainly exists. When I expect a message and get
+#   count 0, cross-check with `orca orchestration inbox --json`, which lists
+#   messages across ALL recipients, before concluding nothing arrived.
 
 # ── 6. Read what the agent produced.
 ssh cooper '~/.local/bin/orca orchestration worker-read --dispatch "<DISPATCH_ID>" --limit 200 --json'
@@ -279,10 +322,26 @@ throwaway session Gaetan will drive himself; they are wrong for delegated work.
 **Cleanup of the worktree is not automatic and not my default.** The checkout
 and its branch are the work product — leave them and report the path and branch
 so Gaetan can pick it up in Orca. Remove one only when Gaetan asks or the run
-produced nothing worth keeping:
-`orca worktree rm --worktree "id:<repoId>::<absPath>" --force --json`. It is
-irreversible for the local checkout. Worktrees accumulate; if I notice a pile of
-stale ones, I say so rather than deleting on my own initiative.
+produced nothing worth keeping.
+
+Before any forced removal, self-check all three gates rather than trusting the
+worker's report: (1) `git status --porcelain=v2 --untracked-files=all` is empty
+and `git status --short --ignored` shows no generated/ignored leftovers worth
+keeping; (2) `git rev-list --left-right --count <base>...HEAD` shows no unique
+worktree commits; (3) `worker-show --dispatch <id>` is settled and its terminal
+has no active task. If any gate is non-empty or ambiguous, stop and report what
+would be lost instead of deleting. If all are clean and deletion was requested,
+announce the exact path and branch about to be irreversibly removed and leave
+Gaetan one beat to stop it. Then use the force flag explicitly:
+`orca worktree rm --worktree "id:<repoId>::<absPath>" --force --json`. Measured
+2026-08-07: this removes the checkout but can return `preservedBranch`; it does
+not necessarily delete the local branch. If branch deletion was part of the
+announced cleanup and the no-unique-commits gate passed, delete that branch
+explicitly from the main checkout with `git branch -D <branch>`. Verify that
+Orca returns `selector_not_found`, the filesystem path is absent, `git worktree
+list` has no entry, and `git show-ref --verify refs/heads/<branch>` is absent.
+Worktrees accumulate; if I notice a pile of stale ones, I say so rather than
+deleting on my own initiative.
 
 ## The 300s cap — a timeout is a checkpoint, not a failure
 
@@ -346,10 +405,14 @@ does all three [help-verified]:
 ssh cooper '~/.local/bin/orca orchestration worker-show --dispatch "<DISPATCH_ID>" --json'
 
 # Then acknowledge the batch I already processed AND block for the next one:
-ssh cooper '~/.local/bin/orca orchestration check --run "<RUN_ID>" \
+ssh cooper '~/.local/bin/orca orchestration check --terminal "<TERMINAL_HANDLE>" --run "<RUN_ID>" \
   --ack "<DELIVERY_ID>" --wait \
   --types worker_done,escalation,question --timeout-ms 240000 --json' 2>/dev/null
 ```
+
+`<DELIVERY_ID>` is the **message's own `id`**, shaped `msg_<12 hex>` — measured
+2026-08-07. There is no separate delivery-id field to hunt for; if a message came
+back, its `id` is what I ack.
 
 Only the **first** wait of a run omits `--ack` — nothing has been delivered yet.
 Every wait after a delivery carries the id of the delivery it handled. If the
@@ -395,6 +458,14 @@ ssh cooper '~/.local/bin/orca orchestration task-list --run "<RUN_ID>" --json'
 worktree doing", with per-agent `state` (working / waiting / permission / idle),
 `agentType` and the last assistant message.
 
+**Do not treat the worktree-level `preview` as pending input.** Measured
+2026-08-07: after a completed worker, that preview mixed stale lines from the
+original dispatch prompt (`=== AFTER YOU SEND worker_done ===`) with later TUI
+output even though the Claude input line was empty and `agents[].state` was
+`done`. To decide whether anything is actually waiting to be sent, inspect
+`agents[].state` / `lastAssistantMessage` and run `terminal read --terminal
+<handle> --limit 200 --json`; the bottom `❯` line is authoritative.
+
 Flag traps, measured: `run-show` takes `--id`, **not** `--run`. `orchestration
 inbox` does **not** accept `--run` (only `--terminal`). `worker-list` has no
 `--status` and no `--all`. When in doubt, run `--help` on cooper before typing a
@@ -406,13 +477,17 @@ flag — CLI facts I half-remember are not evidence.
 |---|---|---|
 | `status --json` → `runtime.reachable: false` | Orca desktop app is not open on cooper | Stop. Tell Gaetan the app is down; nothing else will work. Do not retry the sequence. |
 | `error.code: repo_not_found` | bad `--repo` selector | Re-list repos, fix the selector. |
-| `error.code: run_not_found` on `check` | almost always a bad run id — a freshly created run answers `--run` fine (measured 2026-08-07) | Cross-check with `task-list --run <id> --json`. If *that* resolves, the run is real and `check` cannot bind it: say so and poll `worker-show --dispatch <id> --json` → `result.state` for the rest of this run. |
+| `error.code: no_active_terminal` on `check` | **the common one.** I omitted `--terminal`, or passed a stale handle. `--run` alone NEVER resolves `check` — measured twice, independently, 2026-08-07 | Re-resolve a live handle (`terminal list --worktree <selector> --json`) and retry with `--terminal <handle> --run <id>`. If no handle is obtainable, drop the push path and poll `worker-show --dispatch <id> --json` → `result.worker.state`. |
+| `error.code: no_active_sender_terminal` on `run-create` / `task-create` / `worker-start` | same cause, sender side: `--from` missing | Resolve a handle and pass `--from "<TERMINAL_HANDLE>"`. |
+| `check` returns `count: 0` when I expect a message | the message is addressed `to_handle: "run:<RUN_ID>"`, not to the terminal I passed | Cross-check `orca orchestration inbox --json` (lists all recipients) before concluding nothing arrived. |
+| `error.code: run_not_found` on `check` | a genuinely bad run id | Cross-check with `task-list --run <id> --json` — that verb needs no terminal context. If it resolves, the run is real and my `--terminal` is the problem, not the run id. |
 | `error.code: dispatch_not_found` | bad dispatch id | Re-read it from my own earlier reply or `worker-list --run <id>`. |
 | `error.code: invalid_argument` | unknown flag **or** rejected flag value | Unknown flag ⇒ `error.data.validFlags` is the fix list. Rejected value ⇒ there is no `validFlags`; `error.message` names it (`Invalid --types: …`). Re-read `--help` for that command; do not improvise. |
 | `worker-start` exits 1 | the worker never reached `ready` | Read `stage` / `failedStage` / `effects` / `residualResources` in the JSON and report the reason. **Do not blind-retry** — a half-started worker may have left a worktree behind. |
 | `worker-start` killed at my 300s cap, no JSON | the mutation may still have landed | **Do not assume nothing was created and do not re-run it.** `worker-list --run <RUN_ID> --json` first: if a dispatch is there, adopt its id and carry on from step 5. |
-| `check` returns the SAME message I already reported | I waited again without `--ack` | Ack the delivery I processed, then wait: `check --run <id> --ack <DELIVERY_ID> --wait …`. Un-acked, the batch replays forever and the next message never arrives. |
-| `check --wait` → `ok:true`, `{count:0}`, exit 0 | timed out with nothing finished | Checkpoint, not failure. Report "still running" with the ids, re-attach later. |
+| `worker-start` → `ready` / `input_accepted`, but nothing ever finishes | **the prompt was typed into the TUI and never submitted.** Measured on the first live run 2026-08-07: the worker sat at `ready` with the brief on the input line, unstarted. `check --wait` would time out forever on a job that never began | `terminal read --terminal <handle> --limit 200 --json` — the bottom `❯` line is authoritative, the worktree `preview` is not. If the brief is sitting unsent, `orca terminal send --terminal "<AGENT_TERMINAL_HANDLE>" --enter --json`. Then confirm real activity (`worker-show`, or `worktree ps` → `agents[].state: working`) **before** starting the wait. |
+| `check` returns the SAME message I already reported | I waited again without `--ack` | Ack the delivery I processed, then wait: `check --terminal <handle> --run <id> --ack <MSG_ID> --wait …`. Un-acked, the batch replays forever and the next message never arrives. |
+| `check --wait` → `ok:true`, `{count:0}`, exit 0 | timed out with nothing finished — **or** the job never started (see the `ready` row above), **or** I passed a terminal that is not the recipient | Before reporting "still running", confirm the agent is actually working: `worktree ps --json` → agent `state`. Only then treat it as a checkpoint and re-attach later. |
 | `terminal_handle_stale` | I cached a `term_…` handle | Never cache one. Re-resolve with `terminal list --worktree <selector> --json`, or work by dispatch id instead. |
 | `worker-release` → `release_unknown` (exit 1) | cleanup did not settle | Follow the recovery action in the response. Do not substitute `terminal close`. |
 | ssh itself fails | cooper unreachable | Say so. One retry, then report and stop. |
