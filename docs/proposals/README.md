@@ -11,7 +11,7 @@ what changes, exact text, order, risks, verification, rollback, decision box.
 | [P3](P3-orca-v2-skill.md) | Tars drives real Orca sessions on cooper (v2 replaces tonight's v1) | one `SKILL.md` — **must land with P4** | no |
 | [P4](P4-soul-guidelines-redesign.md) | SOUL redesign: separation of concerns, not confinement (12 changes) | `SOUL.md` replacement — **must land with P3**; `approvals:` mode is a separate call | no |
 | [P5](P5-a2a.md) | A2A investigation — reduces to one go/no-go | p-Hermes **upgrade** blocks everything | yes |
-| [P6](P6-knowledge-bases.md) | Knowledge bases: Tars searches `mc-metarepo`, re-pulls hourly; push-back designed not built | one SOUL line + a generated `SKILL.md` + a cron job — **not while P3/P4 are being applied** | yes, but **serialize** |
+| [P6](P6-knowledge-bases.md) | Knowledge bases: Tars searches `mc-metarepo`, re-pulls hourly; push-back designed not built | one `SOUL.md` sentence + a refresh script + a cron job (skill map **deferred**, see §0/P6-c) | yes, but apply in **its own session** |
 
 ## Reading order
 
@@ -32,9 +32,9 @@ P1 widens **what wakes** Tars. P3+P4 widen **what a wake can do**. Either alone 
 reviewable; together the blast radius is the *product*, not the sum — recommend
 not landing both unreviewed on the same day.
 
-P6 writes under `~/.hermes/` (`SOUL.md`, `skills/`, `scripts/`, a cron job) exactly where
-P3+P4 do — reviewable alone, but **never applied in the same session**: a concurrent edit
-there has already nearly dropped a sibling's config stanza.
+P6 writes under `~/.hermes/` (`SOUL.md`, `scripts/`, a cron job) exactly where P3+P4 did —
+reviewable alone, but **never applied in the same session as another `~/.hermes/` writer**:
+a concurrent edit there has already nearly dropped a sibling's config stanza.
 
 With confinement dropped (P3+P4), `SLACK_ALLOWED_USERS` + the adapter early-reject
 becomes the **sole** gate on transitive Orca access, promoted from

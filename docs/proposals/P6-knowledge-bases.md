@@ -4,13 +4,15 @@
 **Evidence:** `status/probes/wf5/kb-{retrieval-trials,confound-trial,hermes-retrieval,mc-metarepo,refresh,push-design,push-inputs,probe-side-effects}.md`;
 skills-manifest + prompt-rebuild claims rest on `wf5/orca-implement.md` §66 and `wf5/guidelines-runtime.md` §3–4 ·
 **Map draft (deferred, see §1):** `status/probes/wf5/kb-map-draft-SKILL.md` · **Adversarially reviewed:**
-`kb-verify-claims.md` (11 findings) + `kb-verify-coverage.md` (8) — all folded in; the coverage
-review's first finding **overturned this proposal's original recommendation**, see §0 · **Decide:** Gaetan ·
-**Must NOT be applied concurrently with [P3](P3-orca-v2-skill.md)/[P4](P4-soul-guidelines-redesign.md)** — every step below writes under `~/.hermes/`.
+three passes, `kb-verify-{claims,coverage,final}.md` (11 + 8 + 13 findings, all folded in) —
+the coverage pass **overturned this proposal's original recommendation** (§0) and the final
+pass caught an apply step that would have destroyed a correct SOUL sentence · **Decide:** Gaetan ·
+[P3](P3-orca-v2-skill.md)/[P4](P4-soul-guidelines-redesign.md) **have landed**; P6 edits the
+same `SOUL.md`, so apply it **in its own session**, never alongside another `~/.hermes/` writer.
 
-**The recommendation in one line:** Tars' only knowledge-base pointer names a directory that
-does not exist on the VM. Fix that one sentence in `SOUL.md`, keep the clone fresh hourly, and
-**install nothing else** — measured, that is the whole win.
+**The recommendation in one line:** Tars has **no** pointer to its knowledge base — the clone
+sits on the VM at `~/dev/mc-metarepo` and `SOUL.md` never names it. Add one sentence, keep the
+clone fresh hourly, and **install nothing else** — measured, that is the whole win.
 
 ## Lead with the measurement
 
@@ -54,21 +56,25 @@ the question with no map installed:
 | (c⁻) right path, no map | **CORRECT** — 23 s, 958 B, 2 tools | **CORRECT**, incl. the "do not erase logs" caveat — 38 s, 4,808 B, 3 tools |
 | (c) map + `read_file` | CORRECT — 19 s, 958 B, 1 tool | CORRECT — 21 s, 1,717 B, 2 tools |
 
+Two questions, one run each, no repeats (**n=1 per cell**, nondeterministic model).
+
 **Every correctness win credited to the map belongs to the pointer fix.** The map's only
 measured gain is efficiency on one question (2.8× fewer tool bytes, 17 s), n=1, in exchange
-for a 3.3 KB artifact that must be regenerated hourly. **So the map is deferred, not
+for a 3.3 KB artifact that must be regenerated hourly (and nothing measurable on Q1).
+**So the map is deferred, not
 rejected** — §1 states the single experiment that would justify it. Proxy limit, stated
 plainly: a path in the *question* is not a path in `SOUL.md` (different prompt position, and
 SOUL is always present while a question is not); the SOUL fix should be re-measured after it
 lands, which §Verify requires.
 
-**Blocking finding, one line to fix:** Tars' only KB pointer is `~/dev/gaetan-metarepo` —
-**a path that does not exist on the VM** (measured: two `search_files` `"Path not found"`
-errors in baseline Q4); `~/dev/mc-metarepo` is named nowhere in `SOUL.md`
-(`grep -ic mc-metarepo ~/.hermes/SOUL.md` → 0, re-checked after the P4 peer's rewrite).
-**Do not trust a line number here** — that peer took the file 1,472 B → 5,272 B at 23:10 UTC
-and the pointer moved from line 54 to 81 mid-review. Locate it at apply time:
-`grep -n metarepo ~/.hermes/SOUL.md`.
+**Blocking finding, one sentence to add:** `~/dev/mc-metarepo` is named **nowhere** in
+`SOUL.md` (`grep -ic mc-metarepo ~/.hermes/SOUL.md` → 0, re-checked after P4 landed). The
+only `metarepo` Tars can see is in the Phase-2 preferences section — *"Its source of truth is
+`~/dev/gaetan-metarepo` on cooper"* — which is a **true statement about Gaetan's preferences
+repo**, not a knowledge-base pointer. Measured harm: baseline Q4 aimed `search_files` at it
+twice and got `"Path not found"` (it is on cooper, not the VM). So the fix is to **add** a
+sentence, never to rename that one. **Do not trust a line number** — P4's rewrite moved it
+54 → 81 → 88 across this review. Locate at apply time: `grep -n metarepo ~/.hermes/SOUL.md`.
 
 **What is NOT proposed.** **No vector DB / RAG index** — the team ruled it out first,
 `mc-metarepo/MCP.md` verbatim: *"No vector DB, no embeddings, no index service … grep +
@@ -85,8 +91,8 @@ proven live in §7).
 
 **Sources covered.** **mc-metarepo only** (120 md, 1.44 MB, clean, tracks `origin/main`):
 search + hourly refresh now, push later. **`gaetan-metarepo`: no** — deliberately not
-Orca-registered (P3) and absent from the VM; its dead SOUL pointer is deleted, not repaired
-by cloning it. **Notion: no change** — the `notion` MCP server is *registered*
+Orca-registered (P3) and absent from the VM; the SOUL sentence naming it stays as-is —
+it is about preferences, and it is true. **Notion: no change** — the `notion` MCP server is *registered*
 (`hermes mcp list`); liveness was not re-tested for this proposal, and `hermes mcp list` is
 registry-only (`docs/facts.md`). **The 10 submodules: no** — uninitialized here, so product
 source is simply not in the KB; the SOUL sentence should say so, which is what kills the Q1
@@ -94,27 +100,41 @@ source is simply not in the KB; the SOUL sentence should say so, which is what k
 
 ## 1 — Search: name the clone in SOUL. The map waits for evidence.
 
-**Ship:** one sentence in `SOUL.md` naming `~/dev/mc-metarepo` as the knowledge base on this
-machine. Tars already holds `search_files` + `read_file` + `terminal` on CLI **and** Slack —
-nothing to enable, no `config.yaml` edit, no new tool. Measured, that turns a 422 s Orca
-delegation that missed the point into a 23 s local read, and a confidently wrong answer into
-a correct one.
+**Ship — this is the entire deliverable, so here it is literally.** Add to `SOUL.md`:
+
+> My knowledge base on this machine is the git clone at `~/dev/mc-metarepo` — search it with
+> `search_files`/`read_file` before delegating anything. Its submodules are empty, so product
+> source code is **not** there.
+
+*"on this machine"* is load-bearing: it is what separates this from the Phase-2 sentence
+about `gaetan-metarepo` **on cooper**, and it is the wording the trial actually measured
+(`kb-confound-trial.md`). Sentence 2 is P6-b's routing hint plus the anti-delegation rule —
+the two lines that kill Q1's "spawn an Orca worker to read product source" reflex.
+
+Nothing else: Tars already holds `search_files` + `read_file` + `terminal` on CLI **and**
+Slack — nothing to enable, no `config.yaml` edit, no new tool. Measured, this turns a 422 s
+Orca delegation that missed the point into a 23 s local read, and a confidently wrong answer
+into a correct one.
 
 **Deferred:** the generated skill map (`kb-map-draft-SKILL.md`, 3,279 B = 0.22 % of the KB).
 The argument for it is real but unproven: routing beats searching, because the repo's
 one-note-one-fact slug convention does the semantic indexing a vector store would —
 `sudo-argv-secrets-authlog` is a handle a model recognises from "API key inline in a command"
-although `rg -il 'api key'` hits 13 other files and not that one. And it would have to be
+although `rg -il 'api key'` hits 13 other files and not that one — **though that is naive
+`rg`'s failure, not the agent's**: given the correct root path and no map, Tars' own
+`search_files` still reached that note on meaning (`kb-confound-trial.md` §Q3), which is
+exactly why this argument is *unproven* rather than merely unmeasured. And it would have to be
 **generated, never hand-written**: the repo's own `knowledge/README.md` indexes 35 of 40
 notes, the Q3 note among the 5 missing.
 
 **The one experiment that would justify it** — a question the corrected pointer gets *wrong*
 and the map gets *right*. Candidates from the trials: a thin-slug note (`done-is-not-exercised`
-carries no signal), a Q4-style governance question spread over 3 files, or `schemas/`/`index/`
-routing. Absent that, the map buys ~3 KB of tool output per question and costs an hourly
-regeneration job — pay it when a measurement asks for it, not before. Its *rules* (never read
-the whole repo, do not delegate a code read for a documented fact) are two lines and could be
-folded into the SOUL sentence if Q1's Orca reflex returns.
+carries little signal), a Q4-style governance question spread over 3 files, or
+`schemas/`/`index/` routing. Absent that, the map saves ~3 KB of tool output on the one
+question where it helped (Q3; **nothing measurable on Q1**, n=1) and costs an eight-line
+regeneration tail on the hourly job — pay it when a measurement asks for it, not before. Its
+*rules* (never read the whole repo, do not delegate a code read for a documented fact) are two
+lines, and §1's sentence 2 already carries them.
 
 ## 2 — Refresh: `hermes cron --no-agent`, `fetch` + `reset --hard`, guarded
 
@@ -151,6 +171,8 @@ R="$HOME/dev/mc-metarepo"
 timeout 120 git -C "$R" fetch --quiet origin \
   || { echo "KB refresh FAILED: git fetch. mc-metarepo is STALE."; exit 1; }
 git -C "$R" reset --hard --quiet origin/main || { echo "KB refresh FAILED: reset --hard"; exit 1; }
+# reset --hard reports exit 0 even from a stuck rebase + detached HEAD — measured, kb-refresh.md §6b
+[ "$(git -C "$R" rev-parse --abbrev-ref HEAD)" = main ] || { echo "KB refresh FAILED: mirror not on main"; exit 1; }
 EOF
 chmod +x ~/.hermes/scripts/kb-refresh.sh
 ~/.local/bin/hermes cron create "every 1h" --no-agent --script kb-refresh.sh --deliver slack --name "mc-metarepo-refresh"
@@ -176,9 +198,12 @@ telling Tars costs a turn an hour and buys nothing it can act on.
 
 ## 3 — Push (DESIGNED, NOT BUILT)
 
-Full design + literal brief: `status/probes/wf5/kb-push-design.md`. Provisional on P3+P4
-landing (both unchecked today). **Tars never authors it** — SOUL rule 1 (P4) forbids Tars
-producing documentation *"not because it's only markdown"*. A push is: Tars quotes Gaetan,
+Full design + literal brief: `status/probes/wf5/kb-push-design.md`. P3 and P4 **have landed**
+(`apply-p3-orca-v2.md`, `apply-p4-soul.md`), so the mechanism this rests on exists.
+**Tars never authors the note** — live SOUL rule 1 forbids Tars producing the deliverable
+*"not because it's only markdown"*. (Rule 2's one exception is Tars' own `skills/<n>/SKILL.md`
+mirror, self-merged; it does not reach mc-metarepo, and rule 2 "stands whole" in a repo Tars
+delegated work in.) A push is: Tars quotes Gaetan,
 hands the quote to a delegated Claude Code session via Orca on cooper, verifies the PR —
 quoting Gaetan back is evidence, not authorship, rule 1's own carve-out. **Trigger:
 human-only**, Gaetan says "remember this"; periodic harvest **rejected** — Hindsight is
@@ -201,7 +226,7 @@ Four more of its rules bind the brief, each with a real cost (`kb-mc-metarepo.md
    is exactly where tokens and customer identifiers live. Most likely rule to bite: Tars must
    **refuse to dispatch** a credential-shaped quote, not pass it through.
 3. **A `knowledge/` note needs three surfaces**, not one: the file, its `@import` line in
-   `CLAUDE.md`, its row in `knowledge/README.md`. That is the real price of P6-d's "yes".
+   `CLAUDE.md`, its row in `knowledge/README.md`. That is the real price of P6-e's "yes".
 4. **`--repo` on every `gh` call, `-C <dir>` on every `git` call** — an agent shell's cwd
    resets to the metarepo root between commands; on **2026-08-05 skipping this merged an
    unrelated PR**. Their `CONTRIBUTING.md` records the incident.
@@ -254,28 +279,32 @@ that reflex (measured: 422 s + a branch → 23 s + a local read), it does not ga
 
 ## Order · restart · verify · rollback
 
-- **Order:** (1) **not while P3/P4 are being applied** — all three write under
-  `~/.hermes/`, where a raw append once nearly dropped a sibling's config stanza.
-  (2) **SOUL line first** — or fold into P4's SOUL replacement if P4 lands first (P6-a).
-  Standalone, it is exactly this, re-reading the file because a peer is rewriting it:
+- **Order:** (1) **in its own session** — P3/P4 have landed, but `SOUL.md` has more than one
+  author now, and a raw append here once nearly dropped a sibling's config stanza. Re-read
+  before writing.
+  (2) **SOUL sentence first** — standalone (P6-a). **Add**, never `sed`: the existing
+  `gaetan-metarepo` sentence is correct and must survive untouched.
   ```bash
-  cp ~/.hermes/SOUL.md ~/.hermes/SOUL.md.bak
-  grep -n metarepo ~/.hermes/SOUL.md      # confirm the line; it was 54, then 81
-  flock ~/.hermes/.wf3.lock -c "sed -i 's|~/dev/gaetan-metarepo|~/dev/mc-metarepo|' ~/.hermes/SOUL.md"
-  grep -n metarepo ~/.hermes/SOUL.md      # confirm exactly one line changed, nothing else moved
+  cp ~/.hermes/SOUL.md ~/.hermes/SOUL.md.bak-p6
+  grep -n metarepo ~/.hermes/SOUL.md     # locate; 54 → 81 → 88 across this review — it moves
+  # then, BY HAND under flock, append §1's two sentences to the tools/hard-rules section:
+  #   flock ~/.hermes/.wf3.lock -c 'cat >> ~/.hermes/SOUL.md'   (or an editor under the lock)
+  grep -ic mc-metarepo ~/.hermes/SOUL.md # 1+ ; and confirm the Phase-2 sentence is unchanged
   ```
-  The sentence around it also claims the source of truth lives "on cooper" — reword it to
-  name the VM clone, by hand, after re-reading whatever P4 left there.
+  Optionally append *"— on cooper, not on this VM"* to the Phase-2 sentence, which keeps it
+  true and removes the misreading that produced Q4's two `"Path not found"` errors.
   (3) `kb-refresh.sh`, (4) run it once by hand, (5) then `hermes cron create`.
 - **Restart:** none expected — SOUL and skill files are re-read from disk at every
   `_build_system_prompt()` (`guidelines-runtime.md` §3–4), skills rebuild from the
   path→(mtime,size) manifest (`orca-implement.md` §66), and the cron scheduler re-reads
   `jobs.json` each tick (internals doc; **not exercised** — no restart was performed).
-  `.bak` first, every `~/.hermes/` edit under `flock ~/.hermes/.wf3.lock`.
+  `.bak` first, and every edit to a **live-reloaded** file (`SOUL.md`, `config.yaml`, `.env`)
+  under `flock ~/.hermes/.wf3.lock` — a new file in a new directory has no concurrent writer.
 - **Verify — this is the experiment, not a formality.** Re-fire all 5 trial questions as
   `hermes chat -Q -q` oneshots, **with no path named in the question** (that is the whole
   point: the pointer must now come from SOUL), and grep `~/.hermes/logs/agent.log` by session
-  id. Pass = ≥4/5 correct, each under ~40 s, **none delegating to Orca**. Q3 is the
+  id. Pass = ≥4/5 correct, each well under the 422 s/414 s baselines (≤~40 s on Q1 and Q3,
+  the two actually measured under (c⁻)), **none delegating to Orca**. Q3 is the
   discriminator (wrong today), Q1 the cost one (422 s today). Fire at least one over
   **Slack** — untested surface. If a question fails that (c⁻) got right, the proxy misled us
   and §1's map goes back on the table. Refresh: force one tick with `hermes cron run <job_id>`,
@@ -283,24 +312,25 @@ that reflex (measured: 422 s + a branch → 23 s + a local read), it does not ga
   `git -C ~/dev/mc-metarepo status -sb` clean. **Then force one *failing* tick** (point `R` at
   a nonexistent path) and confirm the alert lands in Slack — that delivery is doc-only today
   and is the sole reason `hermes cron` beat a systemd timer.
-- **Rollback:** `rm ~/.hermes/scripts/kb-refresh.sh`, `hermes cron remove <job_id>`, restore
+- **Rollback:** `hermes cron remove <job_id>` **first**, then `rm ~/.hermes/scripts/kb-refresh.sh`
+  (the other order lets a tick fire a missing script and page you for nothing); restore
   `SOUL.md.bak` (**check first** that no peer edited SOUL after your `.bak`, or you revert
   their work too). If the map was adopted: `rm -rf ~/.hermes/skills/mc-metarepo` — generated,
   nothing lost.
 
 ## Open decisions
 
-Numbered P6-a…P6-e here. `kb-push-design.md` runs **its own** P6-a…P6-f namespace for
+Numbered P6-a…P6-c here. `kb-push-design.md` runs **its own** P6-a…P6-c namespace for
 push-internal choices — where this table cites it, it says so.
 
 | # | Question | Recommendation |
 |---|---|---|
-| P6-a | Dead `gaetan-metarepo` pointer in SOUL: standalone edit, or folded into P4's SOUL replacement? | **Fold into P4 if P4 lands first**, else edit standalone — either way it lands first |
+| P6-a | The missing SOUL sentence: standalone edit, or folded into a SOUL replacement? | **Standalone.** P4 landed on 2026-08-07 and its replacement text kept `~/dev/gaetan-metarepo` and named no KB — there is nothing left to fold into |
 | P6-b | Submodules: leave uninitialized, or init them into the KB? | **Leave empty.** 10 product repos on SSH auth; their absence is itself the routing hint ("the code is not here, do not go looking") |
-| P6-f | The skill map: install it now anyway, or hold until a question justifies it? | **Hold.** §0 shows its correctness win was the pointer fix; the residual gain is ~3 KB on one question, n=1, against an hourly regeneration job. Revisit if §Verify's re-fire disappoints |
-| P6-c | Push trigger and SOUL rule 8's beat (push-design's own P6-a/b) | **Human-only ("remember this"), announce before dispatch** — one Slack line, no wait |
-| P6-d | May a push target `knowledge/`, or is `learnings/**` the ceiling? | **`knowledge/` allowed with written justification** — it is auto-imported into every teammate's context *and* costs three surfaces (file + `@import` + README row), so the bar is high, not infinite |
-| P6-e | Brakes: one open Tars-originated learnings PR at a time, keep push worktrees, and may Tars close an out-of-scope PR? | **Yes / keep / no** — one `gh pr list` preflight, no state; worktrees are evidence at v1 volume; closing a PR is a write against a team repo, so Tars **asks** (rule 2) |
+| P6-c | The skill map: install it now anyway, or hold until a question justifies it? | **Hold.** §0 shows its correctness win was the pointer fix; the residual gain is ~3 KB on one question, n=1, against an hourly regeneration job. Revisit if §Verify's re-fire disappoints |
+| P6-d | Push trigger and SOUL rule 8's beat (push-design's own P6-a/b) | **Human-only ("remember this"), announce before dispatch** — one Slack line, no wait |
+| P6-e | May a push target `knowledge/`, or is `learnings/**` the ceiling? | **`knowledge/` allowed with written justification** — it is auto-imported into every teammate's context *and* costs three surfaces (file + `@import` + README row), so the bar is high, not infinite |
+| P6-f | Brakes: one open Tars-originated learnings PR at a time, keep push worktrees, and may Tars close an out-of-scope PR? | **Yes / keep / no** — one `gh pr list` preflight, no state; worktrees are evidence at v1 volume; closing a PR is a write against a team repo, so Tars **asks** (rule 2) |
 
 Withdrawn after review: an earlier draft raised `memory.provider: hindsight` being set in the
 live config as a contradiction. It is not — provider set with keys deliberately absent is the
@@ -312,9 +342,10 @@ live config as a contradiction. It is not — provider set with keys deliberatel
 - [ ] **Apply P6 as recommended** — SOUL line + hourly refresh job, no skill map — after
       P3/P4 have settled
 - [ ] SOUL line only; refresh job later
-- [ ] Apply *with* the skill map anyway (overrides P6-f)
+- [ ] Apply *with* the skill map anyway (overrides P6-c)
 - [ ] Apply with edits · [ ] Not yet
-- P6-a SOUL line: [ ] fold into P4 · [ ] standalone — P6-b submodules: [ ] leave empty · [ ] init
-- P6-f map: [ ] hold (recommended) · [ ] install now
-- P6-c trigger: [ ] human-only · [ ] also end-of-task — P6-d target: [ ] `learnings/**` + justified `knowledge/` · [ ] `learnings/**` only
-- P6-e brakes: [ ] one open PR at a time · [ ] keep worktrees · [ ] Tars may close an out-of-scope PR
+- P6-a SOUL sentence: [ ] standalone (recommended — P4 already landed) · [ ] defer to a later SOUL pass
+- P6-b submodules: [ ] leave empty · [ ] init
+- P6-c map: [ ] hold (recommended) · [ ] install now
+- P6-d trigger: [ ] human-only · [ ] also end-of-task — P6-e target: [ ] `learnings/**` + justified `knowledge/` · [ ] `learnings/**` only
+- P6-f brakes: [ ] one open PR at a time · [ ] keep worktrees · [ ] Tars may close an out-of-scope PR
