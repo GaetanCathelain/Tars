@@ -62,6 +62,12 @@ flowchart TB
 Each credential acquired in lane A immediately fans out an **async probe agent** to test it, then
 lands in SOPS/1Password — acquisition stays serial, testing never blocks it.
 
+**Model backend (decided 2026-08-07):** Hermes on the new VM runs on Gaetan's
+`gaetan.cathelain@mobile.club` ChatGPT subscription, model **GPT 5.6 Sol**. The ChatGPT OAuth
+login is one more lane-A browser credential (slot it after GitHub, alongside the other
+Google/OAuth steps); lane B installs Hermes without it, and it gets wired to the profile in
+WF3. Stored like every other credential — 1Password/SOPS, names only in status files.
+
 ## Phases
 
 | Phase | Mechanism | Notes |
