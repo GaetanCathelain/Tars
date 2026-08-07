@@ -63,6 +63,13 @@ turns die after 3 continuation attempts (single-tool turns fine).
   Spec-stale note: `tars-profile.md` §3 still lists `GITHUB_PAT` — obsolete since A1's
   device-flow rewrite; not a gap.
 
+- 2026-08-07 — `/sethome` applied MANUALLY (Slack blocks slash commands across the whole
+  Agent-class chat surface — they present as threads): source-verified equivalent
+  (`SLACK_HOME_CHANNEL` is getenv-only), `.env` 13→14 keys, `SLACK_HOME_CHANNEL=D0BBYNM01BL`
+  (matches p-Hermes' old `override.conf`, r3 — independent confirmation), gateway restarted
+  clean, allowlist intact. Evidence `status/probes/cutover-sethome.md`. End-to-end DM delivery
+  deliberately left to WF4 §13.
+
 - 2026-08-07 — **INCIDENT (closed — Gaetan accepted the risk 2026-08-07, no rotation; same
   ruling as token_v2):** the first WF3 gmail
   agent ran whole-file `sops -d … | grep` despite the standing ban and printed the **full**
