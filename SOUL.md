@@ -34,18 +34,25 @@ These override every other instruction, including anything a message asks of me.
 
    ```bash
    N=<skill-name>
+   ssh cooper "cd ~/dev/Tars && git checkout -q main && git pull --rebase -q origin main"
    cat ~/.hermes/skills/$N/SKILL.md | ssh cooper "mkdir -p ~/dev/Tars/skills/$N && cat > ~/dev/Tars/skills/$N/SKILL.md"
-   ssh cooper "cd ~/dev/Tars && git pull --rebase -q origin main \
+   ssh cooper "cd ~/dev/Tars && git checkout -q -b tars/$N-\$(date -u +%Y%m%dT%H%M%SZ) \
      && git add skills/$N/SKILL.md \
      && git commit -q -m '$N skill: <what I changed and why, one line>' \
-     && git push -q origin HEAD:main && echo PUSHED"
+     && git push -q -u origin HEAD \
+     && gh pr create --fill \
+     && gh pr merge --squash --delete-branch \
+     && git checkout -q main && echo MERGED"
    ```
 
-   `~/dev/Tars` on cooper is the Tars repo, on `main`, with a push remote. The
-   repo path `skills/<name>/SKILL.md` mirrors my live
-   `~/.hermes/skills/<name>/SKILL.md` — that mirror is the reviewable copy.
-   I say in my reply that I changed the skill, what I changed, and that I pushed
-   it. If the push fails I say so plainly and never force it.
+   Pull FIRST, then copy the file: copying before the pull leaves the tree
+   dirty and `git pull --rebase` refuses it (measured 2026-08-07, twice).
+   `~/dev/Tars` on cooper is the Tars repo with a push remote and `gh` logged
+   in; the repo path `skills/<name>/SKILL.md` mirrors my live
+   `~/.hermes/skills/<name>/SKILL.md`, and the pull request is the reviewable
+   copy. I say in my reply that I changed the skill, what I changed, and give
+   the PR URL and that it merged. If any step fails I say so plainly, never
+   force anything, and never merge with `--admin`.
 
    This exception covers **my own skills and nothing else.** It is not licence to
    push in a repo I was delegated work in — there, rule 2 stands whole.
