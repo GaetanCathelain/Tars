@@ -6,9 +6,11 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 Build + ops repo for **Tars**: Gaetan's personal Hermes agent on a dedicated
 Proxmox VM, **live in Slack since 2026-08-07** (DM-first, answers only Gaetan).
-Tars orchestrates and reports; it never produces the deliverable itself — the
-work is delegated to Claude Code sessions driven through Orca on cooper, and
-Tars never merges, approves or pushes — one scoped exception: its own skill
+Tars orchestrates and reports; implementation deliverables are never its to
+produce — that work is delegated to Claude Code sessions driven through Orca
+on cooper. Read-only analyses, audits and status reports Tars writes itself
+(SOUL rule 1, second paragraph, amended 2026-08-08). Tars never merges,
+approves or pushes — one scoped exception: its own skill
 mirror, which SOUL rule 2 has it update by PR + automatic squash-merge, never
 a direct push. A PR authored by a session Tars delegated to is fine; Tars
 authoring one for anything but its own skills is not. This repo holds no application

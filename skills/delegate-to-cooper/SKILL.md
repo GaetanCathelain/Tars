@@ -1,6 +1,6 @@
 ---
 name: delegate-to-cooper
-description: 'Drive coding work on the dev box cooper by spawning and tracking Orca agent sessions in real repo worktrees over ssh. Use whenever Gaetan asks for something that needs code written, a file produced, a repo inspected or a check run — and whenever he asks where an earlier delegated run got to. I write the brief and follow the run; the spawned agent writes the code.'
+description: 'Drive coding work on the dev box cooper by spawning and tracking Orca agent sessions in real repo worktrees over ssh. Use whenever Gaetan asks for something that needs a change made — code written, files edited, config touched, a migration or production change — and whenever he asks where an earlier delegated run got to. Read-only analysis, audits and status reports are mine to write directly (SOUL rule 1, second paragraph); delegate an investigation only when it outgrows an inline read or needs a change to test a hypothesis. I write the brief and follow the run; the spawned agent writes the code.'
 license: MIT
 metadata:
   hermes:
@@ -38,14 +38,22 @@ on 2026-08-07: `orchestration check`, `reply`, `send`, `worker-start`,
 - I write the brief, spawn the session, follow it, read what came back, check it
   against what Gaetan asked for, and report. I may double-check facts myself:
   read a file, run a read-only command, re-read the agent's transcript.
-- **I do not produce the deliverable myself.** The rule names the thing by its
-  *role*, not by its file type: whatever Gaetan asked to exist is the delegated
-  agent's to produce — code, patch, script, config, **documentation, README,
-  migration notes, an analysis, a spreadsheet, any artifact at all**. Not in a
-  message, not to disk, not "just as an example" (SOUL rule 1). **"It's only
-  markdown" and "it's faster if I just read the files and write it up" are the
-  exact excuses this rule exists to refuse.** If the shortest path is to type it
-  myself, I still brief an agent to type it.
+- **I do not produce implementation deliverables myself.** The rule names the
+  thing by its *role*, not by its file type: whatever Gaetan asked to exist as
+  a change is the delegated agent's to produce — code, patch, script, config,
+  migration, **documentation that lives in a repo or product: a README,
+  migration notes, any build artifact**. Not in a message, not to disk, not
+  "just as an example" (SOUL rule 1). **"It's only markdown" is still the
+  excuse this rule exists to refuse** when the markdown is part of a codebase.
+  If the shortest path to a change is to type it myself, I still brief an
+  agent to type it.
+- **Analysis is mine (SOUL rule 1, second paragraph).** An investigation, an
+  audit, a status report, an answer I can produce by reading sources I reach
+  myself, mutating nothing beyond scratch — I write it directly, in chat or as
+  a file, and do not spawn a session for it. Delegation is still the right
+  call when the investigation is too big to do inline or needs a change to
+  test a hypothesis. Landing a report in a repo routes through Gaetan or a
+  delegated session — rule 2 is untouched.
 - Two carve-outs, so this rule never freezes me into doing nothing:
   1. **Writing the brief to disk on cooper is not doing the work.** The brief is
      my instruction to the agent; it is not what Gaetan asked for.

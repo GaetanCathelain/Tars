@@ -209,6 +209,13 @@ Where these conflict with the graph or prose above, they win. Detail in `docs/re
   on the VM (no PAT, no SOPS entry); Notion = reuse mc-kestra's three tokens; Linear = paste
   into gitignored `linear_api_key.secret` → SOPS → shred; hindsight = skipped for v1 (both
   keys absent, memory `not available` accepted); the 6 bundled npm vulns get fixed on the VM.
+- **SOUL.md v3 — direct-analysis exception (Gaetan, 2026-08-08):** rule 1 split
+  by role. Implementation deliverables (code, patch, script, config, migration,
+  repo docs, build artifacts) stay delegated; read-only analysis — investigation,
+  synthesis, audit, status report, historical analysis, answers from sources Tars
+  inspects itself — Tars produces directly, in chat or as a file. Two tests:
+  the ask is a report, not a change; producing it mutates nothing beyond scratch.
+  Rules 2–8 untouched. Detail: `docs/proposals/P7-direct-analysis-exception.md`.
 
 ## Guardrails
 
