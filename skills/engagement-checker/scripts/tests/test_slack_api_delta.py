@@ -73,11 +73,58 @@ def match(ts, text="hello", channel="C12345678", user="U08BDJAMSRZ", thread_ts=N
 
 class CollectorTests(unittest.TestCase):
     @staticmethod
-    def http_error(status=429, retry_after="1", reason="rate limited", body=b""):
-        headers = {"Retry-After": retry_after} if retry_after is not None else {}
+    def http_error(status=429, retry_after="1", reason="rate limited", body=b"", headers=None):
+        combined = dict(headers or {})
+        if retry_after is not None:
+            combined["Retry-After"] = retry_after
         return urllib.error.HTTPError(
-            "https://slack.com/api/search.messages", status, reason, headers, io.BytesIO(body)
+            "https://slack.com/api/search.messages", status, reason, combined, io.BytesIO(body)
         )
+
+    def test_redirect_is_rejected_and_credentials_never_reach_redirect_target(self):
+        import threading
+        from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+
+        target_hits = []
+
+        class Target(BaseHTTPRequestHandler):
+            def do_GET(self):
+                target_hits.append({k.lower(): v for k, v in self.headers.items()})
+                self.send_response(200)
+                self.send_header("Content-Type", "application/json")
+                self.end_headers()
+                self.wfile.write(b'{"ok": true}')
+
+            def log_message(self, *args):
+                pass
+
+        class Redirector(BaseHTTPRequestHandler):
+            def do_GET(self):
+                self.send_response(302)
+                self.send_header("Location", target_url)
+                self.end_headers()
+
+            def log_message(self, *args):
+                pass
+
+        target_server = ThreadingHTTPServer(("127.0.0.1", 0), Target)
+        redirect_server = ThreadingHTTPServer(("127.0.0.1", 0), Redirector)
+        target_url = f"http://127.0.0.1:{target_server.server_port}/api/auth.test"
+        for server in (target_server, redirect_server):
+            threading.Thread(target=server.serve_forever, daemon=True).start()
+        try:
+            base = f"http://127.0.0.1:{redirect_server.server_port}/api/"
+            with mock.patch.object(slack, "API_BASE", base):
+                client = slack.SlackClient(CREDS)
+                with self.assertRaises(slack.SafeError) as caught:
+                    client.get("auth.test")
+            self.assertEqual(caught.exception.code, "http_error")
+            self.assertEqual(target_hits, [])
+            self.assertFalse(any("authorization" in hit or "cookie" in hit for hit in target_hits))
+        finally:
+            for server in (target_server, redirect_server):
+                server.shutdown()
+                server.server_close()
 
     def test_429_retries_with_retry_after_then_succeeds_without_real_sleep(self):
         sleeps = []
@@ -109,12 +156,39 @@ class CollectorTests(unittest.TestCase):
         self.assertEqual(sum(sleeps), 3.0 * (slack.MAX_HTTP_ATTEMPTS - 1))
         self.assertLessEqual(sum(sleeps), slack.MAX_TOTAL_RETRY_WAIT_SECONDS)
 
+    def test_cumulative_retry_wait_is_capped_at_30_seconds(self):
+        sleeps = []
+        opener = QueueOpener([self.http_error(retry_after="20"), self.http_error(retry_after="20")])
+        result = slack.collect(
+            slack.SlackClient(CREDS, opener=opener, sleeper=sleeps.append),
+            CREDS, START, END, slack.DEFAULT_USER,
+        )
+        self.assertTrue(result["coverage"]["fail_closed"])
+        self.assertEqual(result["coverage"]["errors"], ["http_error"])
+        self.assertEqual(sleeps, [20.0])
+        self.assertLessEqual(sum(sleeps), slack.MAX_TOTAL_RETRY_WAIT_SECONDS)
+        self.assertEqual(len(opener.requests), 2)
+
+        single = QueueOpener([self.http_error(retry_after="31")])
+        no_sleeps = []
+        result = slack.collect(
+            slack.SlackClient(CREDS, opener=single, sleeper=no_sleeps.append),
+            CREDS, START, END, slack.DEFAULT_USER,
+        )
+        self.assertEqual(result["coverage"]["errors"], ["http_error"])
+        self.assertEqual(no_sleeps, [])
+        self.assertEqual(len(single.requests), 1)
+
     def test_429_error_does_not_disclose_secret_reason_headers_or_body(self):
+        reason_sentinel = "REASON-SENTINEL-a41f"
+        body_sentinel = "BODY-SENTINEL-c93d"
+        header_sentinel = "HEADER-SENTINEL-e57b"
         header_secret = "header-" + XOXC
         error = self.http_error(
             retry_after="1 " + header_secret,
-            reason="rate limited " + XOXC,
-            body=("private body " + XOXD).encode(),
+            reason="rate limited " + reason_sentinel + " " + XOXC,
+            body=("private body " + body_sentinel + " " + XOXD).encode(),
+            headers={"X-Slack-Debug": header_sentinel},
         )
         result = slack.collect(
             slack.SlackClient(CREDS, QueueOpener([error]), sleeper=lambda _: None),
@@ -127,6 +201,9 @@ class CollectorTests(unittest.TestCase):
         self.assertNotIn(XOXC, serialized)
         self.assertNotIn(XOXD, serialized)
         self.assertNotIn(header_secret, serialized)
+        self.assertNotIn(reason_sentinel, serialized)
+        self.assertNotIn(body_sentinel, serialized)
+        self.assertNotIn(header_sentinel, serialized)
 
     def test_search_views_use_with_modifier_for_involving_and_preserve_from(self):
         views = dict(slack.search_views(slack.DEFAULT_USER, "2026-08-07", "2026-08-09"))
@@ -195,6 +272,23 @@ class CollectorTests(unittest.TestCase):
         self.assertTrue(result["coverage"]["complete"])
         self.assertEqual(result["coverage"]["pages"], 3)
         self.assertIn("page=2", opener.requests[1].full_url)
+
+    def test_legacy_pagination_rejects_zero_repeated_mismatched_or_malformed_pages(self):
+        cases = {
+            "zero_page": [search_payload([], page=0, pages=0), search_payload([], page=0, pages=0)],
+            "repeated_page": [search_payload([], page=1, pages=2), search_payload([], page=1, pages=2)],
+            "mismatched_page": [search_payload([], page=3, pages=3), search_payload([])],
+            "malformed_page": [
+                {"ok": True, "messages": {"matches": [], "paging": {"page": None, "pages": 2}}},
+            ],
+        }
+        for name, payloads in cases.items():
+            with self.subTest(case=name):
+                opener = QueueOpener(payloads)
+                result = slack.collect(slack.SlackClient(CREDS, opener), CREDS, START, END, slack.DEFAULT_USER)
+                self.assertTrue(result["coverage"]["fail_closed"])
+                self.assertEqual(result["coverage"]["errors"], ["invalid_search_response"])
+                self.assertEqual(result["events"], [])
 
     def test_candidate_filter_runs_before_event_cap(self):
         noise = [match(f"1786185{i:03d}.000", "routine status FYI") for i in range(100)]

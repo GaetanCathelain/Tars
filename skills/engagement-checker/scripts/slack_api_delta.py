@@ -122,13 +122,27 @@ def load_credentials(path: Path = ENV_FILE) -> Credentials:
     return Credentials(xoxc=xoxc, xoxd=xoxd)
 
 
+class NoRedirectHandler(urllib.request.HTTPRedirectHandler):
+    """Refuse all redirects: following one could forward Authorization/Cookie
+    headers to another origin or downgrade to plain HTTP."""
+
+    def redirect_request(self, req, fp, code, msg, headers, newurl):
+        return None
+
+
 class SlackClient:
     def __init__(self, credentials: Credentials, opener: Callable[..., Any] | None = None,
                  sleeper: Callable[[float], None] | None = None) -> None:
         self._credentials = credentials
-        self._opener = opener or urllib.request.urlopen
         self._sleeper = sleeper or time.sleep
         self._ssl_context = ssl.create_default_context()
+        if opener is None:
+            director = urllib.request.build_opener(
+                NoRedirectHandler(), urllib.request.HTTPSHandler(context=self._ssl_context))
+
+            def opener(request, timeout, context=None):
+                return director.open(request, timeout=timeout)
+        self._opener = opener
 
     @staticmethod
     def _retry_after_seconds(exc: urllib.error.HTTPError) -> float | None:
@@ -414,12 +428,16 @@ def collect(client: SlackClient, credentials: Credentials, start: dt.datetime, e
                 paging = messages.get("paging")
                 if isinstance(paging, Mapping):
                     try:
-                        current = int(paging.get("page", page) or page)
-                        pages = int(paging.get("pages", current) or current)
+                        current = int(paging.get("page", page))
+                        total_pages = int(paging.get("pages", current))
                     except (TypeError, ValueError, OverflowError):
                         raise SafeError("invalid_search_response") from None
-                    if current < pages:
-                        cursor, page = "", current + 1
+                    # Strict progress: the reported page must match the one we
+                    # requested (zero/repeated/mismatched pages loop forever).
+                    if current != page or total_pages < 1:
+                        raise SafeError("invalid_search_response")
+                    if current < total_pages:
+                        cursor, page = "", page + 1
                         continue
                 break
     except SafeError as exc:
