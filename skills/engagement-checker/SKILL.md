@@ -1,7 +1,7 @@
 ---
 name: engagement-checker
 description: "Use for incremental follow-up and commitment reminders."
-version: 1.2.0
+version: 1.1.0
 metadata:
   hermes:
     tags: [engagement, reminders, slack, email, linear, orchestration]
@@ -18,7 +18,7 @@ All human times use `Europe/Paris`. Scheduled runs are restricted to 10:00–17:
 
 ## Load only what is needed
 
-- Use the bundled direct read-only Slack Web API collector at `scripts/slack_api_delta.py`; never use Slack MCP for this workflow. It loads existing Slack credentials internally from the protected local credential file and must never expose them in argv, stdout, logs, state, or prompts. Gaetan's Slack user ID is `U08BDJAMSRZ`.
+- Use the Slack MCP tools directly. Gaetan's Slack user ID is `U08BDJAMSRZ`.
 - Load `google-workspace` for Gmail. Its existing OAuth is the primary mailbox path; if its auth check fails, load and check `himalaya` before declaring email unavailable.
 - Query Linear read-only on Cooper with `ssh cooper '~/.local/bin/orca linear … --json'`. Never use a Linear mutation command.
 - Load `hermes-agent` only when installing or troubleshooting the cron jobs.
@@ -47,13 +47,6 @@ Use this bounded shape:
   "version": 1,
   "initialized_at": "ISO timestamp",
   "last_completed_run": "ISO timestamp or null",
-  "daily_catchup": {
-    "date": "Paris-local YYYY-MM-DD or null",
-    "start": "ISO timestamp or null",
-    "target_end": "ISO timestamp or null",
-    "complete": false,
-    "sources_complete": {"slack": false, "email": false, "linear": false}
-  },
   "sources": {
     "slack":  {"cursor": "ISO timestamp", "last_success": "ISO or null", "failures": 0, "seen": []},
     "email":  {"cursor": "ISO timestamp", "last_success": "ISO or null", "failures": 0, "seen": []},
@@ -90,24 +83,9 @@ After the workday gate passes, atomically create `~/.hermes/state/engagement-che
 
 The interval is 30 minutes and Hermes cron has a short runtime; the lock is crash protection, not a reason to let a run linger.
 
-## 1. Run the daily opening catch-up, then normal deltas
+## 1. Establish the incremental window
 
-Get the fixed run timestamp with a tool and convert it to Europe/Paris.
-
-The first eligible run of each Paris-local workday is the opening catch-up. Detect it when `daily_catchup.date` is not today's Paris-local date or today's catch-up is incomplete.
-
-When opening a new day:
-
-1. Set `daily_catchup.date` to today's Paris-local date and `daily_catchup.target_end` to the fixed opening-run timestamp. Never move this target while that day's catch-up is in progress.
-2. If durable state does not exist, initialize every source cursor to 00:00 Europe/Paris on that same day. Do not scan previous days or weeks on the first-ever run.
-3. Otherwise set `daily_catchup.start` to the earliest existing per-source cursor. Each source still resumes from its own cursor, so the opening run naturally catches up overnight, over a weekend, or across a day off without rescanning already processed evidence.
-4. Set all `sources_complete` values false and persist this initialization before collecting a source so a timeout can resume safely.
-
-Catch up each source chronologically in bounded chunks from its cursor to the fixed `daily_catchup.target_end`. A run may retain at most 100 engagement candidates per source after exact-time filtering and conservative noise filtering, and may fetch only the pages needed for that chunk. Reconcile each event in timestamp order so later replies, completion signals, and terminal states close earlier apparent asks. If a source reaches the fixed target, advance its cursor exactly to that target and mark it complete. If a cap, timeout budget, or remaining page prevents full coverage, advance only to the timestamp through which coverage is demonstrably complete, leave that source incomplete, persist, and resume on the next scheduled run with the normal five-minute overlap. Never skip an unprocessed interval merely to finish in one run.
-
-While any mandatory source remains incomplete for today's catch-up, persist progress, release the lock, and return exactly `[SILENT]`. Do not remind from a partially reconciled opening window. When all mandatory sources reach the fixed target, set `daily_catchup.complete=true`, re-evaluate only items still open after reconciliation, and allow the normal urgency and cooldown rules to produce a reminder. Items already answered, completed, delegated, dismissed, or made irrelevant must not appear.
-
-On later runs that same day, use each source's own cursor and the fixed current run timestamp. Add a five-minute retrieval overlap when the source supports it, but discard any event whose exact timestamp is not newer than the stored cursor unless its stable event ID is absent and it can close or mutate a pending item.
+Get the current timestamp with a tool and convert it to Europe/Paris. On first run only, initialize each source cursor to two hours before now. Otherwise use each source's own cursor. Add a five-minute retrieval overlap when the source supports it, but discard any event whose exact timestamp is not newer than the stored cursor unless its stable event ID is absent and it can close or mutate a pending item.
 
 Normal runs must process only new events plus the compact pending queue. Do not rescan the whole day, inbox, Slack history, or all Linear issues for context. When an API has only date-granular search, widen to the cursor's local date, cap the response, then filter locally by exact timestamp before analysis. The widened retrieval is transport overlap, not permission to reprocess old content.
 
@@ -115,18 +93,14 @@ Advance a source cursor to the run's fixed end timestamp only after all of that 
 
 ## 2. Collect Slack deltas
 
-Run the bundled collector directly and capture its single compact JSON document without placing credentials on argv or in prompts:
+Use `mcp__slack__conversations_search_messages` with a bounded date filter derived from the Slack cursor and paginate until `next_cursor` is empty or 100 exact delta events have been retained.
 
-```bash
-python3 "${HERMES_HOME:-$HOME/.hermes}/skills/orchestration/engagement-checker/scripts/slack_api_delta.py" \
-  --start <ISO_CURSOR> --end <FIXED_RUN_ISO> --user U08BDJAMSRZ
-```
+Run two views:
 
-The collector uses only the read-only Slack Web API methods `auth.test`, `search.messages`, and bounded `conversations.replies`. Delta discovery runs two server-side views: `from:<U08BDJAMSRZ>` for Gaetan-authored commitments, replies, completion signals, and deferrals; and Slack's accepted `with:<@U08BDJAMSRZ>` modifier for DMs, threads, direct mentions, and other messages involving him. It widens date-granular search, filters exact timestamps locally, deduplicates stable events, applies conservative English/French engagement relevance filtering before its 100-candidate cap, and returns only bounded snippets plus coverage metadata.
+1. `filter_users_from=U08BDJAMSRZ` for commitments, replies, completion signals, and deferral instructions authored by Gaetan.
+2. `filter_users_with=U08BDJAMSRZ` for DMs, threads, and messages involving him that may contain a direct ask or someone waiting.
 
-Treat `complete=false`, `fail_closed=true`, `truncated=true`, any error, or any cap reached as incomplete coverage. Never advance the Slack cursor past an unproved interval. For an opening catch-up that exceeds the candidate cap, subdivide the interval deterministically into adjacent smaller windows until every leaf is complete; process leaf windows chronologically and deduplicate again across leaves. Parent cap failures are expected subdivision signals, not completed coverage.
-
-Do not fetch context for every search hit. For a selected ambiguous candidate only, call the same collector with `--context --channel <CHANNEL_ID> --thread <THREAD_TS> --message <MESSAGE_TS>`. Accept context only when its metadata is complete and target-found; it returns at most 12 sanitized messages. Do not fetch unrelated channel history, use Slack MCP, or persist raw threads. Resolve names from source data rather than guessing.
+Filter every result by exact Slack `ts` against the cursor before classifying it. Deduplicate the two views by channel and timestamp. For a new candidate only, use `mcp__slack__conversations_replies(channel_id, thread_ts)` to recover enough thread context to decide whether there is a commitment, unanswered ask, resolution, or user instruction. Do not fetch unrelated channel history. Resolve names from source data rather than guessing.
 
 Also inspect new messages in the origin DM with Tars for decisions about existing engagement items. A reply in a reminder thread is authoritative when the parent reminder names one `short_id`; when it contains several items, require the reply to name a short ID, person, or unique topic.
 
