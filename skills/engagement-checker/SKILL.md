@@ -115,14 +115,18 @@ Advance a source cursor to the run's fixed end timestamp only after all of that 
 
 ## 2. Collect Slack deltas
 
-Use `mcp__slack__conversations_search_messages` with a bounded date filter derived from the Slack cursor and paginate until `next_cursor` is empty or 100 exact delta events have been retained.
+Run the bundled collector directly and capture its single compact JSON document without placing credentials on argv or in prompts:
 
-Run two views:
+```bash
+python3 "${HERMES_HOME:-$HOME/.hermes}/skills/orchestration/engagement-checker/scripts/slack_api_delta.py" \
+  --start <ISO_CURSOR> --end <FIXED_RUN_ISO> --user U08BDJAMSRZ
+```
 
-1. `filter_users_from=U08BDJAMSRZ` for commitments, replies, completion signals, and deferral instructions authored by Gaetan.
-2. `filter_users_with=U08BDJAMSRZ` for DMs, threads, and messages involving him that may contain a direct ask or someone waiting.
+The collector uses only the read-only Slack Web API methods `auth.test`, `search.messages`, and bounded `conversations.replies`. Delta discovery runs two server-side views: `from:<U08BDJAMSRZ>` for Gaetan-authored commitments, replies, completion signals, and deferrals; and Slack's accepted `with:<@U08BDJAMSRZ>` modifier for DMs, threads, direct mentions, and other messages involving him. It widens date-granular search, filters exact timestamps locally, deduplicates stable events, applies conservative English/French engagement relevance filtering before its 100-candidate cap, and returns only bounded snippets plus coverage metadata.
 
-Filter every result by exact Slack `ts` against the cursor before classifying it. Deduplicate the two views by channel and timestamp. For a new candidate only, use `mcp__slack__conversations_replies(channel_id, thread_ts)` to recover enough thread context to decide whether there is a commitment, unanswered ask, resolution, or user instruction. Do not fetch unrelated channel history. Resolve names from source data rather than guessing.
+Treat `complete=false`, `fail_closed=true`, `truncated=true`, any error, or any cap reached as incomplete coverage. Never advance the Slack cursor past an unproved interval. For an opening catch-up that exceeds the candidate cap, subdivide the interval deterministically into adjacent smaller windows until every leaf is complete; process leaf windows chronologically and deduplicate again across leaves. Parent cap failures are expected subdivision signals, not completed coverage.
+
+Do not fetch context for every search hit. For a selected ambiguous candidate only, call the same collector with `--context --channel <CHANNEL_ID> --thread <THREAD_TS> --message <MESSAGE_TS>`. Accept context only when its metadata is complete and target-found; it returns at most 12 sanitized messages. Do not fetch unrelated channel history, use Slack MCP, or persist raw threads. Resolve names from source data rather than guessing.
 
 Also inspect new messages in the origin DM with Tars for decisions about existing engagement items. A reply in a reminder thread is authoritative when the parent reminder names one `short_id`; when it contains several items, require the reply to name a short ID, person, or unique topic.
 
