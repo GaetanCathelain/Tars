@@ -47,6 +47,12 @@ Use this bounded shape:
   "version": 1,
   "initialized_at": "ISO timestamp",
   "last_completed_run": "ISO timestamp or null",
+  "bootstrap": {
+    "start": "ISO timestamp or null",
+    "target_end": "ISO timestamp or null",
+    "complete": false,
+    "sources_complete": {"slack": false, "email": false, "linear": false}
+  },
   "sources": {
     "slack":  {"cursor": "ISO timestamp", "last_success": "ISO or null", "failures": 0, "seen": []},
     "email":  {"cursor": "ISO timestamp", "last_success": "ISO or null", "failures": 0, "seen": []},
@@ -83,9 +89,22 @@ After the workday gate passes, atomically create `~/.hermes/state/engagement-che
 
 The interval is 30 minutes and Hermes cron has a short runtime; the lock is crash protection, not a reason to let a run linger.
 
-## 1. Establish the incremental window
+## 1. Bootstrap, then establish the incremental window
 
-Get the current timestamp with a tool and convert it to Europe/Paris. On first run only, initialize each source cursor to two hours before now. Otherwise use each source's own cursor. Add a five-minute retrieval overlap when the source supports it, but discard any event whose exact timestamp is not newer than the stored cursor unless its stable event ID is absent and it can close or mutate a pending item.
+Get the fixed run timestamp with a tool and convert it to Europe/Paris.
+
+When no state exists, start a one-time catch-up covering the current and previous calendar weeks:
+
+1. Set `bootstrap.start` to 00:00 Europe/Paris on Monday of the previous ISO calendar week.
+2. Set `bootstrap.target_end` to the fixed first-run timestamp. Never move this target while bootstrapping.
+3. Initialize every source cursor to `bootstrap.start`, with all `sources_complete` values false.
+4. Persist this initialization before collecting a source so a timeout can resume safely.
+
+Catch up each source chronologically in bounded chunks. A run may retain at most 100 exact delta events per source and may fetch only the pages needed for that chunk. Reconcile each event in timestamp order so later replies, completion signals, and terminal states close earlier apparent asks. If a source reaches its fixed `bootstrap.target_end`, advance its cursor exactly to that target and mark it complete. If a cap, timeout budget, or remaining page prevents full coverage, advance only to the timestamp through which coverage is demonstrably complete, leave that source incomplete, persist, and resume from there on the next scheduled run with the normal five-minute overlap. Never skip an unprocessed interval merely to finish in one run.
+
+While any bootstrap source remains incomplete, persist progress, release the lock, and return exactly `[SILENT]`. Do not remind from partially reconciled history: a later event in the catch-up window may already resolve the apparent engagement. When all mandatory sources reach the fixed target, set `bootstrap.complete=true`, re-evaluate only items still open after the full reconciliation, and allow the normal urgency and cooldown rules to produce the first reminder. Historical items that were already answered, completed, delegated, dismissed, or made irrelevant must not appear in that reminder.
+
+After bootstrap, use each source's own cursor and the fixed current run timestamp. Add a five-minute retrieval overlap when the source supports it, but discard any event whose exact timestamp is not newer than the stored cursor unless its stable event ID is absent and it can close or mutate a pending item.
 
 Normal runs must process only new events plus the compact pending queue. Do not rescan the whole day, inbox, Slack history, or all Linear issues for context. When an API has only date-granular search, widen to the cursor's local date, cap the response, then filter locally by exact timestamp before analysis. The widened retrieval is transport overlap, not permission to reprocess old content.
 
