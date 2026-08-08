@@ -247,6 +247,22 @@ def paging_int(value: Any) -> int | None:
     return None
 
 
+def next_cursor_strict(payload: Mapping[str, Any], seen_cursors: set[str],
+                       invalid_code: str, loop_code: str) -> str | None:
+    """Extract response_metadata.next_cursor for strict cursor advancement:
+    fail closed on non-string cursors and on any cursor already seen."""
+    metadata = payload.get("response_metadata")
+    cursor = metadata.get("next_cursor", "") if isinstance(metadata, Mapping) else ""
+    if not cursor:
+        return None
+    if not isinstance(cursor, str):
+        raise SafeError(invalid_code)
+    if cursor in seen_cursors:
+        raise SafeError(loop_code)
+    seen_cursors.add(cursor)
+    return cursor
+
+
 def safe_snippet(text: Any, secrets: tuple[str, ...] = ()) -> str:
     if not isinstance(text, str):
         return ""
@@ -427,14 +443,9 @@ def collect(client: SlackClient, credentials: Credentials, start: dt.datetime, e
                             coverage["truncated"] = True
                             raise SafeError("event_cap_reached")
                         events[event["id"]] = event
-                metadata = payload.get("response_metadata")
-                next_cursor = metadata.get("next_cursor", "") if isinstance(metadata, Mapping) else ""
+                next_cursor = next_cursor_strict(
+                    payload, seen_cursors, "invalid_search_response", "pagination_loop")
                 if next_cursor:
-                    if not isinstance(next_cursor, str):
-                        raise SafeError("invalid_search_response")
-                    if next_cursor in seen_cursors:
-                        raise SafeError("pagination_loop")
-                    seen_cursors.add(next_cursor)
                     cursor, page = next_cursor, page + 1
                     continue
                 if "paging" in messages:
@@ -509,14 +520,9 @@ def collect_thread_context(client: SlackClient, credentials: Credentials, channe
                     "snippet": safe_snippet(raw.get("text"), (credentials.xoxc, credentials.xoxd)),
                     "target": mts == message_ts,
                 }
-            metadata = payload.get("response_metadata")
-            next_cursor = metadata.get("next_cursor", "") if isinstance(metadata, Mapping) else ""
+            next_cursor = next_cursor_strict(
+                payload, seen_cursors, "invalid_replies_response", "context_pagination_loop")
             if next_cursor:
-                if not isinstance(next_cursor, str):
-                    raise SafeError("invalid_replies_response")
-                if next_cursor in seen_cursors:
-                    raise SafeError("context_pagination_loop")
-                seen_cursors.add(next_cursor)
                 cursor, page = next_cursor, page + 1
                 continue
             # Some deployments include has_more; without a cursor it cannot be completed safely.

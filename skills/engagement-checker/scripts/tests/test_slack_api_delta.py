@@ -179,6 +179,20 @@ class CollectorTests(unittest.TestCase):
         self.assertEqual(no_sleeps, [])
         self.assertEqual(len(single.requests), 1)
 
+    def test_cumulative_retry_wait_at_exact_boundary_then_succeeds(self):
+        self.assertEqual(slack.MAX_TOTAL_RETRY_WAIT_SECONDS, 30.0)
+        sleeps = []
+        opener = QueueOpener([
+            self.http_error(retry_after="10"),
+            self.http_error(retry_after="20"),
+            {"ok": True},
+        ])
+        client = slack.SlackClient(CREDS, opener=opener, sleeper=sleeps.append)
+
+        self.assertEqual(client.get("auth.test"), {"ok": True})
+        self.assertEqual(sleeps, [10.0, 20.0])
+        self.assertEqual(len(opener.requests), 3)
+
     def test_429_error_does_not_disclose_secret_reason_headers_or_body(self):
         reason_sentinel = "REASON-SENTINEL-a41f"
         body_sentinel = "BODY-SENTINEL-c93d"
