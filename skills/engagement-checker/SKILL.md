@@ -90,22 +90,24 @@ After the workday gate passes, atomically create `~/.hermes/state/engagement-che
 
 The interval is 30 minutes and Hermes cron has a short runtime; the lock is crash protection, not a reason to let a run linger.
 
-## 1. Bootstrap, then establish the incremental window
+## 1. Run the daily opening catch-up, then normal deltas
 
 Get the fixed run timestamp with a tool and convert it to Europe/Paris.
 
-When no state exists, start a one-time catch-up covering the current and previous calendar weeks:
+The first eligible run of each Paris-local workday is the opening catch-up. Detect it when `daily_catchup.date` is not today's Paris-local date or today's catch-up is incomplete.
 
-1. Set `bootstrap.start` to 00:00 Europe/Paris on Monday of the previous ISO calendar week.
-2. Set `bootstrap.target_end` to the fixed first-run timestamp. Never move this target while bootstrapping.
-3. Initialize every source cursor to `bootstrap.start`, with all `sources_complete` values false.
-4. Persist this initialization before collecting a source so a timeout can resume safely.
+When opening a new day:
 
-Catch up each source chronologically in bounded chunks. A run may retain at most 100 exact delta events per source and may fetch only the pages needed for that chunk. Reconcile each event in timestamp order so later replies, completion signals, and terminal states close earlier apparent asks. If a source reaches its fixed `bootstrap.target_end`, advance its cursor exactly to that target and mark it complete. If a cap, timeout budget, or remaining page prevents full coverage, advance only to the timestamp through which coverage is demonstrably complete, leave that source incomplete, persist, and resume from there on the next scheduled run with the normal five-minute overlap. Never skip an unprocessed interval merely to finish in one run.
+1. Set `daily_catchup.date` to today's Paris-local date and `daily_catchup.target_end` to the fixed opening-run timestamp. Never move this target while that day's catch-up is in progress.
+2. If durable state does not exist, initialize every source cursor to 00:00 Europe/Paris on that same day. Do not scan previous days or weeks on the first-ever run.
+3. Otherwise set `daily_catchup.start` to the earliest existing per-source cursor. Each source still resumes from its own cursor, so the opening run naturally catches up overnight, over a weekend, or across a day off without rescanning already processed evidence.
+4. Set all `sources_complete` values false and persist this initialization before collecting a source so a timeout can resume safely.
 
-While any bootstrap source remains incomplete, persist progress, release the lock, and return exactly `[SILENT]`. Do not remind from partially reconciled history: a later event in the catch-up window may already resolve the apparent engagement. When all mandatory sources reach the fixed target, set `bootstrap.complete=true`, re-evaluate only items still open after the full reconciliation, and allow the normal urgency and cooldown rules to produce the first reminder. Historical items that were already answered, completed, delegated, dismissed, or made irrelevant must not appear in that reminder.
+Catch up each source chronologically in bounded chunks from its cursor to the fixed `daily_catchup.target_end`. A run may retain at most 100 exact delta events per source and may fetch only the pages needed for that chunk. Reconcile each event in timestamp order so later replies, completion signals, and terminal states close earlier apparent asks. If a source reaches the fixed target, advance its cursor exactly to that target and mark it complete. If a cap, timeout budget, or remaining page prevents full coverage, advance only to the timestamp through which coverage is demonstrably complete, leave that source incomplete, persist, and resume on the next scheduled run with the normal five-minute overlap. Never skip an unprocessed interval merely to finish in one run.
 
-After bootstrap, use each source's own cursor and the fixed current run timestamp. Add a five-minute retrieval overlap when the source supports it, but discard any event whose exact timestamp is not newer than the stored cursor unless its stable event ID is absent and it can close or mutate a pending item.
+While any mandatory source remains incomplete for today's catch-up, persist progress, release the lock, and return exactly `[SILENT]`. Do not remind from a partially reconciled opening window. When all mandatory sources reach the fixed target, set `daily_catchup.complete=true`, re-evaluate only items still open after reconciliation, and allow the normal urgency and cooldown rules to produce a reminder. Items already answered, completed, delegated, dismissed, or made irrelevant must not appear.
+
+On later runs that same day, use each source's own cursor and the fixed current run timestamp. Add a five-minute retrieval overlap when the source supports it, but discard any event whose exact timestamp is not newer than the stored cursor unless its stable event ID is absent and it can close or mutate a pending item.
 
 Normal runs must process only new events plus the compact pending queue. Do not rescan the whole day, inbox, Slack history, or all Linear issues for context. When an API has only date-granular search, widen to the cursor's local date, cap the response, then filter locally by exact timestamp before analysis. The widened retrieval is transport overlap, not permission to reprocess old content.
 
