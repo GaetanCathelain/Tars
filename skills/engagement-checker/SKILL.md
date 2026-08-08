@@ -47,7 +47,8 @@ Use this bounded shape:
   "version": 1,
   "initialized_at": "ISO timestamp",
   "last_completed_run": "ISO timestamp or null",
-  "bootstrap": {
+  "daily_catchup": {
+    "date": "Paris-local YYYY-MM-DD or null",
     "start": "ISO timestamp or null",
     "target_end": "ISO timestamp or null",
     "complete": false,
