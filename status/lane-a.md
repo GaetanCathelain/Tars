@@ -51,6 +51,26 @@ turns die after 3 continuation attempts (single-tool turns fine).
 
 ## Log
 
+- 2026-08-08 14:45Z — **Tool-call display split: DMs verbose, channels quiet** (Gaetan's ask after
+  Tars dumped its tool trace into C04LZBBNVNY). Hermes has per-platform but not per-chat-type
+  display resolution, so: (1) local patch in the VM's `~/.hermes/hermes-agent` checkout
+  (commit `d615ca8`, gateway/run.py) adding a DM-scoped override key
+  `display.platforms.<platform>.tool_progress_dm`; (2) config.yaml (`.bak` + flock) now sets
+  `display.platforms.slack: {tool_progress: off, tool_progress_dm: all}`; global
+  `display.tool_progress: all` untouched. Gateway restarted 14:28:04Z — this interrupted the live
+  staging-fix run in C04LZBBNVNY; auto-resume recovered both sessions (~1 min lost, Tars cleaned its
+  own orphan lock). **Verified on the resumed sessions**: DM "Continue" thread still shows tool
+  bubbles post-restart; the channel turn at 14:32:16Z ran tools (memory-tool error for session
+  `142314_3c38a71d` in errors.log) yet posted text only. Patch is local-only — re-apply/upstream it
+  before any `git pull` of hermes-agent.
+  **Side-find (pre-existing, NOT caused by this change):** claude.ai-connector messages (Gaetan's
+  user token via the Claude Slack app) are silently dropped by the adapter since ~v0.20.0:
+  `app_id` + no `client_msg_id` ⇒ classified bot-authored ⇒ `allow_bots=none` drops with no log.
+  Gaetan's 13:38 CEST connector DM and all three of this session's probes died this way. The
+  documented connector probe pattern (skill + memory) is broken until `gateway.platforms.slack.
+  allow_bots: mentions` (or similar) is set — trust-posture change, Gaetan's call, not applied.
+  Three orphan probe messages left in the Tars DM.
+
 - 2026-08-07 22:32Z — **P3 + P4 APPLIED** (two peers, joint gate; Gaetan gave GO directly in each
   tab). SOUL v2 live (`b1bcabf`), Orca v2 skill live (`290b7d4`), contradiction window ~2.5 min,
   closed. First live mc-metarepo E2E **PASS** — Tars drove the `orca` CLI over ssh (never the v1
