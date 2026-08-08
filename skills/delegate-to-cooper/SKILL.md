@@ -472,8 +472,14 @@ The worker is blocked inside `orchestration ask`, waiting for a reply addressed
 to that message id. Answer it [help-verified]:
 
 ```bash
-ssh cooper '~/.local/bin/orca orchestration reply --id "<MSG_ID>" --body "<answer>" --json'
+ssh cooper '~/.local/bin/orca orchestration reply --id "<MSG_ID>" --run "<RUN_ID>" \
+  --from "<TERMINAL_HANDLE>" --body "<answer>" --json'
 ```
+
+Measured on Orca 1.4.176 from plain SSH on 2026-08-08: `reply` also needs an
+explicit sender context. Omitting `--from` returns `no_active_sender_terminal`.
+Pass the coordinator's current live terminal handle and the run id; re-resolve
+the handle first if it may be stale.
 
 `<MSG_ID>` is the question message's own id from the check payload — **not** the
 dispatch id. Do **not** reach for `orchestration send --to dispatch:<id>` here:
