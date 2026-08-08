@@ -20,7 +20,7 @@ Produce Gaetan's source-backed morning daily: everything material since the last
 - Load `hermes-agent` only when installing or troubleshooting the cron job.
 - Cooper inspection is read-only analysis. Do it directly over `ssh cooper`; do not spawn a coding agent merely to read activity.
 
-A scheduled run has a tight runtime. Collect independent sources in parallel and keep raw results out of the final message.
+This workflow is Tars's own work. Run it directly: never delegate any collection, analysis, testing, or drafting to a subagent, Claude, Orca, an Orca worktree/session, or another agent. A scheduled run has a tight runtime, so collect independent sources in parallel and keep raw results out of the final message.
 
 ## 1. Establish the window
 
@@ -41,7 +41,7 @@ Check all three gates before doing the expensive collection:
 2. **France holiday:** query the official metropolitan France calendar at `https://calendrier.api.gouv.fr/jours-feries/metropole/<YEAR>.json`; match the Paris-local ISO date.
 3. **PayFit leave:** search existing email access for messages from or about PayFit that explicitly cover today's date. Read the relevant message body; a subject/snippet alone is not proof. Accepted/approved leave, RTT, or absence is off evidence. A generic PayFit notification is not.
 
-If it is a weekend, France bank holiday, or explicit PayFit day off, make one bounded activity probe (Gaetan-authored Slack, merged PRs, and Cooper Claude activity). If there is no substantive work signal, return exactly `NO_DAILY` so the scheduler can stay silent. If there is substantive work, continue: “actually worked” overrides the nominal day-off gate.
+If it is a weekend, France bank holiday, or explicit PayFit day off, make one bounded activity probe (Gaetan-authored Slack, merged PRs, and Cooper Claude activity). If there is no substantive work signal, return exactly `[SILENT]`; Hermes suppresses delivery for that marker. If there is substantive work, continue: “actually worked” overrides the nominal day-off gate.
 
 If holiday or leave evidence cannot be checked, continue rather than silently skipping, and add one short coverage note at the end.
 
