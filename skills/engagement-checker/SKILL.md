@@ -1,7 +1,7 @@
 ---
 name: engagement-checker
 description: "Use for incremental follow-up and commitment reminders."
-version: 1.0.0
+version: 1.1.0
 metadata:
   hermes:
     tags: [engagement, reminders, slack, email, linear, orchestration]
@@ -14,7 +14,7 @@ A half-hourly, source-backed monitor for Gaetan's open loops: explicit commitmen
 
 Tars owns and executes this workflow directly. Do not spawn, prompt, resume, modify, or delegate through Claude, Orca, an Orca worktree/session, or another non-Tars agent system. Cooper and Orca may be queried read-only as evidence sources. Never send Slack messages, email, reactions, or Linear updates from source integrations; the only write outside Tars's state is the scheduled reminder delivered to Gaetan.
 
-All human times use `Europe/Paris`. Most runs must return exactly `[SILENT]`.
+All human times use `Europe/Paris`. Scheduled runs are restricted to 10:00–17:00 on workdays. Most runs must return exactly `[SILENT]`.
 
 ## Load only what is needed
 
@@ -22,7 +22,19 @@ All human times use `Europe/Paris`. Most runs must return exactly `[SILENT]`.
 - Load `google-workspace` for Gmail. Its existing OAuth is the primary mailbox path; if its auth check fails, load and check `himalaya` before declaring email unavailable.
 - Query Linear read-only on Cooper with `ssh cooper '~/.local/bin/orca linear … --json'`. Never use a Linear mutation command.
 - Load `hermes-agent` only when installing or troubleshooting the cron jobs.
-- Do not load `daily-work-brief` during ordinary checks. The objectives and state are separate.
+- Consult `daily-work-brief` only for its workday-gate semantics. Do not load or run its broad collection workflow during ordinary checks; the objectives and state are separate.
+
+## Workday gate
+
+Apply the same workday decision as `daily-work-brief` before normal delta collection:
+
+1. Today must be Monday–Friday in Europe/Paris.
+2. Query the official metropolitan-France holiday calendar at `https://calendrier.api.gouv.fr/jours-feries/metropole/<YEAR>.json` and match today's Paris-local ISO date.
+3. Search existing email access for PayFit messages that explicitly cover today. Read the relevant body; a subject or snippet alone is not proof. Approved leave, RTT, or absence is off evidence; a generic PayFit notification is not.
+
+If today is a weekend, metropolitan-France bank holiday, or explicit PayFit day off, make the same bounded actual-work probe as the daily: Gaetan-authored Slack, merged PRs, and Cooper Claude activity. If there is no substantive work signal, return exactly `[SILENT]` without acquiring the engagement lock or advancing source cursors. If there is substantive work, continue; actual work overrides the nominal day-off gate, exactly as for the daily.
+
+If holiday or leave evidence cannot be checked, continue rather than silently skipping. Mention the coverage failure only if it materially weakens a reminder judgment. The cron schedule itself is weekday-only; the gate also protects manual runs and excludes holidays and leave.
 
 ## Durable state
 
@@ -67,7 +79,7 @@ Stable item IDs:
 
 ## Single-writer lock
 
-Before reading sources, atomically create `~/.hermes/state/engagement-checker.lock` as a directory. If it already exists and is less than 10 minutes old, return exactly `[SILENT]`. If it is older than 10 minutes, treat it as a crashed run, remove only that empty lock directory, and retry once. Always remove the lock directory in final cleanup. Do not remove any other path.
+After the workday gate passes, atomically create `~/.hermes/state/engagement-checker.lock` as a directory. If it already exists and is less than 10 minutes old, return exactly `[SILENT]`. If it is older than 10 minutes, treat it as a crashed run, remove only that empty lock directory, and retry once. Always remove the lock directory in final cleanup. Do not remove any other path.
 
 The interval is 30 minutes and Hermes cron has a short runtime; the lock is crash protection, not a reason to let a run linger.
 
@@ -148,14 +160,14 @@ Relative-time conventions are conservative and always preserve the original phra
 - fin de matinée / ce matin → 12:00
 - midi → 14:00
 - début d'après-midi / début d'aprèm → 15:00
-- cet après-midi → 17:30
-- fin de journée / EOD → 18:30
+- cet après-midi → 16:30
+- fin de journée / EOD → 17:00
 - ce soir → 19:00
-- demain / next business day → next weekday at 12:00; for a snooze with no time, wake at 09:00
+- demain / next business day → next weekday at 12:00; for a snooze with no time, wake at 10:00
 - demain matin → next weekday at 10:30
 - semaine prochaine / next week → next Monday at 12:00
 
-Do not silently choose among multiple plausible dates. Explicit calendar dates and times override these conventions. Weekends are skipped for “next business day”; public holidays are not inferred unless separately verified.
+Do not silently choose among multiple plausible dates. Explicit calendar dates and times override these conventions. “Next business day” uses the workday gate, not weekdays alone: skip verified metropolitan-France holidays and explicit PayFit leave when calculating the wake date.
 
 ## 6. Judge urgency
 
@@ -165,8 +177,8 @@ Re-evaluate only `open` items and snoozes whose wake time has arrived. Compute a
 - +25 if overdue, or +10 if due within 60 minutes;
 - +10 for a demonstrated stakeholder, not title-based guessing;
 - +10 when another person is visibly waiting;
-- +2 per elapsed Paris business hour, capped at +14;
-- +15 from 17:45 onward for a non-FYI item due today or with no explicit due date.
+- +2 per elapsed Paris work hour since 10:00, capped at +14;
+- +15 from 15:45 onward for a non-FYI item due today or with no explicit due date.
 
 Threshold: 60. Context can suppress a mathematically eligible item when evidence shows Gaetan is waiting on someone else, already replied, is on approved leave, or the ask no longer matters. Context can raise a blocker/security/customer/incident item when the evidence is explicit; record the reason.
 
@@ -178,7 +190,7 @@ Cooldowns:
 
 After cooldown, repeat an ordinary item only when its score rose by at least 8 or the context materially changed. Critical items may repeat after their shorter cooldown while the risk remains explicit. A snooze that wakes may remind once immediately. Do not remind every half hour merely because an item remains open.
 
-At 18:00, 18:30, and the final 19:00 pass, escalate genuinely forgotten direct replies and explicit promises that should not roll overnight. Do not turn the end-of-day rule into an inbox dump.
+At 16:00, 16:30, and the final 17:00 pass, escalate genuinely forgotten direct replies and explicit promises that should not roll overnight. Do not turn the end-of-day rule into an inbox dump.
 
 ## 7. Deliver or remain silent
 
@@ -200,11 +212,11 @@ On an internal failure, preserve unadvanced source cursors. If no trustworthy re
 
 Hermes global timezone must remain `Europe/Paris`. Use two recurring weekday jobs with this skill attached and delivery to the origin conversation:
 
-- `*/30 9-18 * * 1-5` — 09:00, 09:30, …, 18:30
-- `0 19 * * 1-5` — the single final 19:00 pass; no 19:30 run
+- `*/30 10-16 * * 1-5` — 10:00, 10:30, …, 16:30
+- `0 17 * * 1-5` — the single final 17:00 pass; no 17:30 run
 
 Both jobs use the same self-contained prompt:
 
-> Run `engagement-checker` end to end. Use Europe/Paris and the fixed run timestamp; acquire the single-writer lock; read durable state; collect and exactly filter only Slack, email, and Linear deltas since each source cursor; reconcile user decisions and resolved loops; update each source cursor only after successful processing; evaluate the pending queue with cooldowns; persist state; release the lock; then return the compact reminder or exactly `[SILENT]`. This is a read-only source workflow. Do not spawn or prompt Claude or Orca; Cooper/Orca may only be queried read-only for Linear evidence.
+> Run `engagement-checker` end to end. Use Europe/Paris and the fixed run timestamp. Apply the same workday gate as `daily-work-brief` first: weekday, official metropolitan-France holiday, explicit PayFit leave, then the bounded actual-work override for a nominal day off; return exactly `[SILENT]` when the gate says not to run. Otherwise acquire the single-writer lock; read durable state; collect and exactly filter only Slack, email, and Linear deltas since each source cursor; reconcile user decisions and resolved loops; update each source cursor only after successful processing; evaluate the pending queue with cooldowns; persist state; release the lock; then return the compact reminder or exactly `[SILENT]`. This is a read-only source workflow. Do not spawn or prompt Claude or Orca; Cooper/Orca may only be queried read-only for Linear evidence.
 
 The two jobs share the same state, so do not create separate per-job cursors.
