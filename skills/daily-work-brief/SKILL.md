@@ -20,7 +20,7 @@ Produce Gaetan's source-backed morning daily: everything material since the last
 - Load `hermes-agent` only when installing or troubleshooting the cron job.
 - Cooper inspection is read-only analysis. Do it directly over `ssh cooper`; do not spawn a coding agent merely to read activity.
 
-This workflow is Tars's own work. Run it directly: never delegate any collection, analysis, testing, or drafting to a subagent, Claude, Orca, an Orca worktree/session, or another agent. A scheduled run has a tight runtime, so collect independent sources in parallel and keep raw results out of the final message.
+This workflow's daily collection, analysis, judgment, and drafting are Tars's own work. Run those steps directly: never delegate them to a subagent, Claude, Orca, an Orca worktree/session, or another agent. External testing of the skill may be delegated when Gaetan explicitly asks for it. A scheduled run has a tight runtime, so collect independent sources in parallel and keep raw results out of the final message.
 
 ## 1. Establish the window
 
