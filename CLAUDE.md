@@ -6,8 +6,10 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 Build + ops repo for **Tars**: Gaetan's personal Hermes agent on a dedicated
 Proxmox VM, **live in Slack since 2026-08-07** (DM-first, answers only Gaetan;
-may message others in conversations that include Gaetan, per-message approval —
-SOUL rule 4, amended 2026-08-08).
+may post substantive content to conversations that include Gaetan when the
+message is Gaetan's call — his instruction to post is the approval, per
+message, never standing; #general-class broad channels off-limits — SOUL
+rule 4, amended 2026-08-08 twice).
 Tars orchestrates and reports; implementation deliverables are never its to
 produce — that work is delegated to Claude Code sessions driven through Orca
 on cooper. Read-only analyses, audits and status reports Tars writes itself
