@@ -235,6 +235,18 @@ def iso_to_slack_ts(value: dt.datetime) -> Decimal:
     return Decimal(str(value.timestamp()))
 
 
+def paging_int(value: Any) -> int | None:
+    # Strict positive decimal integer: real int (bool excluded) or digit string
+    # for legacy schema compatibility; floats/None/other strings are rejected.
+    if isinstance(value, bool):
+        return None
+    if isinstance(value, str) and value.isdecimal():
+        value = int(value)
+    if isinstance(value, int) and value > 0:
+        return value
+    return None
+
+
 def safe_snippet(text: Any, secrets: tuple[str, ...] = ()) -> str:
     if not isinstance(text, str):
         return ""
@@ -425,16 +437,16 @@ def collect(client: SlackClient, credentials: Credentials, start: dt.datetime, e
                     seen_cursors.add(next_cursor)
                     cursor, page = next_cursor, page + 1
                     continue
-                paging = messages.get("paging")
-                if isinstance(paging, Mapping):
-                    try:
-                        current = int(paging.get("page", page))
-                        total_pages = int(paging.get("pages", current))
-                    except (TypeError, ValueError, OverflowError):
-                        raise SafeError("invalid_search_response") from None
-                    # Strict progress: the reported page must match the one we
-                    # requested (zero/repeated/mismatched pages loop forever).
-                    if current != page or total_pages < 1:
+                if "paging" in messages:
+                    paging = messages["paging"]
+                    if not isinstance(paging, Mapping):
+                        raise SafeError("invalid_search_response")
+                    current = paging_int(paging.get("page"))
+                    total_pages = paging_int(paging.get("pages"))
+                    # Strict progress: explicit positive page/pages, the reported
+                    # page must match the one we requested, and the total can't
+                    # sit behind it (zero/repeated/mismatched pages loop forever).
+                    if current is None or total_pages is None or current != page or total_pages < current:
                         raise SafeError("invalid_search_response")
                     if current < total_pages:
                         cursor, page = "", page + 1

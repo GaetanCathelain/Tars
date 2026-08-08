@@ -266,7 +266,7 @@ class CollectorTests(unittest.TestCase):
         opener = QueueOpener([
             search_payload([match("1786185000.000", "I will handle this")], page=1, pages=2),
             search_payload([match("1786185100.000", "Done")], page=2, pages=2),
-            search_payload([], page=1, pages=1),
+            search_payload([], page="1", pages="1"),
         ])
         result = slack.collect(slack.SlackClient(CREDS, opener), CREDS, START, END, slack.DEFAULT_USER)
         self.assertTrue(result["coverage"]["complete"])
@@ -280,6 +280,34 @@ class CollectorTests(unittest.TestCase):
             "mismatched_page": [search_payload([], page=3, pages=3), search_payload([])],
             "malformed_page": [
                 {"ok": True, "messages": {"matches": [], "paging": {"page": None, "pages": 2}}},
+            ],
+            "pages_behind_requested_page": [
+                search_payload([], page=1, pages=2),
+                search_payload([], page=2, pages=1),
+                search_payload([], page=1, pages=1),
+            ],
+            "paging_not_a_mapping": [
+                {"ok": True, "messages": {"matches": [], "paging": "done"}},
+                {"ok": True, "messages": {"matches": [], "paging": "done"}},
+            ],
+            "missing_page_key": [
+                {"ok": True, "messages": {"matches": [], "paging": {"pages": 1}}},
+                {"ok": True, "messages": {"matches": [], "paging": {"pages": 1}}},
+            ],
+            "missing_pages_key": [
+                {"ok": True, "messages": {"matches": [], "paging": {"page": 1}}},
+                {"ok": True, "messages": {"matches": [], "paging": {"page": 1}}},
+            ],
+            "float_paging_values": [
+                {"ok": True, "messages": {"matches": [], "paging": {"page": 1.0, "pages": 1.0}}},
+                {"ok": True, "messages": {"matches": [], "paging": {"page": 1.0, "pages": 1.0}}},
+            ],
+            "bool_paging_values": [
+                {"ok": True, "messages": {"matches": [], "paging": {"page": True, "pages": True}}},
+                {"ok": True, "messages": {"matches": [], "paging": {"page": True, "pages": True}}},
+            ],
+            "non_decimal_string_pages": [
+                {"ok": True, "messages": {"matches": [], "paging": {"page": "1", "pages": "x"}}},
             ],
         }
         for name, payloads in cases.items():
