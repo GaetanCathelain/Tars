@@ -370,37 +370,58 @@ under it (`--timeout-ms 240000`). Real coding work routinely takes longer.
 **The run, task, dispatch and delivery ids are durable** — SQLite-backed, they
 survive the timeout, the ssh disconnect and my turn ending.
 
-### Nothing gives me a later turn on its own — I schedule it
+### Getting the later turn — tracked background wait, cron as fallback
 
-I am a Slack agent: I speak when spoken to. "I will re-attach" is a promise with
-no mechanism behind it unless I *create* the turn, and a run that finishes 20
-minutes later into silence is a broken promise, not a slow answer.
-
-The mechanism is Hermes' own one-shot cron:
+I am a Slack agent: "I will re-attach" needs a mechanism that creates the later
+turn. The primary mechanism is a Hermes-tracked background process running
+Orca's blocking mailbox wait:
 
 ```bash
-~/.local/bin/hermes cron create "5m" "Re-attach to Orca run <RUN_ID>, dispatch \
-<DISPATCH_ID>, delivery <DELIVERY_ID>, worktree <path>. Use delegate-to-cooper: \
-ack the delivery, wait again, then report the outcome, the worktree path and \
-the branch." --deliver slack --repeat 1
+ssh cooper '~/.local/bin/orca orchestration check --terminal "<TERMINAL_HANDLE>" \
+  --run "<RUN_ID>" --wait --types worker_done,escalation,question \
+  --timeout-ms 3600000 --json' 2>/dev/null
 ```
 
-- Spell `~/.local/bin/hermes` in full — the hermes CLI is **not** on PATH in a
+Start that command with the terminal tool's `background=true` and
+`notify_on_complete=true`. When Orca returns a message or the bounded wait times
+out, Hermes injects the process completion back into the **same originating
+conversation and Slack thread**. This is measured, not inferred: on 2026-08-08
+a tracked cross-session test process completed after the assistant turn had
+ended and its completion re-entered the original Slack thread. This avoids a
+webhook entirely; Hermes webhooks deliberately create independent
+`webhook:<route>:<delivery_id>` sessions and therefore are not a continuation
+transport.
+
+On notification:
+
+1. Parse and process the whole Orca batch.
+2. For a question, reply with `orchestration reply`; for completion, read and
+   verify the worker output and release it.
+3. Ack the top-level delivery id only after processing it.
+4. If the job is still live or the wait returned empty, re-resolve the terminal
+   handle and start another tracked background wait.
+
+A tracked process can still be lost across a gateway/process restart or an
+explicitly abandoned session. For work where Gaetan asked to be told when it is
+done, also create a **one-shot cron fallback** at a suitably conservative delay:
+
+```bash
+~/.local/bin/hermes cron create "15m" "Fallback re-check for Orca run <RUN_ID>, \
+dispatch <DISPATCH_ID>, delivery <DELIVERY_ID>, worktree <path>. Use \
+delegate-to-cooper: inspect authoritative worker state and mailbox; report only \
+new information." --deliver slack --repeat 1
+```
+
+- The background wait is the low-latency path and preserves the exact
+  conversation automatically.
+- The cron is recovery insurance, not the normal polling loop. Its prompt must
+  be self-contained because cron runs in a fresh session.
+- Spell `~/.local/bin/hermes` in full — the CLI is not on PATH in a
   non-interactive shell on this VM.
-- `--deliver slack`, the **bare platform name**, delivers to
-  `SLACK_HOME_CHANNEL` — Gaetan's DM. `/bg` cannot do this: it always replies to
-  the surface that invoked it, never to home.
-- `--repeat 1` fires once. Pick the interval from the size of the job (5m for
-  something small, 15m for real work); too eager just burns a turn on another
-  `{count:0}`.
 
-**If Gaetan asked to be told when it is done, scheduling this is not optional.**
-The checkpoint is then always two actions — schedule first, then answer:
-
-> Still running. Run `<RUN_ID>`, dispatch `<DISPATCH_ID>`, worktree `<path>`.
-> Re-check scheduled in 5 minutes; I'll report back here.
-
-If he did not ask to be told, the ids in my reply are enough — he can pull.
+A running-status reply names the run/dispatch ids and worktree, and says that a
+background completion watch is active with a timed cron fallback. If Gaetan did
+not ask to be told, the ids alone are enough and neither mechanism is required.
 
 ### `--ack`, and why skipping it freezes the loop
 
