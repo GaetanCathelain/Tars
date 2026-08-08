@@ -1,7 +1,7 @@
 ---
 name: engagement-checker
 description: "Use for incremental follow-up and commitment reminders."
-version: 1.1.0
+version: 1.2.0
 metadata:
   hermes:
     tags: [engagement, reminders, slack, email, linear, orchestration]
