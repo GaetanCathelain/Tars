@@ -18,7 +18,7 @@ All human times use `Europe/Paris`. Scheduled runs are restricted to 10:00–17:
 
 ## Load only what is needed
 
-- Use the Slack MCP tools directly. Gaetan's Slack user ID is `U08BDJAMSRZ`.
+- Use the bundled direct read-only Slack Web API collector at `scripts/slack_api_delta.py`; never use Slack MCP for this workflow. It loads existing Slack credentials internally from the protected local credential file and must never expose them in argv, stdout, logs, state, or prompts. Gaetan's Slack user ID is `U08BDJAMSRZ`.
 - Load `google-workspace` for Gmail. Its existing OAuth is the primary mailbox path; if its auth check fails, load and check `himalaya` before declaring email unavailable.
 - Query Linear read-only on Cooper with `ssh cooper '~/.local/bin/orca linear … --json'`. Never use a Linear mutation command.
 - Load `hermes-agent` only when installing or troubleshooting the cron jobs.
