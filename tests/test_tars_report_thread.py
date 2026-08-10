@@ -25,7 +25,7 @@ from tempfile import TemporaryDirectory
 from zoneinfo import ZoneInfo
 
 REPO = Path(__file__).resolve().parent.parent
-SCRIPT = REPO / "scripts" / "tars-report-thread"
+SCRIPT = REPO / "scripts" / "tars-report-thread.py"
 CHANNEL = "C0TESTCHAN0"
 BOT = "U0TESTBOT00"
 HUMAN = "U08BDJAMSRZ"
