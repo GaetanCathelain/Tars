@@ -277,7 +277,3 @@ live-message-level evidence (MPIM leg synthetic, as stated). The
 withdrawn capability gate is out of the code, out of the config, and
 pinned out by guard + signature tests; mention routing and the who-gate
 are measurably unchanged.
-
-## Post-deploy verification
-
-_Pending — config-level, runtime-level, live-message evidence, each labelled._
