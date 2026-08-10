@@ -29,11 +29,12 @@ and returned an empty toolset for any conversation not on the list — a
 *display* be limited to the home channel and his DM. The cost was real: a
 fresh mention in `GQ07CQXT7` got a toolless session that could not delegate.
 
-**The live VM still carries `5af9e1e`** until the corrected deploy in
-`docs/plans/apply-slack-channel-boundaries.md` runs (`git reset --hard
-d615ca8`, then `git am --3way` the new 0002). Until then this directory and
-the VM checkout do not match — assume the VM is one withdrawn commit ahead.
-Evidence: `status/probes/wf5/slack-tool-visibility-correction.md`.
+**The corrected deploy ran 2026-08-10 20:00 UTC**: the VM checkout was
+reset `5af9e1e` → `d615ca8` and the new 0002 applied as VM commit `4d10183`
+(tree ≡ kit `ef35fd1`). This directory and the VM checkout now match.
+Evidence: `status/probes/wf5/slack-tool-visibility-correction.md` (the
+correction), `status/probes/wf6/slack-tool-visibility-restore.md` (the
+deploy).
 
 ## Apply + verify — the post-`/upgrade` re-apply path
 

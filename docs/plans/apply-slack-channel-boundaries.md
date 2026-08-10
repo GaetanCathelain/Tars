@@ -10,13 +10,14 @@
 - The same deploy also shipped **per-conversation toolset gating**, which is
   **withdrawn** — it restricted capability where Gaetan asked for a display
   change. Removing it and applying the corrected display patch is the
-  "what to apply" below. **Authorized and dispatched 2026-08-10 (evening)
-  via Orca on Gaetan's go** (he asked Tars in Slack whether the fix was
-  pushed; the dispatch instruction covers deploy). Not performed as of this
-  commit — this line flips to *performed* in the same push that lands the
-  deploy record in `status/probes/wf6/slack-tool-visibility-restore.md`.
-  The plan originally sat on a local lineage that never reached `main`;
-  that dispatch restored and re-based it onto `main`.
+  "what to apply" below. **PERFORMED 2026-08-10 19:57–20:01 UTC** (Orca
+  dispatch on Gaetan's go — he asked Tars in Slack whether the fix was
+  pushed; the dispatch instruction covered deploy). VM checkout `4d10183`
+  on `d615ca8`, config edited under flock with .bak, gateway restarted
+  (PID 774992). Deploy record + all verification:
+  `status/probes/wf6/slack-tool-visibility-restore.md`. The plan
+  originally sat on a local lineage that never reached `main`; that
+  dispatch restored and re-based it onto `main`.
 
 > The `verify-mention.md` / `verify-bypass.md` / `impl-report` documents this
 > plan cites are session scratchpad artifacts, not in the repo;

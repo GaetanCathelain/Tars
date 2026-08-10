@@ -183,9 +183,100 @@ of record:
   authorization/mention routing untouched; no unrelated changes; commit
   message otherwise accurate.
 
-## Deploy record
+## Deploy record — performed 2026-08-10 19:57–20:01 UTC
 
-_Pending — filled at deploy time._
+Landed on main first: PR #39, squash-merged as `a420035` (parent `3c8c8f3`,
+PR #40 from a concurrent lane — no path overlap), verified as fresh
+`origin/main` HEAD post-fetch. No CI is configured in this repo; the merge
+gate was the test evidence + adversarial review above.
+
+Preconditions, all re-verified live immediately before the deploy: no
+logged-in users, gateway idle since 19:25:39; `gateway.proxy_url` unset and
+`GATEWAY_PROXY_URL` count 0; all eight forbidden `SLACK_*` env vars count 0;
+`SLACK_ALLOWED_USERS` count 1 (grep -c only); checkout at `5af9e1e` with
+only the known JS lockfile drift.
+
+- **Code** (19:58): `scp` of the kit 0002; drift preserved via
+  `git diff > /tmp/js-drift.patch`; `git reset --hard d615ca8`;
+  `git -c user.name="Claude (Tars deploy)" -c user.email=… am --3way` →
+  landed as VM commit **`4d10183`** (replay of kit `ef35fd1` — tree
+  identical, committer differs); drift restored (exit 0, same three JS
+  files dirty after); `ast.parse(gateway/run.py)` OK.
+- **Config** (19:59:50): backup
+  `~/.hermes/config.yaml.bak-toolvis-20260810-195950`, then the ruamel
+  round-trip under `flock ~/.hermes/.wf3.lock`: removed
+  `platform_tool_conversations`, set `tool_progress: 'off'` (quoted),
+  removed `tool_progress_dm`, added
+  `tool_progress_conversations: {C0BP2GZUFSR: all, D0BBYNM01BL: all}`.
+  Unified diff captured; ruamel reflowed long `personalities` strings
+  (cosmetic, precedented in the 14:37 deploy record) — semantic equality of
+  everything outside the three intended keys ASSERTED
+  (`yaml.safe_load(bak) == yaml.safe_load(new)` after popping the intended
+  keys: `SEMANTIC_EQUAL_OK`). Top-level `slack:` mention-routing block
+  untouched by the diff.
+- **Pre-restart checks**: `CONFIG_OK` (obsolete key gone, map exact,
+  `tool_progress == 'off'` the string, `tool_progress_dm` absent);
+  effective adapter values unchanged — `strict True | require True |
+  free ['C0BP2GZUFSR'] | allowed [] | reaction_triggers None |
+  mention_patterns []`; who-gate positive — `allowed_users_nonempty True,
+  gaetan_in True` (with `.env` sourced in the remote shell; the first,
+  un-sourced run printed False — throwaway processes never see `.env`, the
+  known gotcha), `allow_bots None`, and 42 historical
+  `[Slack] Early reject of unauthorized user` WARNINGs in gateway.log.
+- **Restart** (20:00:38): `systemctl --user restart hermes-gateway.service`
+  — the supported external lifecycle path. Old PID 677155 (up since 14:37),
+  new **PID 774992**, `ActiveState=active`; Slack Socket Mode connected
+  20:00:43; nothing was in flight (last turn ended 19:25).
+- **Post-restart asserts** (`ASSERTS_OK`): `chat_id` NOT in
+  `_get_platform_tools` signature (the withdrawn gate is gone from the
+  running code), **22 slack toolsets** resolve non-empty, `_normalise`
+  resolves both map entries to `all` and unlisted conversations to nothing;
+  effective mention-routing values identical pre/post; VM checkout
+  `git log -1` = `4d10183`.
+
+## Post-deploy verification
+
+**Source/config-level evidence:** the config diff + `CONFIG_OK` +
+`SEMANTIC_EQUAL_OK` above; kit patch on main (`a420035`) byte-applied by
+`git am` (tree of `4d10183` ≡ kit `ef35fd1`).
+
+**Runtime/service-level evidence:** PID 774992 active, socket connected,
+`ASSERTS_OK` (signature + toolset count + map normalisation), effective
+values unchanged — all listed above.
+
+**Live Slack-message evidence** (2026-08-10 ~20:03–20:12 UTC, sent as
+Gaetan via the VM-stored native creds — secrets never on argv; replies
+polled via `conversations.replies` on each probe's ts; probe file
+`~/tars-probe.txt` with a unique timestamp payload, removed after):
+
+| # | Probe | Expected | Observed |
+|---|---|---|---|
+| A | `C0BFQ5WFYTB` fresh `@tars`, tool-requiring ask (read a file) | reply reflects real tool output, **no** interim bubble | thread = request + final answer only (**0** interim messages); answer = the probe file's exact 24-char content; `agent.log` session `20260810_200318_17b418ab`: `read_file completed (0.06s, 139 chars)` at 20:03:23 — **the tool ran, Slack showed no narration** |
+| B | unmentioned `merci !` in A's thread | silence | no new message after 90 s+; thread count unchanged (regression check: mention routing intact) |
+| C | `C0BP2GZUFSR` top-level, unmentioned, same ask | reply **with** bubble | thread = request + `⚙️` progress bubble + final answer (free-response + map narration) |
+| D | `D0BBYNM01BL` 1:1 DM, same ask | reply **with** bubble | thread = request + progress bubble + final answer (narration via the map entry — `tool_progress_dm` is unset) |
+
+Probe A is the invariant the withdrawn gate broke, now live-proven from
+both sides: capability yes (log-verified tool execution), narration no.
+Anomalies, both non-blocking and disclosed: A's turn first tried
+`kanban_show` (errored, never surfaced to Slack) before `read_file`; one
+local JSON poll capture was corrupted by shell command substitution
+(local capture path, not Slack) and re-captured via file redirect.
+
+**Not live-probed:** an MPIM (creating one would ping a third party —
+same stance as the 14:37 deploy). Covered synthetically by
+`test_group_dm_stays_quiet_without_tool_progress_dm` (MPIM chat_type
+`dm`, map-only config: tool runs, zero narration) plus the fact that no
+MPIM has a map entry; Tars is a member of zero MPIMs today
+(`docs/facts.md`).
+
+## Verdict
+
+All six matrix points hold, each with config-, runtime- AND
+live-message-level evidence (MPIM leg synthetic, as stated). The
+withdrawn capability gate is out of the code, out of the config, and
+pinned out by guard + signature tests; mention routing and the who-gate
+are measurably unchanged.
 
 ## Post-deploy verification
 
