@@ -1,7 +1,7 @@
-# Operational facts — verified live 2026-08-07
+# Operational facts — verified live 2026-08-07, extended 2026-08-10 (WF6)
 
 Everything below was measured on the Tars VM (Hermes v0.20.0, Ubuntu 24.04)
-during WF3–WF5. Evidence pointers are files under `status/probes/`. Re-verify
+during WF3–WF6. Evidence pointers are files under `status/probes/`. Re-verify
 after any Hermes upgrade.
 
 ## Hermes CLI / runtime
@@ -20,6 +20,10 @@ after any Hermes upgrade.
 | Async delivery to the home channel: `hermes cron create "1m" "…" --deliver slack --repeat 1` (bare platform name ⇒ `SLACK_HOME_CHANNEL`). `/bg` always replies to the INVOKING surface — it can never deliver to home | `wf4/p13` |
 | Skills live at `~/.hermes/skills/<name>/SKILL.md` and are loaded into model context unprompted when relevant | `wf5/orca-implement` |
 | Kanban: single top-level `toolsets: [hermes-cli, kanban]` key unlocks 12 `kanban_*` tools on CLI **and** Slack; dispatcher spawns real workers that drive cards ready→running→done | `wf5/kanban-*` |
+| **`NRestarts` is NOT a valid restart test** — the gateway restarted 2026-08-10 20:00:38Z with `NRestarts` still `0` (systemd counts only restarts it performed, not an in-band respawn). Compare `ActiveEnterTimestamp` instead | `wf6/deploy-and-verify`, `wf6/check3-verification` |
+| `hermes cron run <job>` **DELIVERS to the job's configured target**; there is no dry-run, no-deliver or local-only flag. To exercise a job's real path without posting to production, create a temporary mirror job aimed elsewhere and delete it after | `wf6/cron-alignment-and-final-run`, `wf6/board-via-cron-path` |
+| **No non-agentic way to invoke an MCP tool exists** — `hermes mcp test` takes a server *name* and nothing else. Anything whose output must be deterministic rather than LLM-recalled has to go over raw HTTP | `wf6/deterministic-render-options` |
+| `execute_code` scrubs every env var whose name *contains* `KEY`/`TOKEN`/`SECRET`/… (`_scrub_child_env`, `_SECRET_SUBSTRINGS`); the terminal/shell tool does **not**. Measured: `LINEAR_API_KEY` present in a terminal subprocess, absent inside `execute_code`. A skill that needs it must declare `required_environment_variables` and use the terminal tool | `wf6/deterministic-render-options`, `wf6/check3-verification` |
 | Known intermittent: multi-step Codex turns can die with "response remained incomplete after 3 continuation attempts"; plain/single-tool turns unaffected. Retry once before concluding failure | `wf4/p13`, triage: later |
 | tirith security scanner: enabled but not installed — command vetting is pattern-matching only (pre-existing; triage: later) | `wf3-s5` |
 
@@ -35,7 +39,7 @@ after any Hermes upgrade.
 | The claude.ai `claude_ai_Slack` MCP connector authenticates **as Gaetan** (user token `U08BDJAMSRZ`) — never usable as a non-Gaetan sender | `wf4/p03` |
 | **`slack.allow_bots` is security-critical, one line, and non-obvious.** Setting it to `mentions`/`all` does TWO things at once: it stops the adapter's bot-sender drop (`adapter.py:5339`) **and** arms a gateway branch (`gateway/authz_mixin.py:499-501`) that returns authorized for any bot **with no `SLACK_ALLOWED_USERS` comparison at all** (upstream intent, #4466, with its own test). Default is `none`, and it is unset here — dormant. The adapter's startup INFO log contradicts this: it says the other bot's id must be in the allowlist. Treat this key on the same do-not-change footing as `SLACK_ALLOWED_USERS`. **What keeps the connector from triggering Tars is this default, not the check ordering** — the allowlist alone would admit a connector post, since it carries `user=U08BDJAMSRZ` | `wf5/audit-slack-allowlist-bypass` |
 | Allowlist integrity otherwise verified: it keys on Slack-asserted `event["user"]` over the authenticated Socket-Mode websocket (not payload-forgeable) and fails **closed** on empty/unset/no-user/error. Every external branch (DM, public/private channel, MPIM, thread, app_mention, edited, file_share, slash, interactive, reaction) hits a check; only `is_internal` (cron, `/bg`) skips it, and that is agent-authored, not Slack-reachable | `wf5/audit-slack-allowlist-bypass` |
-| IDs: Gaetan `U08BDJAMSRZ` · Tars bot user `U0BBH85NAKH` · app `A0BC0GXH78R` · team `T7V1UGJ82` · home DM `D0BBYNM01BL` · reporting channel `C0BP2GZUFSR` (created 2026-08-10) · test channel `C08RWSTU9LK`. VM env names: `SLACK_MCP_XOXC_TOKEN` / `SLACK_MCP_XOXD_TOKEN` (cookie sent as-stored, URL-encoded) | `wf4/p01` |
+| IDs: Gaetan `U08BDJAMSRZ` · Tars bot user `U0BBH85NAKH` · app `A0BC0GXH78R` · team `T7V1UGJ82` · home DM `D0BBYNM01BL` · reporting channel `C0BP2GZUFSR` = `#gcn-tars-reporting`, private (created 2026-08-10) · test channel `C08RWSTU9LK`. **`C0BFQ5WFYTB` = `#tech-project-support-engineer` is a live TEAM channel — never post there** (an operator directive once named it as the test channel; it was inverted). VM env names: `SLACK_MCP_XOXC_TOKEN` / `SLACK_MCP_XOXD_TOKEN` (cookie sent as-stored, URL-encoded) | `wf4/p01`, `wf6/slack-channel-audit` |
 | The three report jobs' `deliver` (`e231e5faf180`, `62e8cd9db637`, `759e08c598e3`) is **reconciler-managed — never hand-edit it**. `scripts/tars-report-thread.py` (no-agent `--script` cron job, `25,55 7-16 * * 1-5` Paris) rewrites it each tick to `slack:C0BP2GZUFSR:<today's parent ts>`, or bare `slack:C0BP2GZUFSR` until the day's first top-level bot message exists. It reads `conversations.history` and posts nothing itself; a hand-set static ts is exactly the stale-thread bug it fixes | `daily-report-threading` spec |
 
 ## SOUL / persona design
@@ -116,3 +120,29 @@ The connector remains correct for *reading* Slack. Evidence:
 | **It would answer in the right thread**: the handler resolves `item.ts` → true parent via `conversations.replies` (`adapter.py:4861-4877`) — reaction payloads carry no `thread_ts`. Verified live: passing a *reply's* ts returns the parent | `wf5/emoji-trigger` |
 | **Allowlist covers it** — the reaction synthesizes a message with the **reactor** as `user`, routed through the same `_handle_slack_message` auth chokepoint (`adapter.py:5528-5549`). It bypasses only the mention gate, via `_hermes_force_process` (`:4928`, `:5679`) | `wf5/emoji-trigger` |
 | Slack scopes are additive ⇒ adding one needs an app re-install but **no token change and no SOPS rotation expected**; confirm with `auth.test` after | `wf5/emoji-trigger` |
+
+## Linear
+
+Verified 2026-08-10 (WF6) against the live workspace, not vendor docs — the
+`mcp__linear__*` schemas are LLM-summarized and were wrong about several of the
+shapes below. Evidence: `status/probes/wf6/`.
+
+| Fact | Evidence |
+|---|---|
+| Team **Gaetan / GCN** `81e7b769-2a46-4e2a-8db5-c165a7963b0e`; Gaetan (viewer, creator, assignee) `4951b192-e49c-4b7e-b491-58c89e66043c`. **GCN is the default team for every ticket Tars creates**, unless Gaetan names another — per message, never standing | `wf6/gcn9-native-mcp`, `wf6/T6-cooper-linear-default` |
+| Reached through a **native Hermes MCP server** `linear` (`mcp__linear__*`, 58 tools): a **manual** `mcp_servers.linear` stanza, `url: https://mcp.linear.app/mcp` + static `Authorization: "Bearer ${LINEAR_API_KEY}"`. **NOT the catalog preset** — that entry is remote OAuth 2.1 + DCR and is broken by construction on a headless gateway (Hermes registers a `redirect_uri` on the VM's own loopback, so the operator's browser 302s to their laptop). The `Bearer ` prefix is mandatory here; the Linear **GraphQL** API is the opposite and takes the raw key | `wf6/gcn9-native-mcp` |
+| `save_issue` is create **and** update — omit `id` to create, pass `id` to update; there is no `create_issue`. A create that omits `state` lands the issue in **Backlog** | `wf6/gcn9-native-mcp`, `wf6/mcp-linear-measured-shapes` |
+| **`daily-work-brief`'s board block is not LLM-rendered.** `scripts/linear_board.py` computes it over raw HTTP GraphQL and the agent includes its stdout byte for byte; a Coverage gate makes it print the single line `board unavailable (coverage unproven)` rather than any partial board. A documented, narrowly scoped exception to the native-transport rule, forced by the absence of any non-agentic MCP call — the agent-rendered version fabricated 7 of 12 titles once compaction evicted the raw reads | `wf6/deterministic-render-options`, `wf6/check3-verification`, `wf6/rollback-daily-work-brief` |
+
+### Measured tool semantics that bite
+
+| Fact | Evidence |
+|---|---|
+| **`id` IS `"GCN-42"`** — the identifier, never a UUID. Reads return no issue UUID and no `identifier` field at all | `wf6/mcp-linear-measured-shapes` |
+| Reads return a flat `status` + `statusType` pair — there is **no `state` object** | `wf6/mcp-linear-measured-shapes` |
+| `priority` is a **bare int** over raw GraphQL but an **object** (`{value, name}`) from `save_issue` and the other MCP tools. Arithmetic or sorting on the object silently misbehaves | `wf6/mcp-linear-measured-shapes`, `wf6/fields-and-teamissues-exercised` |
+| `labels` **REPLACE** the whole set on update (`blocks`/`blockedBy`/`relatedTo` are the opposite — append-only). A state move must therefore pass `id` + `state` and **nothing else** | `wf6/gcn9-native-mcp`, `wf6/gcn3-gcn5-closed`, `wf6/gcn4-closed` |
+| **"No error" is not success**: an unresolvable `state` returns a normal payload and silently no-ops. Confirm every write by an independent re-read, never by the mutation response | `wf6/mcp-linear-measured-shapes`, `wf6/gcn4-closed` |
+| `hasNextPage == false` is the **only** completeness proof — and it is meaningless in `query` mode. Never substitute a narrowed filter for paging | `wf6/mcp-linear-measured-shapes` |
+| Negated or comma-list `state` filters (`"Todo,In Progress"`) silently return **ZERO** issues at HTTP 200 — success-shaped, empty | `wf6/mcp-linear-measured-shapes` |
+| `fields` on `list_issues` works, but `identifier`, `state`, `stateId`, `labelIds`, `cycle`, `relations`, `comments`, `attachments`, `documents` are **hard errors that kill the entire call** | `wf6/mcp-linear-measured-shapes` |
