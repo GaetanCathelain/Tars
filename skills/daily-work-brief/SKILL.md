@@ -1,7 +1,7 @@
 ---
 name: daily-work-brief
 description: "Use for concise workday dailies from all activity sources."
-version: 1.0.0
+version: 1.3.0
 metadata:
   hermes:
     tags: [daily, status, slack, github, linear, cooper, payfit]
@@ -75,7 +75,22 @@ Completion criterion: each active Claude session and authored git outcome in the
 ### GitHub and Linear
 
 - With the existing `gh` authentication, list PRs authored by Gaetan that were merged in the window. Record repository, PR number/title, merge time, and count. Also record reviews/comments only when they materially moved work.
-- Use any already-configured Linear integration, CLI, API, email, or Slack links to identify tickets completed/merged in the window. Count only explicit terminal states and preserve ticket IDs. If no integration is reachable, omit the metric and add `Linear coverage unavailable`—do not estimate from branch names.
+
+Linear is read with the native `mcp__linear__list_issues` tool — a tool call, never a script, a raw HTTP request, an ad-hoc integration, an email guess, or a Slack link. No endpoint, no key, no cursor loop belongs in this skill. Load `linear-ticketing` for the team id, the priority integers, the priority sort rule, the measured response shape (§9) and the `fields` enum (§8). Five of its measured facts bind every read here: the tool result is a JSON **string** under `result` and must be parsed a second time; **`id` is the issue key (`GCN-42`) — there is no `identifier` field**; **there is no `state` object** — the state is flat `status` (display name) plus `statusType`; **`priority` comes back as an object** `{"value":3,…}` and is normalised to an int before any sort or render (`linear-ticketing` §2); and **empty values are field-specific** — `assignee` is omitted entirely when unset, `completedAt` comes back present and `null`, `labels` present and `[]`. Read every field defensively for absent, null and empty-collection alike, and never use key presence as a value test.
+
+Project every read with `fields` — an unprojected large read exceeds Hermes' own tool-result budget and never reaches the agent — and request only measured-valid members. `identifier`, `state`, `stateId`, `labelIds`, `cycle`, `relations`, `comments`, `attachments` and `documents` are **hard errors that kill the entire call**. Non-terminal means `statusType ∈ {backlog, unstarted, started}`. **Never build a negated (`"!Done"`) or comma-list (`"Todo,In Progress"`) `state` filter, and never pass `state` an array**: an array is a hard error, and the other two return a normal response carrying zero issues — an empty board that looks legitimate. Three reads:
+
+1. **GCN board** — `team` `81e7b769-2a46-4e2a-8db5-c165a7963b0e` (GCN), `limit` 250, `fields` `["id","title","priority","status","statusType","teamId"]`, **one call per non-terminal type**: `state` `"started"`, then `"unstarted"`, then `"backlog"`. Union the three. Scoping by type keeps every Done and Canceled GCN issue — including every issue `engagement-checker` ever filed and closed — out of the page budget entirely, so the board does not start failing its own completeness test the month GCN crosses 250 lifetime issues. Do not read the team unfiltered and drop terminal rows client-side.
+2. **Cross-team assigned** — `assignee` `4951b192-e49c-4b7e-b491-58c89e66043c` (Gaetan), no `team`, same `fields`, `limit` and three type-scoped calls. `state` is single-valued but accepts a state *type*, and the type filter is measured to work cross-team, so no other team's state ids are needed. `"started"` and `"unstarted"` are measured; `"backlog"` is the same enum but was never exercised, and a bad `state` value returns zero issues with no error — if a backlog call returns zero on a day the other reads show backlog work, name it in `Coverage:` rather than reading it as an empty backlog. An unfiltered assignee-wide read is not a substitute — it overflows one page.
+3. **Completed in window** — `assignee` Gaetan, `state` `"completed"`, `updatedAt` set to the window start as a **bare string** (a lower bound; the object form `{"gte": …}` is a hard error), `limit` 250, `fields` `["id","title","completedAt"]`; keep only issues whose `completedAt` **value** falls inside the window. Test the value, never the key: with this projection **every** row carries `completedAt`, `null` on the ones that are not completed, so a `"completedAt" in row` test keeps all of them. There is no upper time bound and no `completedAt` parameter — that filter is client-side. This feeds `Linear tickets completed: N` with real data.
+
+**Assert `hasNextPage == false` on every read before using it.** It is the only completeness signal: there is no total count and no truncation flag, the default page is 50 and `limit` maxes at 250 (251 errors). If a read returns `true`, **page it**: re-issue the identical call with `cursor` set to the returned value and repeat until `hasNextPage` is false, unioning the pages and deduplicating on `id`, bounded by an explicit page cap of **8 pages per call** (`linear-ticketing` §8). If the cap is reached while `hasNextPage` is still true, the read is **incomplete**: render what arrived and name it in `Coverage:` as a partial board. Never render a partial board as if it were whole.
+
+**Never narrow a read to make `hasNextPage` go false** — no `updatedAt` bound on reads 1 and 2, ever. Narrowing changes the question, so the retry's `false` proves a different, smaller read complete: every non-terminal issue outside the narrowed bound vanishes and the brief asserts a whole board while doing it. Read 3 is the only read with an `updatedAt` bound, and there it is the filter the read is *for*, not a remedy. Do not reach for `query` here either: it is fuzzy, and its `hasNextPage` is always `true`.
+
+Select titles only — never descriptions or comments — so nothing beyond the length cap has to be redacted; that is a deliberate assumption, not an oversight. Cap each title at 120 characters. Deduplicate reads 1 and 2 on `id`. No tool returns an issue UUID, so `id` — which Linear re-keys when an issue changes team — is the only key available; that is a known ceiling of the native path, not something to work around.
+
+Any Linear read failure — tool `error`, an unparseable `result`, or a field the render needs absent from every row — omits the board block and the completed metric and adds `Linear coverage unavailable` to `Coverage:`. Never estimate from branch names and never fabricate a row.
 
 Completion criterion: every numeric stat is reproducible from ledger rows with explicit identifiers and terminal state.
 
@@ -104,14 +119,25 @@ Name who to follow up with and why. Do not invent a priority from weak activity 
 
 ## 5. Write the delivery
 
-If the gate returned `NO_DAILY`, produce no user-facing report. Otherwise use this compact shape:
+If the §2 gate returned `[SILENT]`, produce no user-facing report. Otherwise use this compact shape, board first:
+
+**Board** (priority-sorted)
+P1 GCN-42 Ship the thing — In Progress
+P2 MC-4179 Review the other thing — Todo
+P3 GCN-51 Scope the migration — Todo
+
+- One line per issue, `P<n> <id> <title> — <status>`: `id` is the issue key (`GCN-42`), `status` the flat display name, and `<n>` is the priority **normalised to an int** — `priority` comes back as an object `{"value":3,"name":"Medium"}`, so read `p["value"] if isinstance(p, dict) else p` and sort on that; comparing the object directly sorts everything last. Sorted by the `linear-ticketing` priority rule: Urgent, High, Medium, Low, then No-priority last; within one priority, GCN first, keyed on `teamId == 81e7b769-2a46-4e2a-8db5-c165a7963b0e` rather than a parsed prefix; within one team, by the numeric suffix of `id` ascending, so `GCN-9` precedes `GCN-10`. A `priority` of 0 or absent renders `P–` and sorts last.
+- Cap at 12 issue lines, then one final `+N more`.
+- Empty board: emit the single line `Board: clear.` Read failure: omit the block and name it in `Coverage:`. Incomplete read: render what arrived and name it in `Coverage:` as partial. Never drop the block silently and never pass a partial board off as whole.
+- The board is excluded from the ~350-word prose cap below—it must never squeeze out the judgment sections.
 
 **Since the last daily**
 - Outcome-first bullets grouped by project/topic. Fold related Slack help, Claude work, commits, PRs, and tickets into one bullet.
+- **`Claude/Orca:`** one required labelled line closing the block: the Cooper Claude sessions and Orca worktrees that moved in the window, with their evidence handles, whenever §3's Cooper collection produced anything. `Claude/Orca: none.` when it produced nothing. It is a named line, not an optional fold — the brief must be checkable for it.
 
 **Stats**
 - `PRs merged: N` and compact identifiers.
-- `Linear tickets completed: N` and IDs, only with explicit evidence.
+- `Linear tickets completed: N` and IDs, from the completed-in-window read only.
 - At most two other useful counts (reviews, access/help requests resolved, incidents), never vanity counts such as shell commands or messages sent.
 
 **Today**
@@ -120,10 +146,14 @@ If the gate returned `NO_DAILY`, produce no user-facing report. Otherwise use th
 3. Work already in motion to resume.
 4. `Oli:` report/no-report recommendation with one-line rationale when relevant.
 
-End with `Coverage: ...` only for a missing or partial mandatory source. Do not include cron headers, job IDs, collection logs, source dumps, or a generic motivational close. Keep it under 350 words unless the evidence genuinely cannot fit. Use cautious wording for inferred outcomes and omit noise.
+End with `Coverage: ...` only for a missing or partial mandatory source. Do not include cron headers, job IDs, collection logs, source dumps, or a generic motivational close. Keep the prose under 350 words, board block excluded, unless the evidence genuinely cannot fit. Use cautious wording for inferred outcomes and omit noise.
 
 Completion criterion: every bullet maps to ledger evidence; stats reconcile; every “Today” item is actionable; the message reads as a brief, not a transcript.
 
 ## 6. Scheduled-run behavior
 
-The cron prompt must be self-contained and attach this skill. Delivery should return only the brief. On `NO_DAILY`, remain silent. On a source or run failure that prevents a trustworthy daily, send one concise failure message naming the failed source and the next repair action—no cron wrapper prose and no fabricated substitute.
+One recurring weekday job at 08:30 Europe/Paris, with this skill attached and delivery to the configured reporting conversation. The job is reconciler-managed on the VM; reconcile it against this prompt and do not let the two drift.
+
+> Run `daily-work-brief` end to end. Use Europe/Paris. Establish the window from the last successful delivery, then apply the workday gate — weekday, official metropolitan-France holiday, explicit PayFit leave, then the bounded actual-work override for a nominal day off — and return exactly `[SILENT]` when the gate says not to run. Otherwise collect Slack, Cooper (Orca state, Claude transcripts, shell history, git), GitHub, Linear, email and calendar evidence in parallel, keep raw results out of the message, and deliver the compact brief. Pull Linear with `mcp__linear__list_issues` per the skill's three reads, projected with `fields`, reads 1 and 2 scoped by `state` type, and each proven complete by paging `cursor` until `hasNextPage == false` — never by narrowing the filter; the brief must OPEN with the `Board` block — every non-terminal GCN issue plus every non-terminal issue assigned to Gaetan on any team, deduplicated on `id`, priority-sorted with priority normalised from its object form to an int, capped at 12 lines then `+N more`, `Board: clear.` when the board is empty, and omitted with `Linear coverage unavailable` in `Coverage:` only when a read failed — never dropped silently. `Since the last daily` must end with the labelled `Claude/Orca:` line covering the Cooper Claude/Orca history, or `Claude/Orca: none.` Every source is read-only: write nothing to Linear, and do not spawn, prompt, or delegate to another agent. Return only the brief.
+
+Delivery should return only the brief. On `[SILENT]`, remain silent. On a source or run failure that prevents a trustworthy daily, send one concise failure message naming the failed source and the next repair action—no cron wrapper prose and no fabricated substitute.
