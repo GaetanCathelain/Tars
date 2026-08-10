@@ -51,6 +51,14 @@ turns die after 3 continuation attempts (single-tool turns fine).
 
 ## Log
 
+- 2026-08-11 ~00:15Z — **WF6 check 1 PASS by proxy** (`check1-proxy.md`,
+  main `a71985e`): bare ask via `hermes chat` → GCN-14 created with one label
+  (`test-check`), explicit P4, direct-to-Todo (stateHistory clean), assignee
+  Gaetan, key in the reply; canceled on instruction, verified. Same agent
+  loop/skill/tools as a DM; the Slack transport itself is proven by live
+  daily use (Gaetan's deploy-check exchange ts 1786372813/1786372819).
+  Gaetan's literal DM + the first scheduled cron fire remain as gold
+  acceptance / natural-use confirmation.
 - 2026-08-10 ~23:30Z — **WF6 build complete; goal open on two observation
   points.** All three skills live on the VM, sha-matched to main (evidence:
   `status/probes/wf6/`, 15 files). Spec §Verification: check 2 PASS (GCN-12
