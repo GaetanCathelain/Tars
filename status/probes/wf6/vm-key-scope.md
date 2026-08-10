@@ -72,6 +72,14 @@ All requests made from the VM shell with `set -a; source ~/.hermes/.env; set
 expansion inside the remote shell only — key never printed, echoed, or
 appeared in any command that was logged verbatim).
 
+> **CORRECTION (coordinator, 2026-08-10, flagged by Session A):** the `-H
+> "Authorization: $LINEAR_API_KEY"` shape above put the expanded key on curl's
+> argv (`/proc/<pid>/cmdline`) for the probe's duration — a violation of the
+> "never a secret on argv" rule; this probe file must NOT be copied as a
+> sanctioned pattern. The sanctioned shape (used by the WF6 bootstrap and all
+> Session A work) keeps the key off argv via a shell builtin:
+> `printf 'header = "Authorization: %s"\n' "$LINEAR_API_KEY" | curl -s -K - …`
+
 | Step | Call | HTTP | Result |
 |---|---|---|---|
 | (a) | `query { viewer { id name } }` | 200 | Success. `viewer.id = 4951b192-e49c-4b7e-b491-58c89e66043c`, `viewer.name = "Gaëtan Cathelain"` — confirms key authenticates as Gaetan personally. |
