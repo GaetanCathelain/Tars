@@ -109,4 +109,7 @@ SOUL rule wording change, anything touching company teams' data.
    board, priority-sorted, and includes an Orca/Claude-history section.
 4. A ticket created from a Claude/Orca session on cooper defaults to GCN.
 5. All changes committed: Tars repo (skills mirrors, this spec, status log),
-   gaetan-metarepo (preference line). VM live-reload confirmed, `NRestarts=0`.
+   gaetan-metarepo (preference line). VM live-reload confirmed via
+   `ActiveEnterTimestamp` unchanged — NOT `NRestarts`, which provably misses
+   restarts (observed 2026-08-10: gateway restarted 20:00:38Z with NRestarts
+   still 0; see gang status SESSIONA-DEPLOY-VERIFY-FAIL).
