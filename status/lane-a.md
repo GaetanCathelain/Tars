@@ -51,6 +51,21 @@ turns die after 3 continuation attempts (single-tool turns fine).
 
 ## Log
 
+- 2026-08-10 ~16:50Z — **WF6 underway: Tars ⇄ Linear GCN integration** (spec
+  `docs/specs/wf6-linear-integration.md`, /goal-driven; coordinator = the
+  kanban-research session, megaultracode-orca gang). Landed so far: r9/r9a
+  recon + decision docs; team **Gaetan/GCN** (Gaetan-created, adopted) seeded
+  with 6 workload labels + GCN-1..7 (T1/T2 Done at filing); cooper default
+  team=GCN via metarepo `preferences/tooling.md` (`3065f7d`, 3-session
+  headless verification, GCN-6 Done); Hermes-NATIVE transport mandated by
+  Gaetan mid-flight → spec amended `639fa0b`, r9a rollback story corrected
+  (**no Linear MCP ever existed on the VM** — .bak was pre-edit), GCN-9 filed
+  as precursor (wire `linear` catalog preset). Session A (`wf6-vm-skills`)
+  executing GCN-9→5→3→4→7; rulings on channel: delta collector stays raw
+  (coverage-gated cursor doctrine), all other reads/writes native
+  `mcp__linear__*`; GCN-only write guard is instruction-level BY GOAL DESIGN
+  (cross-team writes on explicit per-message instruction, SOUL-rule-4
+  semantics). Session B done + torn down. Evidence: `status/probes/wf6/`.
 - 2026-08-10 ~11:50Z — **P6 applied: mc-metarepo knowledge base live** (Gaetan's go in chat).
   SOUL.md rule 9 added (KB pointer; `.bak`+flock, backup `~/.hermes/SOUL.md.bak-p6-20260810`),
   `~/.hermes/scripts/kb-refresh.sh` installed, hermes cron `mc-metarepo-refresh` created
