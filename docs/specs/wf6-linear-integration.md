@@ -18,9 +18,17 @@ giving-access, …) and priority-sorted tickets.
 
 ## Design decisions (settled — do not re-litigate)
 
-- Linear is the one board. No sync engine, no kanban.db, no Linear MCP server
-  on the VM — direct GraphQL only (the path that survived the 2026-08-07
-  rollback, r9a §3).
+- Linear is the one board. No sync engine, no kanban.db.
+- **AMENDED 2026-08-10 (operator directive + corrected evidence)**: Tars's
+  transport is **Hermes-native** — the `linear` preset from `hermes mcp
+  catalog` wired into `mcp_servers`, tools auto-registered as `mcp__linear__*`
+  in the agent loop, cron included (engagement-checker already calls
+  `kanban_show` / `mcp__slack__*` from cron). Raw GraphQL survives only as a
+  documented argv-safe fallback where a measured MCP limitation forces it.
+  The earlier "no Linear MCP — it was rolled back 08-07" decision rested on a
+  false premise: no Linear MCP stanza ever existed on the VM
+  (`status/probes/wf6/hermes-native-linear.md` — the .bak was a pre-edit
+  snapshot; zero linear log hits ever).
 - Personal team: **"Gaetan", key GCN**, id `81e7b769-2a46-4e2a-8db5-c165a7963b0e`
   — created by Gaetan himself in the UI 2026-08-10 16:08Z, private, single
   member. Adopted as-is (a second personal team would split the SSoT).

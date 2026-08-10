@@ -95,6 +95,15 @@ same two lessons: (a) bundling three integrations made one fixable GCP setting c
 them one at a time; (b) the Linear path that *survived* is the narrow one, direct GraphQL from a
 skill, not the MCP server. Prefer it.
 
+> **CORRECTION 2026-08-10 (WF6 probe, Tars repo
+> `status/probes/wf6/hermes-native-linear.md`):** both readings above are moot.
+> `config.yaml.bak-linear-notion-cal` is a *pre*-edit snapshot; no Linear MCP
+> stanza ever existed in any of the 13 config backups, and the VM logs contain
+> zero "linear" hits, ever — the edit that followed the snapshot added only
+> slack+notion. Nothing Linear was rolled back because nothing Linear was ever
+> wired. Lesson (b) is withdrawn: WF6 wires the Hermes `linear` MCP preset
+> natively (spec `docs/specs/wf6-linear-integration.md`, amended decision).
+
 **Verdict on the proposal:** the personal-*surface* half is sound (though a label beats a team unless
 privacy is bought — §4.v vs §4.i); the sync half buys nothing Gaetan cannot get natively and costs
 the whole documented failure catalogue. Do not build it.
