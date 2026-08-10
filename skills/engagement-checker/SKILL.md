@@ -102,7 +102,7 @@ Run two views:
 
 Filter every result by exact Slack `ts` against the cursor before classifying it. Deduplicate the two views by channel and timestamp. For a new candidate only, use `mcp__slack__conversations_replies(channel_id, thread_ts)` to recover enough thread context to decide whether there is a commitment, unanswered ask, resolution, or user instruction. Do not fetch unrelated channel history. Resolve names from source data rather than guessing.
 
-Also inspect new messages in the origin DM with Tars for decisions about existing engagement items. A reply in a reminder thread is authoritative when the parent reminder names one `short_id`; when it contains several items, require the reply to name a short ID, person, or unique topic.
+Also inspect new messages in the configured Slack reporting conversation for decisions about existing engagement items. A reply in a reminder thread is authoritative when the parent reminder names one `short_id`; when it contains several items, require the reply to name a short ID, person, or unique topic.
 
 ## 3. Collect email deltas
 
