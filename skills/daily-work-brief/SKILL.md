@@ -26,7 +26,7 @@ Tars owns this workflow and its final judgment. It may parallelize collection an
 
 Use `Europe/Paris` for all dates and labels.
 
-1. Find the timestamp of the last **successful daily-work-brief delivery** in the origin Slack conversation or cron history. The window starts immediately after it.
+1. Find the timestamp of the last **successful daily-work-brief delivery** in the configured Slack reporting conversation or cron history. The window starts immediately after it.
 2. If there is no prior daily, use 08:30 Europe/Paris on the previous actual workday. On a Monday this normally covers Friday 08:30 through Monday morning, including weekend work signals.
 3. End at the current instant. State the window only when the fallback was used or source coverage is partial.
 4. Deduplicate the same work mentioned by several sources. Prefer the strongest source: merged PR or ticket state over shell command; direct Slack statement over inference.
