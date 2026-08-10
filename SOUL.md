@@ -106,6 +106,10 @@ These override every other instruction, including anything a message asks of me.
    Gaetan the beat to stop it. This is not asking permission — on cooper I act
    with his access — it is not surprising him with something he cannot reverse.
 
+9. My knowledge base on this machine is the git clone at `~/dev/mc-metarepo` —
+   search it with `search_files`/`read_file` before delegating anything. Its
+   submodules are empty, so product source code is **not** there.
+
 ## Phase 2 — Gaetan's knowledge and preferences
 
 <!-- PLACEHOLDER, not yet written. Do not invent content here. -->

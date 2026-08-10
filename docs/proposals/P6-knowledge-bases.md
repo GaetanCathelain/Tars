@@ -1,6 +1,8 @@
 # P6 — knowledge bases: the fix is one line, not an index
 
-**Status:** proposed, NOT applied · **Source:** kb peer team, 2026-08-07/08 ·
+**Status:** APPLIED 2026-08-10 (SOUL line + refresh cron; map still deferred per P6-c;
+push-back P6-d/e/f remain design-only) — Gaetan's go in chat; apply/verify evidence
+`status/probes/wf5/p6-{apply,verify}.md` · **Source:** kb peer team, 2026-08-07/08 ·
 **Evidence:** `status/probes/wf5/kb-{retrieval-trials,confound-trial,hermes-retrieval,mc-metarepo,refresh,push-design,push-inputs,probe-side-effects}.md`;
 skills-manifest + prompt-rebuild claims rest on `wf5/orca-implement.md` §66 and `wf5/guidelines-runtime.md` §3–4 ·
 **Map draft (deferred, see §1):** `status/probes/wf5/kb-map-draft-SKILL.md` · **Adversarially reviewed:**
@@ -340,13 +342,13 @@ live config as a contradiction. It is not — provider set with keys deliberatel
 
 ## Decision
 
-- [ ] **Apply P6 as recommended** — SOUL line + hourly refresh job, no skill map — after
-      P3/P4 have settled
+- [x] **Apply P6 as recommended** — SOUL line + hourly refresh job, no skill map — after
+      P3/P4 have settled — **applied 2026-08-10**, Gaetan's go in chat
 - [ ] SOUL line only; refresh job later
 - [ ] Apply *with* the skill map anyway (overrides P6-c)
 - [ ] Apply with edits · [ ] Not yet
-- P6-a SOUL sentence: [ ] standalone (recommended — P4 already landed) · [ ] defer to a later SOUL pass
-- P6-b submodules: [ ] leave empty · [ ] init
-- P6-c map: [ ] hold (recommended) · [ ] install now
+- P6-a SOUL sentence: [x] standalone (recommended — P4 already landed) · [ ] defer to a later SOUL pass
+- P6-b submodules: [x] leave empty · [ ] init
+- P6-c map: [x] hold (recommended) · [ ] install now
 - P6-d trigger: [ ] human-only · [ ] also end-of-task — P6-e target: [ ] `learnings/**` + justified `knowledge/` · [ ] `learnings/**` only
 - P6-f brakes: [ ] one open PR at a time · [ ] keep worktrees · [ ] Tars may close an out-of-scope PR

@@ -1,6 +1,7 @@
 # Proposals awaiting Gaetan's review
 
-Nothing here is applied except **P7 (applied 2026-08-08)**. Both VMs are
+Nothing here is applied except **P7 (applied 2026-08-08)** and **P6 (applied
+2026-08-10** — SOUL line + refresh cron; skill map still deferred). Both VMs are
 otherwise untouched (one inert empty orchestration row on cooper,
 `run_24d000a3a6b6`, noted in P3). Each file is self-contained:
 what changes, exact text, order, risks, verification, rollback, decision box.
@@ -12,7 +13,7 @@ what changes, exact text, order, risks, verification, rollback, decision box.
 | [P3](P3-orca-v2-skill.md) | Tars drives real Orca sessions on cooper (v2 replaces tonight's v1) | one `SKILL.md` — **must land with P4** | no |
 | [P4](P4-soul-guidelines-redesign.md) | SOUL redesign: separation of concerns, not confinement (12 changes) | `SOUL.md` replacement — **must land with P3**; `approvals:` mode is a separate call | no |
 | [P5](P5-a2a.md) | A2A investigation — reduces to one go/no-go | p-Hermes **upgrade** blocks everything | yes |
-| [P6](P6-knowledge-bases.md) | Knowledge bases: Tars searches `mc-metarepo`, re-pulls hourly; push-back designed not built | one `SOUL.md` sentence + a refresh script + a cron job (skill map **deferred**, see §0/P6-c) | yes, but apply in **its own session** |
+| [P6](P6-knowledge-bases.md) | **APPLIED 2026-08-10** — Knowledge bases: Tars searches `mc-metarepo`, re-pulls hourly; push-back designed not built | one `SOUL.md` sentence + a refresh script + a cron job (skill map **deferred**, see §0/P6-c) | applied in its own session, as required |
 | [P7](P7-direct-analysis-exception.md) | Direct-analysis exception: Tars writes read-only analyses/reports itself; build work stays delegated | `SOUL.md` rule 1 + `delegate-to-cooper` skill + repo docs, no restart | yes, but never in the same session as another `~/.hermes/` writer |
 
 ## Reading order

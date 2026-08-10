@@ -51,6 +51,22 @@ turns die after 3 continuation attempts (single-tool turns fine).
 
 ## Log
 
+- 2026-08-10 ~11:50Z — **P6 applied: mc-metarepo knowledge base live** (Gaetan's go in chat).
+  SOUL.md rule 9 added (KB pointer; `.bak`+flock, backup `~/.hermes/SOUL.md.bak-p6-20260810`),
+  `~/.hermes/scripts/kb-refresh.sh` installed, hermes cron `mc-metarepo-refresh` created
+  (id `3eb53a322510`, every 60m, no-agent, deliver slack); clone refreshed `4831253`→`2d3d014`.
+  First apply run was interrupted mid-flight on Gaetan's hold (live Tars work running) — stop
+  landed between the SOUL edit and the cron create; resumed and finished on his go. The 4
+  pre-existing cron jobs intact. Verify (`status/probes/wf5/p6-verify.md`): **PARTIAL** —
+  lookup-style trial grounded+correct (`search_files`+`read_file` fired, answer matched
+  `knowledge/nm-vs-mc-order-source.md` incl. the business_entity_id trap); judgment-style trial
+  (sudo-argv key rotation) reached the right conclusion WITHOUT touching the KB (zero retrieval
+  calls logged) — retrieval *triggering* on scenario-shaped questions is the residual weak
+  point, wiring itself works. Reduced verification per Gaetan's right-sizing: 2 of the
+  proposal's 5 §Verify questions re-fired, no Slack-surface trial, forced-failure refresh tick
+  (Slack alert path) NOT tested. P6-c map stays deferred; P6-d/e/f push-back design-only.
+  P6 considered DONE per Gaetan.
+
 - 2026-08-08 14:45Z — **Tool-call display split: DMs verbose, channels quiet** (Gaetan's ask after
   Tars dumped its tool trace into C04LZBBNVNY). Hermes has per-platform but not per-chat-type
   display resolution, so: (1) local patch in the VM's `~/.hermes/hermes-agent` checkout
