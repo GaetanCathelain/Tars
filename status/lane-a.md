@@ -51,6 +51,27 @@ turns die after 3 continuation attempts (single-tool turns fine).
 
 ## Log
 
+- 2026-08-10 ~23:30Z — **WF6 build complete; goal open on two observation
+  points.** All three skills live on the VM, sha-matched to main (evidence:
+  `status/probes/wf6/`, 15 files). Spec §Verification: check 2 PASS (GCN-12
+  full lifecycle incl. the reopen edge — closed_at latch deleted, no duplicate
+  minted); check 3 PASS twice under forced context compaction (deterministic
+  script render + Coverage gate; the first agent-rendered attempt fabricated
+  7/12 titles and was rolled back same evening before any cron fire); check 4
+  PASS as a composite (Session B: preference line `3065f7d` + 3-session
+  default-resolution tests + real GCN-8 write via the account connector);
+  check 5 PASS (`ActiveEnterTimestamp` constant — NRestarts now documented as
+  invalid restart proof). OPEN: check 1 (Gaetan's live DM — only he can
+  trigger Tars) and the first scheduled fire of the realigned cron prompts
+  (weekday 08:30+02:00 brief, 10:00–16:00 engagement runs). Deferred by
+  design: GCN-10 (prune the 58-tool mcp__linear__* surface — `delete_*`
+  exposed, policy-only bound). Incidents this run: coordinator mis-derived an
+  abort deadline (worker corrected + rolled back unilaterally — right call);
+  coordinator inverted a Slack channel id (worker's name-lookup refusal
+  caught it); Ahmad Moussa impersonation attempt at Tars rejected by the
+  sender guard pre-evaluation (escalated to Gaetan); Tars self-merged PRs
+  #40–43 mid-run, #42 landing an EMPTY skill file restored 22 s later by #43
+  — guard ticket filed in GCN.
 - 2026-08-10 ~16:50Z — **WF6 underway: Tars ⇄ Linear GCN integration** (spec
   `docs/specs/wf6-linear-integration.md`, /goal-driven; coordinator = the
   kanban-research session, megaultracode-orca gang). Landed so far: r9/r9a
