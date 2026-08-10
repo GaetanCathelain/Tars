@@ -1,7 +1,8 @@
 ---
 name: engagement-checker
 description: "Use for incremental follow-up and commitment reminders."
-version: 1.7.0
+version: 1.7.1
+required_environment_variables: [LINEAR_API_KEY]
 metadata:
   hermes:
     tags: [engagement, reminders, slack, email, linear, orchestration]
@@ -144,6 +145,8 @@ Ignore newsletters, automated notifications, receipts, promotions, cold outreach
 ## 4. Collect Linear deltas
 
 Require `LINEAR_API_KEY` to be present in the collector process environment without reading or displaying its value during prerequisite checks. Set `LINEAR_CURSOR` to the stored source cursor and `LINEAR_RUN_END` to the run's fixed end timestamp, then run the collector below locally with `python3`.
+
+**Run it through the shell/terminal tool — never `execute_code`.** Measured: the `execute_code` sandbox scrubs every environment variable whose name contains `KEY`, so `LINEAR_API_KEY` is absent there and the collector can only fail closed on its own prerequisite check; the terminal tool keeps it. That is also why the frontmatter declares `required_environment_variables`.
 
 **The fenced block is the read collector and nothing else — it contains no write path, and none is to be added.** It is the annotated carve-out from the native transport: its coverage verdict gates cursor advancement. It uses only the hardcoded `query` operations in `OPS`, and **`_post()` — the single function every raw call passes through — rejects any query containing `mutation` before it builds the request**, with `graphql()` rejecting it again on the name-resolution path. The key is unscoped and full-write; this allowlist is the only thing bounding it, so it stays structural, in the choke point, not conventional in a wrapper an editor can bypass. The Linear writes this skill makes are the native `mcp__linear__save_issue` calls listed in "Permitted writes" and issued by the agent — there is no mutation code here for them to call, and they need none. `_post()` keeps authorization inside the Python process, rejects redirects, pins the final response URL, and caps every response before UTF-8 JSON parsing. Output is bounded JSON with obvious credential forms redacted.
 
