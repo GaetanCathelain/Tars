@@ -247,3 +247,26 @@ is autonomous, not a checkpoint."
    Still found in neither the repo nor the vault `[repo]` `[obs]`.
 6. Confirm the Calendar 403 is worth fixing separately (enable the API in the GCP console) — it is an
    orthogonal, one-setting fix, not evidence against calendar integration `[vm2]` §4.
+
+## 6. Decision update — 2026-08-10, Gaetan
+
+Q1 answered: **Business plan** (private teams available) and **Gaetan chooses the personal team
+(§4.i)** as host surface, mostly for engagement-checker items that fit no company team (OVH
+investigations, one-off reports). New evidence `[pt]` `r9a-evidence/personal-team-downsides.md`
+(Linear docs check) sharpens the downsides he accepted:
+
+- **Privacy is soft**: on Business, any of the other 6 admins can see the private team exists and
+  **self-join through a warning dialog**, then read everything `[pt]` §1.
+- **Promotion friction**: moving an issue to a company team changes its identifier (old URL
+  redirects) and **strips labels + project associations; cycle may clear** `[pt]` §2 — and orphans
+  engagement-checker's `linear:<key>` state entry for that issue.
+- **Nag-loop to design around**: engagement-checker polls Linear; issues Tars files into the
+  personal team are re-detected as new open loops → the board feeds the nagger that fed the board.
+  Its query must exclude/dedupe the personal team (design note for the capture skill, unevidenced —
+  follows from `[repo]` §4's described mechanism).
+- **Identity**: Tars uses Gaetan's personal API key (viewer = Gaëtan, `status/lane-a.md:12`) → sees
+  the private team automatically, zero seats `[pt]` §3; no audit separation (Tars's writes appear as
+  Gaetan), and the key's scope — still unchecked, step 1 — is the only blast-radius control.
+- Whether private-team issues appear in the owner's own My-Issues/custom views: **docs silent,
+  UNVERIFIED** `[pt]` §1 — fold into the step-1 live check (create team, confirm the All-teams view
+  shows its issues).
