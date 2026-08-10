@@ -1,7 +1,7 @@
 # Daily report threading — one parent per Paris day, replies in-thread
 
 Status: spec settled 2026-08-10 (this file), implemented by
-`scripts/tars-report-thread` + one new no-agent cron job on the VM.
+`scripts/tars-report-thread.py` + one new no-agent cron job on the VM.
 
 ## Problem
 
@@ -27,7 +27,7 @@ Everything that already works stays untouched:
   their prompts, sources, cursors, shared engagement state and failure
   semantics are unchanged.
 
-The only new piece is `scripts/tars-report-thread`, run as a **no-agent
+The only new piece is `scripts/tars-report-thread.py`, run as a **no-agent
 `--script` cron job** (same shape as the existing mc-metarepo-refresh job)
 at `25,55 7-16 * * 1-5` Paris. Each tick it decides the correct delivery
 target for the day and applies it to the three report jobs via the official
