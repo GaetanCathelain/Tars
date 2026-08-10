@@ -153,6 +153,29 @@ mcp_servers:
     # Verify the running container's config before WF3 declares this wiring done.
 ```
 
+> **Corrected post-WF5, 2026-08-10:** the `require_mention` / `strict_mention`
+> / `unauthorized_dm_behavior` keys nested under `gateway.platforms.slack`
+> above are silently shadowed and inert once a top-level `slack:` block is
+> also present, as it is on the live VM (`gateway/config.py:1511-1530`,
+> `:1652-1664`). These guardrail keys belong in the top-level `slack:` block
+> instead. See `status/probes/wf5/slack-channel-boundaries.md`.
+> Corrected again post-self-review (2026-08-10): the deployed boundary
+> carries **no `allowed_channels` whitelist** — outside `C0BP2GZUFSR` every
+> channel and group DM is fresh-@mention-only; `SLACK_ALLOWED_USERS` stays
+> the who-gate.
+> Corrected once more, later the same day: the boundary is a **display**
+> boundary, not a capability one. Every conversation Tars is validly woken in
+> gets the full, identical toolset; what is scoped per conversation is the
+> interim tool-call narration, via
+> `display.platforms.slack.tool_progress_conversations:
+> {C0BP2GZUFSR: all, D0BBYNM01BL: all}` over `tool_progress: "off"` (both
+> set at apply time, 2026-08-10 — the live value had drifted to `all`).
+> `tool_progress_dm` is deliberately unset: the adapter collapses MPIMs
+> into chat_type `dm`, so the chat-type override would narrate group DMs —
+> the chat-ID map subsumes it.
+> There is no toolset-gating profile key — the patch that introduced one is
+> withdrawn (`status/probes/wf5/slack-tool-visibility-correction.md`).
+
 Deliberately **absent**, each for a stated reason:
 
 | Not here | Why |

@@ -1,0 +1,841 @@
+From ef35fd11bec1a9d1e90a1730c832ef9d0a1c0c71 Mon Sep 17 00:00:00 2001
+From: Gaetan Cathelain <gaetan.cathelain@mobile.club>
+Date: Mon, 10 Aug 2026 16:09:29 +0000
+Subject: [PATCH] feat(display): per-conversation tool_progress override
+ (display.platforms.<platform>.tool_progress_conversations)
+
+tool_progress_dm scopes the tool-call narration to DMs, which is one axis
+too coarse for a bot that lives in several channels on one platform: the
+workshop channel wants the running commentary, every other shared surface
+wants silence, and both of them are channels.
+
+Add display.platforms.<platform>.tool_progress_conversations, a chat_id ->
+tool_progress mapping applied after the platform setting and after
+tool_progress_dm, so the most specific configuration wins:
+
+  display:
+    platforms:
+      slack:
+        tool_progress: off          # channels stay quiet
+        tool_progress_dm: all       # DMs narrate
+        tool_progress_conversations:
+          C0BP2GZUFSR: all          # ...and so does the workshop channel
+
+Cosmetic only. It gates the interim "tool started" bubbles and nothing
+else: every conversation resolves the same toolset, the model is offered
+the same tool schema (a stable schema is what keeps the prompt cache
+warm), tools execute wherever the mention gate let the session through,
+and the final answer is delivered everywhere - including the
+conversations whose narration is hidden.
+
+It therefore supersedes and reverts the withdrawn platform_tool_conversations
+toolset gating (5af9e1e), which read this same policy as a capability
+restriction and emptied enabled_toolsets outside the listed conversations,
+disarming the agent in any channel a colleague pulled it into. The ask was
+display, not capability; this lineage carries the display half only.
+
+Malformed configuration is ignored rather than fail-closed - the opposite
+of the withdrawn patch, and deliberately so: a typo in a cosmetic key must
+never change what the agent can do, so a non-mapping value or an unlisted
+chat id simply leaves the resolved progress_mode alone.
+
+tests/gateway/test_slack_tool_visibility.py drives real gateway turns for
+a public channel, the workshop channel and the owner's DM: identical
+toolsets everywhere, real tool schemas and a real tool dispatch in the
+quiet channel, progress bubbles only where configured, and the final
+answer in all three. It also pins the mention gate (configuration only,
+no code) against the real SlackAdapter._handle_slack_message.
+
+Amended after an adversarial review of the shipped kit. Slack's adapter
+collapses MPIMs into DMs (adapter.py:5512, is_dm = channel_type in
+{"im","mpim"} -> chat_type="dm"), so tool_progress_dm: all would have
+narrated interim tool calls into group DMs - a shared surface. The deploy
+therefore uses a map-only config shape with no tool_progress_dm key at all,
+and five tests now pin it: test_group_dm_stays_quiet_without_tool_progress_dm
+(a group DM under the map-only shape runs a real tool and stays silent),
+test_dm_narrates_via_conversations_map (the owner's 1:1 DM is verbose via its
+chat id, not via tool_progress_dm), a parametrized
+test_malformed_display_config_never_disarms_the_agent that finally exercises
+the previously dead config= hook with a config carrying no display key and one
+whose tool_progress_conversations is a string - both complete the turn with a
+non-empty toolset, a real tool dispatch and no exception, falling back to
+Slack's built-in "off" - and test_bare_off_in_yaml_resolves_to_quiet. That last
+one records the measured False-shape semantics: YAML 1.1 parses a bare `off` to
+the boolean False, resolve_display_setting passes it through _normalise, whose
+`value is False` branch returns the string "off", so _resolved_tp is "off" and
+the `_resolved_tp or _env_tp or "all"` chain never sees a falsy value - a bare
+`off` is QUIET, identical to the quoted "off". The deploy still writes the
+quoted form, because that equivalence rests entirely on that one branch. The
+anti-regression guard additionally pins the resolver's signature
+(chat_id not in inspect.signature(_get_platform_tools).parameters): capability
+cannot become conversation-scoped without changing that line first.
+
+Suite: 25 passed. No production code changed by this amendment.
+---
+ gateway/run.py                              |  10 +
+ tests/gateway/test_slack_tool_visibility.py | 732 ++++++++++++++++++++
+ 2 files changed, 742 insertions(+)
+ create mode 100644 tests/gateway/test_slack_tool_visibility.py
+
+diff --git a/gateway/run.py b/gateway/run.py
+index d7ecd22e7..7fcfcf25f 100644
+--- a/gateway/run.py
++++ b/gateway/run.py
+@@ -24769,6 +24769,16 @@ class GatewayRunner(GatewayAuthorizationMixin, GatewayKanbanWatchersMixin, Gatew
+             if _dm_tp is not None:
+                 from gateway.display_config import _normalise as _tp_normalise
+                 progress_mode = _tp_normalise("tool_progress", _dm_tp)
++        # Per-conversation override: display.platforms.<platform>.tool_progress_conversations
++        # maps chat_id -> tool_progress mode; most specific wins (over the platform
++        # setting and tool_progress_dm). Cosmetic only — never touches toolsets.
++        if isinstance(_platform_cfg, dict):
++            _conv_map = _platform_cfg.get("tool_progress_conversations")
++            if isinstance(_conv_map, dict):
++                _conv_tp = _conv_map.get(getattr(source, "chat_id", None))
++                if _conv_tp is not None:
++                    from gateway.display_config import _normalise as _tp_normalise
++                    progress_mode = _tp_normalise("tool_progress", _conv_tp)
+         # Tool progress grouping: "accumulate" (edit one bubble) or "separate" (one msg per tool)
+         progress_grouping = resolve_display_setting(user_config, platform_key, "tool_progress_grouping") or "accumulate"
+         from gateway.status_phrases import choose_status_phrase, resolve_status_phrase_catalog
+diff --git a/tests/gateway/test_slack_tool_visibility.py b/tests/gateway/test_slack_tool_visibility.py
+new file mode 100644
+index 000000000..beb2a6585
+--- /dev/null
++++ b/tests/gateway/test_slack_tool_visibility.py
+@@ -0,0 +1,732 @@
++"""Per-conversation boundaries for a Slack bot that lives in several channels.
++
++Two independent guarantees, exercised together because they are configured
++together and only the pair is meaningful:
++
++  * **When it may speak** — the *mention gate* is the channel boundary. There
++    is no ``allowed_channels`` whitelist in this configuration: the bot is
++    reachable on every shared surface it is invited to, but only by a *fresh*
++    @-mention on the message itself. ``strict_mention`` disables thread
++    auto-follow and session-presence wake; ``free_response_channels`` exempts
++    the one workshop channel; a 1:1 IM is exempt by construction (it never
++    enters the channel gate). An MPIM (group DM) is a shared surface, so it
++    obeys the same mention gate as a channel. Who may summon it at all is a
++    separate, env-side control (``allowed_users``), not exercised here.
++    This half is configuration only — no local code — and the tests below pin
++    that the existing gate ladder in ``_handle_slack_message`` really delivers
++    it.
++
++  * **What it shows while it works** — tool-call progress is *cosmetic* and
++    per-conversation. ``display.platforms.<platform>.tool_progress_conversations``
++    maps a chat id to a ``tool_progress`` mode, so the workshop channel and the
++    owner's DM narrate their tool calls while every other shared surface stays
++    quiet. Tool *capability* is deliberately NOT conversation-scoped: a session
++    the mention gate let through gets the identical toolset wherever it runs,
++    the model receives the identical tool schema (a stable schema is what keeps
++    the prompt cache warm), tools really execute there, and the final answer is
++    delivered everywhere — quiet surfaces included. Hiding the narration must
++    never disarm the agent.
++
++Gating tests drive the real ``SlackAdapter._handle_slack_message``; display and
++toolset tests drive a real gateway turn through ``GatewayRunner._run_agent``,
++reusing the harness in ``tests/gateway/test_run_progress_topics.py``.
++"""
++
++import importlib
++import inspect
++import sys
++import tempfile
++import time
++import types
++from pathlib import Path
++from unittest.mock import AsyncMock, MagicMock, patch
++
++import pytest
++import yaml
++
++from gateway.config import Platform, PlatformConfig
++from gateway.session import SessionSource
++from tests.gateway.test_run_progress_topics import ProgressCaptureAdapter, _make_runner
++
++
++# ---------------------------------------------------------------------------
++# Mock slack-bolt if not installed (same pattern as test_slack_mention.py)
++# ---------------------------------------------------------------------------
++
++def _ensure_slack_mock():
++    if "slack_bolt" in sys.modules and hasattr(sys.modules["slack_bolt"], "__file__"):
++        return
++
++    slack_bolt = MagicMock()
++    slack_bolt.async_app.AsyncApp = MagicMock
++    slack_bolt.adapter.socket_mode.async_handler.AsyncSocketModeHandler = MagicMock
++
++    slack_sdk = MagicMock()
++    slack_sdk.web.async_client.AsyncWebClient = MagicMock
++
++    for name, mod in [
++        ("slack_bolt", slack_bolt),
++        ("slack_bolt.async_app", slack_bolt.async_app),
++        ("slack_bolt.adapter", slack_bolt.adapter),
++        ("slack_bolt.adapter.socket_mode", slack_bolt.adapter.socket_mode),
++        ("slack_bolt.adapter.socket_mode.async_handler", slack_bolt.adapter.socket_mode.async_handler),
++        ("slack_sdk", slack_sdk),
++        ("slack_sdk.web", slack_sdk.web),
++        ("slack_sdk.web.async_client", slack_sdk.web.async_client),
++    ]:
++        sys.modules.setdefault(name, mod)
++
++
++_ensure_slack_mock()
++
++import plugins.platforms.slack.adapter as _slack_mod  # noqa: E402
++
++_slack_mod.SLACK_AVAILABLE = True
++
++from plugins.platforms.slack.adapter import SlackAdapter  # noqa: E402
++
++
++BOT_USER_ID = "U_BOT_123"
++OWNER_ID = "U08BDJAMSRZ"
++
++HOME_CHANNEL = "C0BP2GZUFSR"      # free-response + narrated tool calls
++SHARED_CHANNEL = "C0BFQ5WFYTB"    # mention-only, quiet
++OTHER_CHANNEL = "GQ07CQXT7"       # another shared surface, quiet
++OWNER_DM = "D0BBYNM01BL"          # 1:1 IM: mention-exempt + narrated
++GROUP_DM = "G0GROUPDM01"          # MPIM: mention-only, quiet
++RANDOM_CHANNEL = "C_RANDOM_9999"  # never configured anywhere
++
++FINAL_ANSWER = "here is what the file says"
++
++# The live display configuration this suite pins, in the shape the code reads
++# it: Slack channels are quiet by default, the DM is verbose via
++# ``tool_progress_dm``, and the workshop channel is opted back in by chat id.
++#
++# ``platform_tool_conversations`` is the WITHDRAWN toolset gate (a misreading
++# of the same policy: it emptied the toolset outside the listed conversations).
++# It is left in this fixture on purpose — an operator's config may still carry
++# it, and the tests below require it to have no effect on capability whatever.
++# NEVER re-introduce this key as a live feature — it is the withdrawn
++# capability gate, and it appears here only as inert ballast to be ignored.
++DISPLAY_CONFIG = {
++    "platform_toolsets": {"slack": ["hermes-slack"]},
++    "platform_tool_conversations": {"slack": [HOME_CHANNEL, OWNER_DM]},
++    "display": {
++        "platforms": {
++            "slack": {
++                "tool_progress": "off",
++                "tool_progress_dm": "all",
++                "tool_progress_conversations": {HOME_CHANNEL: "all"},
++            }
++        }
++    },
++}
++
++# The shape the DEPLOY actually writes — and the reason it differs.
++#
++# ``tool_progress_dm`` is one axis too coarse on Slack: the adapter collapses
++# MPIMs into DMs (``adapter.py:5512``, ``is_dm = channel_type in {"im","mpim"}``
++# → ``chat_type="dm"``), so ``tool_progress_dm: all`` would narrate interim tool
++# calls in every *group* DM too — a shared surface. The deployed config
++# therefore carries NO ``tool_progress_dm`` key at all and names each verbose
++# conversation by chat id, the 1:1 DM included.
++#
++# ``tool_progress`` is the QUOTED string "off", never a bare ``off``: YAML 1.1
++# parses bare ``off`` to the boolean ``False`` (see the False-shape test below).
++MAP_ONLY_CONFIG = {
++    "platform_toolsets": {"slack": ["hermes-slack"]},
++    "display": {
++        "platforms": {
++            "slack": {
++                "tool_progress": "off",
++                "tool_progress_conversations": {HOME_CHANNEL: "all", OWNER_DM: "all"},
++            }
++        }
++    },
++}
++
++
++@pytest.fixture(autouse=True)
++def _isolate(tmp_path, monkeypatch):
++    monkeypatch.setattr(
++        "gateway.platforms.base.DOCUMENT_CACHE_DIR", tmp_path / "doc_cache"
++    )
++    # Gating must be driven by config.extra, and display by config.yaml —
++    # never by ambient env.
++    for var in (
++        "SLACK_ALLOWED_CHANNELS",
++        "SLACK_FREE_RESPONSE_CHANNELS",
++        "SLACK_REQUIRE_MENTION",
++        "SLACK_REQUIRE_MENTION_CHANNELS",
++        "SLACK_STRICT_MENTION",
++        "SLACK_THREAD_REQUIRE_MENTION",
++        "HERMES_TOOL_PROGRESS_MODE",
++    ):
++        monkeypatch.delenv(var, raising=False)
++
++
++# ---------------------------------------------------------------------------
++# Mention gating — real _handle_slack_message
++# ---------------------------------------------------------------------------
++
++@pytest.fixture
++def adapter():
++    a = SlackAdapter(PlatformConfig(enabled=True, token="xoxb-fake-token"))
++    a._app = MagicMock()
++    a._app.client = AsyncMock()
++    a._bot_user_id = BOT_USER_ID
++    a._running = True
++    a.handle_message = AsyncMock()
++    # The deployed boundary configuration: no channel whitelist — the mention
++    # gate alone decides, on every shared surface the bot is invited to.
++    a.config.extra.update(
++        free_response_channels=HOME_CHANNEL,
++        strict_mention=True,
++        require_mention=True,
++    )
++    return a
++
++
++def _event(channel, text, ts, *, channel_type="channel", thread_ts=None, mentioned=False):
++    if mentioned:
++        text = f"<@{BOT_USER_ID}> {text}"
++    event = {
++        "channel": channel,
++        "channel_type": channel_type,
++        "user": OWNER_ID,
++        "text": text,
++        "ts": ts,
++    }
++    if thread_ts is not None:
++        event["thread_ts"] = thread_ts
++    return event
++
++
++async def _run(adapter, event, *, thread_awake=False):
++    """Deliver ``event`` to the real handler.
++
++    ``thread_awake=True`` arms every auto-follow path that could wake the bot
++    on an un-mentioned thread reply — mentioned-thread memory, an active
++    session for the thread, and a thread parent that @-mentioned the bot — so
++    a test asserting silence proves the gate, not an unarmed fixture.
++    """
++    parent_text = f"<@{BOT_USER_ID}> look at this" if thread_awake else ""
++    if thread_awake and event.get("thread_ts"):
++        adapter._register_mentioned_thread(event["thread_ts"])
++    with patch.object(
++        adapter, "_resolve_user_name", new=AsyncMock(return_value="gaetan")
++    ), patch.object(
++        adapter, "_fetch_thread_context", new=AsyncMock(return_value=None)
++    ), patch.object(
++        adapter, "_fetch_thread_parent_text", new=AsyncMock(return_value=parent_text)
++    ), patch.object(
++        adapter, "_bot_authored_thread_root", new=AsyncMock(return_value=thread_awake)
++    ), patch.object(
++        adapter, "_has_active_session_for_thread", return_value=thread_awake
++    ):
++        await adapter._handle_slack_message(event)
++
++
++@pytest.mark.asyncio
++async def test_home_channel_top_level_unmentioned_is_processed(adapter):
++    """1. The workshop channel is free-response: no @-mention needed."""
++    await _run(adapter, _event(HOME_CHANNEL, "status?", ts="1786400000.000001"))
++    adapter.handle_message.assert_awaited_once()
++
++
++@pytest.mark.asyncio
++async def test_home_channel_thread_reply_unmentioned_is_processed(adapter):
++    """2. Free-response covers thread replies, not just top-level messages."""
++    await _run(
++        adapter,
++        _event(HOME_CHANNEL, "and the second one?", ts="1786400000.000003",
++               thread_ts="1786400000.000002"),
++    )
++    adapter.handle_message.assert_awaited_once()
++
++
++@pytest.mark.asyncio
++async def test_owner_dm_unmentioned_is_processed(adapter):
++    """3. A 1:1 IM never enters the channel gate — no mention required."""
++    await _run(
++        adapter,
++        _event(OWNER_DM, "thanks!", ts="1786400000.000004", channel_type="im"),
++    )
++    adapter.handle_message.assert_awaited_once()
++
++
++@pytest.mark.asyncio
++async def test_shared_channel_unmentioned_thread_reply_is_ignored(adapter):
++    """4. The regression: an un-mentioned thank-you in an engaged thread.
++
++    Every auto-follow path is armed. ``strict_mention`` is evaluated at
++    ``adapter.py:5707``, *before* the ``_should_wake_on_unmentioned_message``
++    branch at 5721, so all five wake paths are unreachable.
++    """
++    await _run(
++        adapter,
++        _event(SHARED_CHANNEL, "Mrc le goat", ts="1786400000.000006",
++               thread_ts="1786400000.000005"),
++        thread_awake=True,
++    )
++    adapter.handle_message.assert_not_awaited()
++
++
++@pytest.mark.asyncio
++async def test_shared_channel_wake_paths_fire_without_strict_mention(adapter):
++    """Control for the test above: the same armed thread DOES wake the bot
++    when ``strict_mention`` is off. Proves the arming is real and that
++    ``strict_mention`` is the gate doing the work."""
++    adapter.config.extra["strict_mention"] = False
++    await _run(
++        adapter,
++        _event(SHARED_CHANNEL, "Mrc le goat", ts="1786400000.000008",
++               thread_ts="1786400000.000007"),
++        thread_awake=True,
++    )
++    adapter.handle_message.assert_awaited_once()
++
++
++@pytest.mark.asyncio
++async def test_shared_channel_fresh_mention_is_processed(adapter):
++    """5. An explicit @-mention still reaches the bot outside the workshop."""
++    await _run(
++        adapter,
++        _event(SHARED_CHANNEL, "can you check this?", ts="1786400000.000009",
++               mentioned=True),
++    )
++    adapter.handle_message.assert_awaited_once()
++
++
++@pytest.mark.asyncio
++async def test_group_dm_unmentioned_thread_reply_is_ignored(adapter):
++    """6. MPIM verdict: a group DM is a shared surface, not a DM.
++
++    ``adapter.py:5528`` sets ``is_one_to_one_dm = channel_type == "im"``, so an
++    MPIM enters the same gate ladder as a channel at 5654. With every
++    auto-follow path armed, ``strict_mention`` (5707) still fires first and
++    drops the un-mentioned reply.
++    """
++    await _run(
++        adapter,
++        _event(GROUP_DM, "Mrc le goat", ts="1786400000.000010",
++               channel_type="mpim", thread_ts="1786400000.000009.5"),
++        thread_awake=True,
++    )
++    adapter.handle_message.assert_not_awaited()
++
++
++@pytest.mark.asyncio
++async def test_group_dm_fresh_mention_is_processed(adapter):
++    """6b. The other half of the MPIM verdict: a group DM is reachable — a
++    fresh @-mention falls through the whole elif ladder and is processed."""
++    await _run(
++        adapter,
++        _event(GROUP_DM, "hey bot", ts="1786400000.000011",
++               channel_type="mpim", mentioned=True),
++    )
++    adapter.handle_message.assert_awaited_once()
++
++
++@pytest.mark.asyncio
++async def test_never_configured_channel_fresh_mention_is_processed(adapter):
++    """No whitelist means no outer boundary: an arbitrary channel the operator
++    never named anywhere still reaches the bot on a fresh @-mention."""
++    await _run(
++        adapter,
++        _event(RANDOM_CHANNEL, "hey bot", ts="1786400000.000012", mentioned=True),
++    )
++    adapter.handle_message.assert_awaited_once()
++
++
++@pytest.mark.asyncio
++async def test_never_configured_channel_unmentioned_thread_reply_is_ignored(adapter):
++    """…and the mention gate is what keeps it quiet there: the same
++    never-configured channel, wake paths armed, un-mentioned → silence."""
++    await _run(
++        adapter,
++        _event(RANDOM_CHANNEL, "Mrc le goat", ts="1786400000.000014",
++               thread_ts="1786400000.000013"),
++        thread_awake=True,
++    )
++    adapter.handle_message.assert_not_awaited()
++
++
++# ---------------------------------------------------------------------------
++# One real gateway turn per conversation — capability, display, final answer
++# ---------------------------------------------------------------------------
++
++def _agent_class(sink, *, tool_file=None):
++    """Build the fake ``AIAgent`` the gateway will construct for a turn.
++
++    ``enabled_toolsets`` is the kwarg the gateway resolves per turn — the
++    capability question — so capturing it reads the answer at the source,
++    upstream of the tool schemas the model is offered.
++
++    With ``tool_file`` set the agent also does what a real turn does: it builds
++    the model's tool definitions from the toolset it was handed and dispatches
++    a real tool through the real registry, so a test can show tools genuinely
++    run in that conversation rather than merely being listed.
++    """
++
++    class _Agent:
++        def __init__(self, **kwargs):
++            self.enabled_toolsets = kwargs.get("enabled_toolsets")
++            self.tool_progress_callback = kwargs.get("tool_progress_callback")
++            self.tools = []
++            self.tool_definitions = []
++            self.tool_result = None
++            sink.append(self)
++
++        def run_conversation(self, message, conversation_history=None, task_id=None):
++            if tool_file is not None:
++                from model_tools import get_tool_definitions
++                from tools.registry import registry
++
++                self.tool_definitions = get_tool_definitions(
++                    enabled_toolsets=self.enabled_toolsets, quiet_mode=True
++                )
++                cb = self.tool_progress_callback
++                if cb is not None:
++                    cb("tool.started", "read_file", str(tool_file), {"path": str(tool_file)})
++                self.tool_result = registry.dispatch("read_file", {"path": str(tool_file)})
++                # Give the progress consumer a turn on the loop, exactly like
++                # the fake agents in test_run_progress_topics.py.
++                time.sleep(0.35)
++            return {"final_response": FINAL_ANSWER, "messages": [], "api_calls": 1}
++
++    return _Agent
++
++
++async def _turn(monkeypatch, tmp_path, *, chat_id, chat_type, tool_file=None,
++                config=DISPLAY_CONFIG):
++    """Run one real gateway turn for a Slack conversation.
++
++    Returns ``(agent, adapter, result)``: the agent the gateway constructed
++    (carrying the toolset it was given), the adapter that captured every
++    interim send, and the turn result carrying the final answer.
++    """
++    home = Path(tempfile.mkdtemp(dir=tmp_path))
++    (home / "config.yaml").write_text(yaml.dump(config), encoding="utf-8")
++
++    fake_dotenv = types.ModuleType("dotenv")
++    fake_dotenv.load_dotenv = lambda *args, **kwargs: None
++    monkeypatch.setitem(sys.modules, "dotenv", fake_dotenv)
++
++    sink = []
++    fake_run_agent = types.ModuleType("run_agent")
++    fake_run_agent.AIAgent = _agent_class(sink, tool_file=tool_file)
++    monkeypatch.setitem(sys.modules, "run_agent", fake_run_agent)
++
++    adapter = ProgressCaptureAdapter(platform=Platform.SLACK)
++    runner = _make_runner(adapter)
++    gateway_run = importlib.import_module("gateway.run")
++    monkeypatch.setattr(gateway_run, "_hermes_home", home)
++    monkeypatch.setattr(gateway_run, "_resolve_runtime_agent_kwargs", lambda: {"api_key": "***"})
++
++    source = SessionSource(
++        platform=Platform.SLACK,
++        chat_id=chat_id,
++        chat_type=chat_type,
++        thread_id=None,
++    )
++    result = await runner._run_agent(
++        message="what does the file say?",
++        context_prompt="",
++        history=[],
++        source=source,
++        session_id=f"sess-{chat_id}",
++        session_key=f"agent:main:slack:{chat_type}:{chat_id}",
++        event_message_id="1786400000.000001",
++    )
++    assert sink, "the gateway never constructed an agent for this turn"
++    return sink[0], adapter, result
++
++
++def _probe_file(tmp_path):
++    path = tmp_path / "tars-probe.txt"
++    path.write_text("hello from a tool call", encoding="utf-8")
++    return path
++
++
++# --- (a) capability is identical everywhere -------------------------------
++
++@pytest.mark.asyncio
++async def test_public_channel_gets_the_same_toolset_as_the_workshop(monkeypatch, tmp_path):
++    """A fresh mention in an arbitrary public channel is a valid session, so it
++    is armed exactly like the workshop channel: same toolset, byte for byte.
++
++    Identical toolsets are also what keeps the tool schema — and therefore the
++    prompt cache — stable across conversations.
++    """
++    public, _, _ = await _turn(
++        monkeypatch, tmp_path, chat_id=SHARED_CHANNEL, chat_type="group"
++    )
++    workshop, _, _ = await _turn(
++        monkeypatch, tmp_path, chat_id=HOME_CHANNEL, chat_type="group"
++    )
++
++    assert public.enabled_toolsets, "public channel session was handed no tools"
++    assert public.enabled_toolsets == workshop.enabled_toolsets
++
++
++@pytest.mark.asyncio
++async def test_public_channel_offers_the_full_tool_schema_to_the_model(monkeypatch, tmp_path):
++    """The toolset survives schema assembly and request building: the model
++    request for a quiet public channel really carries the tool schemas."""
++    from agent.transports.chat_completions import ChatCompletionsTransport
++    from model_tools import get_tool_definitions
++
++    agent, _, _ = await _turn(
++        monkeypatch, tmp_path, chat_id=OTHER_CHANNEL, chat_type="group"
++    )
++
++    definitions = get_tool_definitions(
++        enabled_toolsets=agent.enabled_toolsets, quiet_mode=True
++    )
++    names = {d["function"]["name"] for d in definitions}
++    assert {"read_file", "terminal"} <= names, names
++
++    messages = [{"role": "user", "content": "hi"}]
++    transport = ChatCompletionsTransport()
++    kwargs = transport.build_kwargs(
++        model="gpt-5.6-sol", messages=messages, tools=definitions,
++    )
++    assert kwargs["tools"] == definitions
++    # Contrast: an empty toolset is what drops ``tools`` from the wire
++    # altogether — which is precisely what this channel must NOT get.
++    assert "tools" not in transport.build_kwargs(
++        model="gpt-5.6-sol", messages=messages, tools=[],
++    )
++
++
++@pytest.mark.asyncio
++async def test_public_channel_can_actually_run_a_tool(monkeypatch, tmp_path):
++    """Not just listed — dispatched. The turn in a quiet public channel builds
++    its schemas from the toolset it was given and runs ``read_file`` through
++    the real registry, returning the file's contents."""
++    probe = _probe_file(tmp_path)
++    agent, _, _ = await _turn(
++        monkeypatch, tmp_path, chat_id=SHARED_CHANNEL, chat_type="group",
++        tool_file=probe,
++    )
++
++    assert {d["function"]["name"] for d in agent.tool_definitions} >= {"read_file"}
++    assert "hello from a tool call" in agent.tool_result
++
++
++# --- (b)(c)(d) display is per-conversation --------------------------------
++
++@pytest.mark.asyncio
++async def test_public_channel_shows_no_interim_progress(monkeypatch, tmp_path):
++    """``tool_progress: off`` and no ``tool_progress_conversations`` entry: the
++    tool runs, and the channel hears nothing about it."""
++    probe = _probe_file(tmp_path)
++    agent, adapter, _ = await _turn(
++        monkeypatch, tmp_path, chat_id=SHARED_CHANNEL, chat_type="group",
++        tool_file=probe,
++    )
++
++    assert "hello from a tool call" in agent.tool_result, "no tool ran, so silence proves nothing"
++    assert adapter.sent == []
++
++
++@pytest.mark.asyncio
++async def test_workshop_channel_shows_interim_progress(monkeypatch, tmp_path):
++    """``tool_progress_conversations: {C0BP2GZUFSR: all}`` opts the workshop
++    channel back in, over the platform's ``tool_progress: off``."""
++    probe = _probe_file(tmp_path)
++    _, adapter, _ = await _turn(
++        monkeypatch, tmp_path, chat_id=HOME_CHANNEL, chat_type="group",
++        tool_file=probe,
++    )
++
++    assert adapter.sent, "the workshop channel narrated nothing"
++    assert any("tars-probe" in call["content"] for call in adapter.sent), adapter.sent
++    assert all(call["chat_id"] == HOME_CHANNEL for call in adapter.sent)
++
++
++@pytest.mark.asyncio
++async def test_owner_dm_shows_interim_progress(monkeypatch, tmp_path):
++    """The DM stays verbose through ``tool_progress_dm: all`` — the new
++    per-conversation map does not disturb it."""
++    probe = _probe_file(tmp_path)
++    _, adapter, _ = await _turn(
++        monkeypatch, tmp_path, chat_id=OWNER_DM, chat_type="dm", tool_file=probe,
++    )
++
++    assert adapter.sent, "the DM narrated nothing"
++    assert any("tars-probe" in call["content"] for call in adapter.sent), adapter.sent
++
++
++# --- the deployed map-only shape: MPIMs must not inherit the DM's voice ----
++
++@pytest.mark.asyncio
++async def test_group_dm_stays_quiet_without_tool_progress_dm(monkeypatch, tmp_path):
++    """The reason the deploy drops ``tool_progress_dm``.
++
++    Slack's adapter reports an MPIM as ``chat_type="dm"``
++    (``adapter.py:5512``), so ``tool_progress_dm: all`` would narrate every
++    tool call into a group DM — a shared surface with people other than the
++    owner in it. Under the map-only config the group DM is simply not listed,
++    so it falls through to the platform's ``tool_progress: off``.
++    """
++    probe = _probe_file(tmp_path)
++    agent, adapter, _ = await _turn(
++        monkeypatch, tmp_path, chat_id=GROUP_DM, chat_type="dm", tool_file=probe,
++        config=MAP_ONLY_CONFIG,
++    )
++
++    assert "hello from a tool call" in agent.tool_result, "no tool ran, so silence proves nothing"
++    assert adapter.sent == []
++
++
++@pytest.mark.asyncio
++async def test_dm_narrates_via_conversations_map(monkeypatch, tmp_path):
++    """…and dropping ``tool_progress_dm`` costs the owner's DM nothing: its
++    chat id is in ``tool_progress_conversations``, which is what makes it
++    verbose here — the same mechanism the workshop channel uses."""
++    probe = _probe_file(tmp_path)
++    _, adapter, _ = await _turn(
++        monkeypatch, tmp_path, chat_id=OWNER_DM, chat_type="dm", tool_file=probe,
++        config=MAP_ONLY_CONFIG,
++    )
++
++    assert adapter.sent, "the owner's DM narrated nothing"
++    assert any("tars-probe" in call["content"] for call in adapter.sent), adapter.sent
++    assert all(call["chat_id"] == OWNER_DM for call in adapter.sent)
++
++
++# --- (f) malformed / absent config fails OPEN, never closed ---------------
++
++@pytest.mark.asyncio
++@pytest.mark.parametrize(
++    "config",
++    [
++        {},
++        {"display": {"platforms": {"slack": {"tool_progress_conversations": "nope"}}}},
++    ],
++    ids=["no-display-key", "conversations-not-a-mapping"],
++)
++async def test_malformed_display_config_never_disarms_the_agent(
++    monkeypatch, tmp_path, config
++):
++    """A typo in a *cosmetic* key must not change what the agent can do.
++
++    Neither an absent ``display`` section nor a ``tool_progress_conversations``
++    that is a string instead of a mapping may raise, empty the toolset, or stop
++    the turn. Narration falls back to the resolver chain, which for Slack ends
++    at the built-in platform default ``tool_progress: "off"`` — quiet.
++    """
++    probe = _probe_file(tmp_path)
++    agent, adapter, result = await _turn(
++        monkeypatch, tmp_path, chat_id=SHARED_CHANNEL, chat_type="group",
++        tool_file=probe, config=config,
++    )
++
++    assert agent.enabled_toolsets, "malformed display config emptied the toolset"
++    assert "hello from a tool call" in agent.tool_result
++    assert result["final_response"] == FINAL_ANSWER
++    assert adapter.sent == []
++
++
++@pytest.mark.asyncio
++async def test_bare_off_in_yaml_resolves_to_quiet(monkeypatch, tmp_path):
++    """YAML 1.1 parses a bare ``off`` to the boolean ``False``.
++
++    ``_normalise`` maps that back to the string ``"off"``, so the resolved
++    ``progress_mode`` is ``"off"`` and the channel is quiet — the bare and the
++    quoted spellings agree. The deploy still writes the QUOTED ``"off"``: the
++    equivalence rests on one ``value is False`` branch in ``_normalise`` and on
++    ``_resolved_tp or _env_tp or "all"`` never seeing a falsy value, and a
++    config file should not depend on either.
++    """
++    from gateway.display_config import _normalise
++
++    assert _normalise("tool_progress", False) == "off"
++
++    config = {
++        "platform_toolsets": {"slack": ["hermes-slack"]},
++        "display": {
++            "platforms": {
++                "slack": {
++                    "tool_progress": False,  # what `tool_progress: off` becomes
++                    "tool_progress_conversations": {HOME_CHANNEL: "all"},
++                }
++            }
++        },
++    }
++    probe = _probe_file(tmp_path)
++    agent, quiet, _ = await _turn(
++        monkeypatch, tmp_path, chat_id=SHARED_CHANNEL, chat_type="group",
++        tool_file=probe, config=config,
++    )
++    assert "hello from a tool call" in agent.tool_result, "no tool ran, so silence proves nothing"
++    assert quiet.sent == []
++
++    # …and the per-conversation map still wins over the False form.
++    _, loud, _ = await _turn(
++        monkeypatch, tmp_path, chat_id=HOME_CHANNEL, chat_type="group",
++        tool_file=probe, config=config,
++    )
++    assert loud.sent, "the workshop channel narrated nothing"
++
++
++# --- (e) the answer is delivered everywhere -------------------------------
++
++@pytest.mark.asyncio
++@pytest.mark.parametrize(
++    "chat_id, chat_type",
++    [(SHARED_CHANNEL, "group"), (HOME_CHANNEL, "group"), (OWNER_DM, "dm")],
++    ids=["public-channel", "workshop-channel", "owner-dm"],
++)
++async def test_final_answer_is_delivered_in_every_conversation(
++    monkeypatch, tmp_path, chat_id, chat_type
++):
++    """Hiding the narration hides only the narration. The substantive answer
++    comes back from every conversation, the quiet public channel included."""
++    probe = _probe_file(tmp_path)
++    _, _, result = await _turn(
++        monkeypatch, tmp_path, chat_id=chat_id, chat_type=chat_type, tool_file=probe,
++    )
++
++    assert result["final_response"] == FINAL_ANSWER
++
++
++# --- (g) the anti-regression guard ----------------------------------------
++
++@pytest.mark.asyncio
++async def test_toolsets_never_vary_by_conversation(monkeypatch, tmp_path):
++    """The guard against re-introducing conversation-scoped *capability*.
++
++    Five conversations — the workshop, two shared channels, a group DM and the
++    owner's DM — with a stale ``platform_tool_conversations`` allowlist naming
++    only two of them in the very config being read. Every session must still be
++    handed the same non-empty toolset: display is per-conversation, capability
++    is not.
++
++    The resolver's *signature* is pinned too: ``_get_platform_tools`` takes the
++    config and a platform key and nothing else. It cannot see a conversation,
++    so conversation-scoped capability cannot be re-introduced without changing
++    this line first.
++    """
++    from hermes_cli.tools_config import _get_platform_tools
++
++    assert 'chat_id' not in inspect.signature(_get_platform_tools).parameters
++
++    conversations = [
++        (HOME_CHANNEL, "group"),
++        (SHARED_CHANNEL, "group"),
++        (OTHER_CHANNEL, "group"),
++        (GROUP_DM, "dm"),
++        (OWNER_DM, "dm"),
++    ]
++    resolved = {}
++    for chat_id, chat_type in conversations:
++        agent, _, _ = await _turn(
++            monkeypatch, tmp_path, chat_id=chat_id, chat_type=chat_type
++        )
++        resolved[chat_id] = agent.enabled_toolsets
++
++    assert all(toolsets for toolsets in resolved.values()), resolved
++    assert len({tuple(toolsets) for toolsets in resolved.values()}) == 1, resolved
+-- 
+2.34.1
+
