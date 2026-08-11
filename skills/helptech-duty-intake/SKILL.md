@@ -146,11 +146,27 @@ Require `parentWorktreeId: null`.
 
 ### 8. Ensure exactly one child per eligible ticket
 
-Before each create, inspect the full worktree list. Treat either an exact
-`linkedLinearIssue` match or the expected child name/path as an existing child;
-verify it belongs to `HelpTechs`. Do not duplicate a partially completed run.
+Before each create, inspect the full worktree list. Treat any of these as an
+existing worktree for the issue, even when Orca metadata is incomplete:
 
-For an assigned ticket with no child, run:
+- an exact `linkedLinearIssue` match;
+- display name or path basename equal to the issue id;
+- display name or path basename matching `<ISSUE_ID>-<integer>` (for example
+  `MC-4226-2`), which is Orca's collision suffix for a second checkout;
+- any worktree whose live agent prompt or task context names the exact issue id.
+
+An existing matching worktree anywhere in the repository is a hard skip: never
+create a second child merely because the first is unlinked or is outside
+`HelpTechs`. Record its path, parent, linkage, and live-agent state as a conflict
+for Gaëtan when lineage is unexpected. Do not repair metadata or move it during
+intake.
+
+Immediately before creation, re-read the Linear issue and re-run the full Orca
+worktree list. Require the fresh Linear status to remain non-terminal and all
+eligibility/source checks to remain true. If the issue became completed,
+canceled, or duplicate, skip it. This closes the scan-to-create race.
+
+For an assigned ticket with no matching worktree, run:
 
 ```bash
 ssh cooper '~/.local/bin/orca worktree create \
