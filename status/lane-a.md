@@ -51,6 +51,43 @@ turns die after 3 continuation attempts (single-tool turns fine).
 
 ## Log
 
+- 2026-08-11 ~18:25Z — **WF6 T7/GCN-7 §Verification pass — first measurement
+  AFTER the GCN-10 prune; supersedes earlier WF6 evidence.** Every 2026-08-11
+  cron fire (15 checker + 1 brief) predates the prune instant 16:59:45Z, so all
+  prior WF6 PASSes measured the old 58-tool surface. Established this lane:
+  agent.log timestamps are **UTC** (simultaneous `date -u`/`date` + 3 cron
+  cross-checks). Counts now notion 24 / slack 20 / linear 10 = 54 from 3
+  servers; `ActiveEnterTimestamp` unchanged at `Mon 2026-08-10 20:00:38 UTC`
+  across the whole lane, measured by 4 agents — the 58→10 change went live by
+  reload, no restart. **ZERO `mcp__linear__*` denials anywhere: no GCN-10
+  regression.** Verdicts (`status/probes/gcn7-wf6-e2e.md`): check 1 **PARTIAL**
+  — agent+tool leg PASS post-prune (GCN-28: team GCN, label `test-check`, P3,
+  reply carried key+URL, `save_issue completed` 17:24:34.451Z), inbound Slack
+  leg **never stimulated** (Gaetan held off after seeing GCN-28; `gateway.log`
+  inbound stops 16:51:28Z, no `platform=slack` session after 17:00Z — 3
+  independent negatives). check 2 **BLOCKED, NOT MEASURED** — 2a/2b/2c
+  unexercised: `cron run` at 19:30/19:43 Paris hit the skill's own
+  10:00–17:00 gate (`[SILENT]` in ~55 s, queue byte-identical), and manual
+  `hermes chat` cleared that gate but died on a second, undocumented one (§4
+  collector is a terminal command; no TTY → `BLOCKED … timed out` after 302.81 s;
+  does NOT fire under cron). No SKILL.md edit, no issue closed — fully
+  re-runnable. check 3 **PASS** (3a/3b/3c) — brief delivered ts
+  1786470753.300289, 12/12 board rows real vs live Linear, no live P1 omitted,
+  held through a mid-run compaction. check 4 **PASS** on a clean rerun (GCN-29,
+  no team/id/framing in the prompt); the first run (GCN-27) is recorded as
+  **contaminated by this lane's own prompt and not scored**. check 5 **PASS** —
+  both repos clean and == origin/main (`26e4b91` / `3065f7d`), 8/8 skill
+  mirrors byte-identical. Attribution answered: the engagement-checker did NOT
+  file GCN-28 (its only save_issue was 15:04:13Z → GCN-25). Side findings
+  filed: **GCN-30** (§5 misses `statusType=duplicate` → real nag-loop hole,
+  live instance GCN-25), **GCN-31** (collector-path coverage risk) and
+  **GCN-32** (engagement-checker records carry invented provenance: a cited
+  "09:00–19:00 window" that exists in no file, and `linear_issue: GCN-26`
+  written into durable state on a turn with zero Linear calls). Probe artifacts
+  GCN-27/28/29 all **Canceled** 18:32:29–18:32:31Z, comment first on each. Two
+  residuals with executable protocols in the probe file: Gaetan's literal DM,
+  and an in-window (`08:00–15:00Z`) `hermes cron run 759e08c598e3` for check 2.
+
 - 2026-08-11 ~07:50Z — **WF6 first production fire GREEN — goal's last
   observation point closed.** Brief cron fired 06:30:55Z (schedule is
   Paris-local), ran 3m43s, delivered to C0BP2GZUFSR. Board block row-verified
