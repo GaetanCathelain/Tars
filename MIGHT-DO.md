@@ -27,3 +27,23 @@ word; delete when done or dead.
   `tools.include` exists; `hermes mcp configure` with all boxes ticked deletes
   both filters. Recorded in `docs/facts.md`; consider an upstream Hermes issue.
   (GCN-10)
+- engagement-checker reconciles a filed issue only when the collector happens to
+  re-pull it; one that closes while the cursor is held is never reconciled.
+  Smallest fix: per-run read-back of non-terminal items carrying `linear_issue`,
+  with an explicit per-run cap (~4–6 reads today). (GCN-30 lane)
+- `skills/productivity/google-workspace/` is NOT mirrored in the repo (vendored
+  upstream skill): a `hermes` upgrade can silently revert the 2026-08-11
+  venv-interpreter fix — mirror it, or re-apply post-upgrade (also recorded in
+  the upgrade memory). (GCN-31)
+- `last_failure_notice.linear` is written for a state §8 declares exempt
+  ("neither consulted nor written for"); any run inside the 4h window that
+  honours §8 will suppress the disclosure while cursors freeze. (GCN-31)
+- Ship the §4 collector as `scripts/linear_collector.py` in the skill instead of
+  a fenced block — removes the write_file materialization step entirely and
+  matches §3 / daily-work-brief practice. (GCN-31)
+- Instrumentation to make collection coverage decidable: log the blocked command
+  string on the cron-deny branch, log a bounded `final_response`, emit a per-run
+  `sources[].{attempted,succeeded,blocked_reason}` coverage record — so
+  "collected nothing" is distinguishable from "empty window". (GCN-31)
+- Unroot-caused: some cron sessions hit the `pending_approval` branch with
+  seconds-long hangs instead of the documented instant cron-deny block. (GCN-31)
