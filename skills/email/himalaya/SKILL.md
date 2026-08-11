@@ -108,11 +108,21 @@ folder.aliases.trash = "Trash"
 
 ## Common Operations
 
-### List Folders
+### List Mailboxes
+
+Himalaya v2 renamed the top-level `folder` command to `mailbox`. Use:
 
 ```bash
-himalaya folder list
+himalaya mailbox list
 ```
+
+For structured output:
+
+```bash
+himalaya mailbox list --json
+```
+
+If a command from older Himalaya documentation fails with `unrecognized subcommand 'folder'`, replace `folder` with `mailbox`; do not reinstall or reconfigure the account.
 
 ### List Emails
 
