@@ -29,6 +29,18 @@ giving-access, …) and priority-sorted tickets.
   false premise: no Linear MCP stanza ever existed on the VM
   (`status/probes/wf6/hermes-native-linear.md` — the .bak was a pre-edit
   snapshot; zero linear log hits ever).
+  **CORRECTED post-GCN-10 (2026-08-11)**: "auto-registered as `mcp__linear__*`"
+  is no longer true of the whole surface. Since GCN-10 (effective 16:59:45 UTC)
+  the registered surface is a **10-tool `tools.include` whitelist**:
+  `save_issue`, `get_issue`, `list_issues`, `list_issue_statuses`,
+  `list_issue_labels`, `list_teams`, `list_users`, `save_comment`,
+  `list_comments`, `delete_comment`. Everything else — including `merge_diff`,
+  `submit_diff_review` and every admin tool — is denied **fail-closed and
+  deliberately**. Also: `hermes mcp test linear` is a **DISCOVERY** probe and
+  still reports 58; that is **NOT a failure**. Enforcement truth is the
+  `registered N tool(s)` line in `~/.hermes/logs/agent.log`.
+  (Also corrected: the stanza is manual, not the catalog preset — see
+  `docs/facts.md` §Linear.)
 - Personal team: **"Gaetan", key GCN**, id `81e7b769-2a46-4e2a-8db5-c165a7963b0e`
   — created by Gaetan himself in the UI 2026-08-10 16:08Z, private, single
   member. Adopted as-is (a second personal team would split the SSoT).
@@ -100,16 +112,52 @@ SOUL rule wording change, anything touching company teams' data.
 
 ## Verification (T7 pass criteria — evidence, not claims)
 
+**Corrected post-GCN-10/GCN-13.** This section was written 2026-08-10, before
+GCN-10 (Linear MCP tool prune, effective 2026-08-11 16:59:45 UTC) and GCN-13
+(skill-mirror relative-path fix) landed. The criteria below stand as specified;
+where the live system deviates because of those two, the amended reality
+recorded in the correction notes **supersedes** the spec text.
+Evidence: `status/probes/gcn7-wf6-e2e.md`.
+
 1. DM Tars "create a ticket to test X" → issue appears in GCN with label +
    priority; Tars replies with key/URL.
+   - **CORRECTED post-GCN-10/GCN-13 — not agent-executable.** No agent can
+     exercise this criterion's inbound leg. The claude.ai Slack connector posts
+     **as Gaetan** (`U08BDJAMSRZ`) but its posts are dropped as bot-sender and
+     can **never** trigger Tars (`docs/facts.md` §"The claude.ai Slack connector
+     CANNOT trigger Tars"). A real DM typed by Gaetan is therefore the ONLY way
+     to exercise it. The autonomous substitute is `hermes chat -Q -q '<query>'`
+     (there is no `--oneshot` flag), which proves the **agent + tool leg only** —
+     team, label, priority, reply-with-key/URL — and leaves the Slack inbound
+     leg unproven.
 2. One engagement-checker cycle: a detected loop lands as a GCN issue; its
    next cycle does NOT re-report the item it filed; closing the issue in
    Linear clears it from the queue (pull works).
+   - **CORRECTED post-GCN-10/GCN-13 — operational precondition the spec omits:
+     the engagement-checker self-gates.** SKILL.md v1.7.1: "Scheduled runs are
+     restricted to 10:00–17:00 on workdays." A cycle fired outside that window
+     reads the clock and returns `[SILENT]` in ~55 s **before any collection**,
+     so criterion 2 is only executable **in-window** — 10:00–17:00 Paris =
+     08:00–15:00 UTC, workdays.
+   - Second gate: `hermes chat -Q -q` **cannot** drive the cycle. The §4 Linear
+     collector is a `terminal` command and non-interactive chat has no TTY to
+     approve it → `BLOCKED: Command timed out without user response` after
+     ~303 s. That gate does **not** fire under cron.
+   - ⇒ the only working invocation is **`hermes cron run <job_id>` in-window**.
 3. daily-work-brief 08:30 output (or manual run): opens with the GCN+assigned
    board, priority-sorted, and includes an Orca/Claude-history section.
+   - **CORRECTED post-GCN-10/GCN-13 — spec-vs-implementation nuance, explicitly
+     NOT a fail.** v1.5.0 emits a mandatory labelled `*Claude/Orca:*` **line**,
+     not a `###` section. The word "section" over-specifies the render; the
+     implementation satisfies the intent.
 4. A ticket created from a Claude/Orca session on cooper defaults to GCN.
 5. All changes committed: Tars repo (skills mirrors, this spec, status log),
    gaetan-metarepo (preference line). VM live-reload confirmed via
    `ActiveEnterTimestamp` unchanged — NOT `NRestarts`, which provably misses
    restarts (observed 2026-08-10: gateway restarted 20:00:38Z with NRestarts
    still 0; see gang status SESSIONA-DEPLOY-VERIFY-FAIL).
+   - **REAFFIRMED post-GCN-10/GCN-13**: `ActiveEnterTimestamp` remains the sole
+     restart signal, and it was measured **unchanged at `Mon 2026-08-10
+     20:00:38 UTC` across this entire verification lane** — including across the
+     58→10 tool-registration change, which took effect by **live-reload on the
+     same process**, no restart.
