@@ -275,9 +275,10 @@ himalaya attachment download 42 --downloads-dir ~/Downloads
 
 ## Output Formats
 
-Most commands support `--output` for structured output:
+Most commands support `--json` for structured output (Himalaya v2 uses `--json`, not `--output json`):
 
 ```bash
+himalaya account list --json
 himalaya envelope list --json
 himalaya envelope list
 ```
