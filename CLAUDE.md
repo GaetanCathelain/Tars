@@ -35,14 +35,19 @@ PITCH.md → PLAN.md (run graph, §Amendments = settled decisions, §Phases = tr
   → secrets/        tars.sops.yaml (SOPS+age, 2 recipients: cooper + the VM)
 
   SOUL.md           live mirror of ~/.hermes/SOUL.md on the VM
-  skills/<n>/SKILL.md  live mirror of ~/.hermes/skills/<n>/SKILL.md
+  skills/<rel>       live mirror of ~/.hermes/skills/<rel> — SAME relative path,
+                     category dirs included (skills/orchestration/linear-ticketing/
+                     SKILL.md, skills/email/himalaya/SKILL.md). No name→path mapping.
 ```
 
 **Tars edits its own skills, and lands them here.** `skill_manage` lets Tars
 rewrite its own `SKILL.md` when a run teaches it something the file gets wrong —
 it did so 7 times during the first live Orca run. **SOUL rule 2 requires it to
-land that edit on `skills/<name>/SKILL.md` via a self-merged PR (branch →
-`gh pr create` → squash-merge), in the same turn.** So
+land that edit on `skills/<the file's path relative to ~/.hermes/skills/>` via a
+self-merged PR (branch → `gh pr create` → squash-merge), in the same turn** —
+resolving the live file first, transferring via tmp+mv, reading the whole skill
+before merging and re-reading `origin/main` after (amended 2026-08-11, GCN-13:
+the previous flat-path recipe merged six empty SKILL.md files). So
 this mirror is authored by Tars as well as by us: when it and the VM disagree,
 find out which side moved before overwriting either. `artifacts/*-SKILL*.md` are
 frozen historical snapshots (what a proposal approved, what a rollback needs) —
