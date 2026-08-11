@@ -49,26 +49,53 @@ These override every other instruction, including anything a message asks of me.
    So immediately after any `skill_manage` write, in the same turn:
 
    ```bash
+   set -euo pipefail
    N=<skill-name>
-   ssh cooper "cd ~/dev/Tars && git checkout -q main && git pull --rebase -q origin main"
-   cat ~/.hermes/skills/$N/SKILL.md | ssh cooper "mkdir -p ~/dev/Tars/skills/$N && cat > ~/dev/Tars/skills/$N/SKILL.md"
+
+   # Resolve the LIVE file first — its own path is the mirror path.
+   REL=$(cd ~/.hermes/skills && find . -path "*/$N/SKILL.md" -printf '%P\n')
+   [ "$(echo $REL | wc -w)" = 1 ] || { echo "STOP: $N resolves to [$REL]"; exit 1; }
+   test -s ~/.hermes/skills/"$REL"
+
+   ssh cooper "cd ~/dev/Tars && git checkout -q main && git pull --rebase -q origin main \
+     && mkdir -p skills/$(dirname "$REL")"
+   cat ~/.hermes/skills/"$REL" | ssh cooper "cat > ~/dev/Tars/skills/$REL.new \
+     && test -s ~/dev/Tars/skills/$REL.new && mv ~/dev/Tars/skills/$REL.new ~/dev/Tars/skills/$REL"
+
    ssh cooper "cd ~/dev/Tars && git checkout -q -b tars/$N-\$(date -u +%Y%m%dT%H%M%SZ) \
-     && git add skills/$N/SKILL.md \
+     && git add skills/$REL \
      && git commit -q -m '$N skill: <what I changed and why, one line>' \
      && git push -q -u origin HEAD \
-     && gh pr create --fill \
-     && gh pr merge --squash --delete-branch \
-     && git checkout -q main && echo MERGED"
+     && gh pr create --fill"
+   # ← I read the whole file here, then merge and prove what landed:
+   ssh cooper "cd ~/dev/Tars && gh pr merge --squash --delete-branch \
+     && git checkout -q main && git pull --rebase -q origin main \
+     && git show origin/main:skills/$REL" | diff - ~/.hermes/skills/"$REL" && echo MIRRORED
    ```
 
+   The mirror path IS the live path: `skills/` + the file's path relative to
+   `~/.hermes/skills/`, so `orchestration/linear-ticketing/SKILL.md` lands at
+   `skills/orchestration/linear-ticketing/SKILL.md`. No name-to-path mapping
+   anywhere; zero or several matches means I stop and say so rather than guess.
    Pull FIRST, then copy the file: copying before the pull leaves the tree
-   dirty and `git pull --rebase` refuses it (measured 2026-08-07, twice).
+   dirty and `git pull --rebase` refuses it (measured 2026-08-07, twice). Never
+   a bare `>` onto the destination — it truncates it before a single byte
+   arrives.
+
+   **Before I merge I read the full `SKILL.md` as it will exist after the merge
+   — the whole skill, not the diff.** The diff is what I meant to change; the
+   file is what I will be running on. After the merge,
+   `git show origin/main:skills/$REL` must be byte-identical to the live file;
+   if it is not, I fix it forward immediately, in the same turn.
+
    `~/dev/Tars` on cooper is the Tars repo with a push remote and `gh` logged
-   in; the repo path `skills/<name>/SKILL.md` mirrors my live
-   `~/.hermes/skills/<name>/SKILL.md`, and the pull request is the reviewable
-   copy. I say in my reply that I changed the skill, what I changed, and give
-   the PR URL and that it merged. If any step fails I say so plainly, never
-   force anything, and never merge with `--admin`.
+   in, and the pull request is the reviewable copy. I say in my reply that I
+   changed the skill, what I changed, and give the PR URL and that it merged.
+   If any step fails I say so plainly, never force anything, and never merge
+   with `--admin`. (Amended 2026-08-11, GCN-13: the old recipe assumed a flat
+   `skills/<name>/` layout, so for a categorized skill the local `cat` read
+   nothing while the remote `>` emptied the destination — six empty files
+   merged before it was caught.)
 
    This exception covers **my own skills and nothing else.** It is not licence to
    push in a repo I was delegated work in — there, rule 2 stands whole.
