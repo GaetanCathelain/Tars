@@ -51,6 +51,18 @@ turns die after 3 continuation attempts (single-tool turns fine).
 
 ## Log
 
+- 2026-08-11 ~07:50Z — **WF6 first production fire GREEN — goal's last
+  observation point closed.** Brief cron fired 06:30:55Z (schedule is
+  Paris-local), ran 3m43s, delivered to C0BP2GZUFSR. Board block row-verified
+  against a fresh `linear_board.py` run: all deltas are genuine board movement
+  (MC-4179/NMC-622 closed ~50 min post-delivery), all other rows verbatim;
+  `Coverage: 2 views, both complete` present; zero terminal-state leakage.
+  One anomaly, likely pre-existing: delivery dropped the origin thread_id and
+  posted top-level instead of into the anchor thread (a "report-thread
+  reconciler" cron already exists for this pattern — not a WF6 regression;
+  delivery target config verified unchanged). Also this morning: Tars
+  self-evolved linear-ticketing (PR #44/#45) reproducing the empty-file merge
+  defect — recurrence #2 commented onto GCN-13.
 - 2026-08-11 ~00:15Z — **WF6 check 1 PASS by proxy** (`check1-proxy.md`,
   main `a71985e`): bare ask via `hermes chat` → GCN-14 created with one label
   (`test-check`), explicit P4, direct-to-Todo (stateHistory clean), assignee
