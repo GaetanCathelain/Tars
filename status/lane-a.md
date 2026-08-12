@@ -51,6 +51,15 @@ turns die after 3 continuation attempts (single-tool turns fine).
 
 ## Log
 
+- 2026-08-12 ~16:15Z — **GCN-44 amendment: nextmobiles.com is "us" (Gaetan's
+  ruling) — gmail-triage v1.1.0.** Routing moved 🤝→👥 in SKILL.md §3 + spec
+  taxonomy; re-shipped under the md5 guard (live was still our 1.0.0
+  `8eaa93e4…` — no Tars self-edit clobbered; now repo==live `61db141e…`, .bak
+  kept, cron/config.yaml/state untouched, gateway not restarted). Existing mail
+  swept via Gmail MCP: 15 threads → 👥, 14 had 🤝 removed, 13 already correct.
+  Spec open item 1 RESOLVED; `staging-recouvrement` deletion still gated on
+  Gaetan. Evidence: `status/probes/wf7/deploy.md` §10.
+
 - 2026-08-12 ~15:50Z — **WF7 shipped same-day (GCN-44): Gmail auto-triage live
   — 8-label emoji taxonomy + hourly Tars labeler.** Trigger: Gaetan's DM after
   seeing Olivier's Claude-organized mailbox. 90-day pattern analysis (inbox ~0%

@@ -5,7 +5,7 @@ verified `status/probes/wf7/verification.md`). Ticket: **GCN-44**.
 Author: WF7 session (Orca on cooper). Decision basis: Gaetan's Slack DM of
 2026-08-12, the 90-day mailbox pattern analysis, and a read-only VM probe of
 `google_api.py` + the Hermes cron store (evidence:
-`status/probes/wf7/`). Artifact: `skills/email/gmail-triage/SKILL.md` v1.0.0,
+`status/probes/wf7/`). Artifact: `skills/email/gmail-triage/SKILL.md` v1.1.0,
 mirroring to `~/.hermes/skills/email/gmail-triage/SKILL.md`.
 
 ## Motivation
@@ -36,8 +36,8 @@ precede it for the same reason — `info@e.atlassian.com` is marketing while
 | 2 | 💳 Finance & Facturation | `Label_7` | subject: `receipt`, `invoice`, `facture`, `spend limit`, `cost report`, `billing`; senders `invoice+statements@mail.anthropic.com`, `accounts@1password.eu`, `no-reply@sns.amazonaws.com`, `notifications@doit.com` |
 | 3 | 📅 Réunions & Agenda | `Label_10` | `Invitation:` / `Updated invitation:` / `Accepted:` subjects, meeting recaps and transcripts, `meetings-noreply@google.com`, Fireflies/Granola **when the subject names a meeting** |
 | 4 | 🎯 Recrutement | `Label_11` | `candidature`, `alternance`, `stage`, `CV`, `entretien`, `application for` — sender not `@mobile.club` |
-| 5 | 👥 Interne Mobile Club | `Label_8` | sender domain `mobile.club` or `cleaq.com`, excluding `tech@mobile.club` |
-| 6 | 🤝 Partenaires & Prestataires | `Label_9` | `nextmobiles.com`, `techtribe.fr`, `egym-wellpass.com`, `ramzi@cloudflare.com`, DoIT relationship traffic |
+| 5 | 👥 Interne Mobile Club | `Label_8` | sender domain `mobile.club`, `cleaq.com` or `nextmobiles.com`, excluding `tech@mobile.club` |
+| 6 | 🤝 Partenaires & Prestataires | `Label_9` | `techtribe.fr`, `egym-wellpass.com`, `ramzi@cloudflare.com`, DoIT relationship traffic |
 | 7 | 📣 Newsletters & Pub | `Label_13` | `learn@send.zapier.com`, `updates@dynatrace.ai`, `info@e.atlassian.com`, `em@em1.cloudflare.com`, `changelog@neon.tech`, `news@gifteo.fr`, `no-reply@email.claude.com`, `noreply@tm.openai.com`; plain announcements/changelogs/webinars |
 | 8 | 🛠️ Outils & SaaS | `Label_6` | ~21 SaaS domains (Anthropic, Vercel, Linear, GitHub, Datadog, 1Password, Notion, Atlassian, Cloudflare, OpenAI, Fivetran, Zapier, Neon, Granola, Fireflies) **minus** any row-1 or row-2 subject cue |
 
@@ -175,11 +175,10 @@ any of them in the UI in seconds if he wants them gone.
 
 ## Open items — Gaetan's call, not a run's
 
-- **`nextmobiles.com` routing.** Its traffic mixes internal forwards to
-  `tech@mobile.club` with genuine external outreach, so "sister brand" vs
-  "third party" is unresolved. v1.0.0 routes it to 🤝 Partenaires &
-  Prestataires **provisionally**; if it is "us", the correct label is 👥 Interne
-  Mobile Club and §3 row 6 changes. Ask once; do not re-open it per run.
+- **`nextmobiles.com` routing — RESOLVED (Gaetan, 2026-08-12).** The sister
+  brand is "us": it routes to 👥 Interne Mobile Club (`Label_8`, row 5), not
+  🤝 Partenaires & Prestataires. Applied in SKILL.md v1.1.0 — rows 5 and 6 both
+  changed. Labels already applied under v1.0.0 stay (nothing un-labels).
 - **`staging-recouvrement` deletion.** 445 threads / 17868 messages, zero
   activity in 90+ days — the largest label on the account and a dead one.
   Deleting the label (not the mail) is the obvious cleanup, and it is **gated on

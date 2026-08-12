@@ -286,3 +286,34 @@ kept `UNREAD` and `INBOX`: nothing was read, archived or removed.
 Accounting was exact on this tick (2 candidates → 2 labelled → 2 new `seen`
 ids), which makes the §7.1 off-by-one a one-run anomaly rather than a
 systematic miscount.
+
+## 10. Re-ship v1.1.0 — nextmobiles.com rerouted 🤝 → 👥, 2026-08-12 15:55 UTC
+
+Ruling: Gaetan, 2026-08-12 — `nextmobiles.com` is "us", so it routes to
+👥 Interne Mobile Club (`Label_8`), not 🤝 Partenaires & Prestataires
+(`Label_9`). Spec § Open items item 1 is now **RESOLVED**; `staging-recouvrement`
+stays open. Changed in SKILL.md: §3 row 5 gains the domain, row 6 loses it, and
+the "provisional" paragraph under §3 becomes the settled ruling. Version
+`1.0.0` → `1.1.0` (the file carries no changelog section, so no changelog line
+was added).
+
+Pre-overwrite guard, 15:54 UTC — live md5 was
+`8eaa93e425c3b5a4ed1ffb9f7107b84b`, **exactly what §1 shipped**, so Tars had not
+self-edited the skill and there was nothing to clobber. Backup taken first
+(`SKILL.md.bak`, same md5). Same stage + `flock ~/.hermes/.wf3.lock` atomic-swap
+recipe as §1.
+
+```
+repo  61db141ea4eb9a7cb2cfdb2a4f7ad4ea  skills/email/gmail-triage/SKILL.md
+live  61db141ea4eb9a7cb2cfdb2a4f7ad4ea  /home/gaetan/.hermes/skills/email/gmail-triage/SKILL.md
+-rw------- 1 gaetan gaetan 20538 Aug 12 15:55 SKILL.md   (version: 1.1.0)
+```
+
+**MATCH.** Cron job `191332ae6a24`, `config.yaml` and
+`~/.hermes/state/gmail-triage.json` were not touched; no `sops -d`, no secret
+read or printed. Gateway not restarted:
+`ActiveEnterTimestamp=Mon 2026-08-10 20:00:38 UTC`, `NRestarts=0`.
+
+Already-applied labels stay as they are — nothing un-labels. The one message
+labelled `Label_9` by judgment in §9 is a Rebura sender, not nextmobiles, so no
+past routing is contradicted by this ruling.

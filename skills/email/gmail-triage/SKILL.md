@@ -1,7 +1,7 @@
 ---
 name: gmail-triage
 description: "Use to label new inbox mail against Gaetan's 8-label taxonomy."
-version: 1.0.0
+version: 1.1.0
 metadata:
   hermes:
     tags: [email, gmail, triage, labels, automation, cron]
@@ -217,8 +217,8 @@ drip campaign.
 | 2 | 💳 Finance & Facturation | `Label_7` | subject contains `receipt`, `invoice`, `facture`, `spend limit`, `on-demand spend`, `cost report`, `billing`, `payment`, `abonnement`; **or** sender is `invoice+statements@mail.anthropic.com`, `accounts@1password.eu`, `no-reply@sns.amazonaws.com`, `notifications@doit.com` |
 | 3 | 📅 Réunions & Agenda | `Label_10` | subject starts with `Invitation:`, `Updated invitation:`, `Invitation annulée:`, `Canceled event:`, `Accepted:`, `Declined:`; **or** subject contains `meeting recap`, `notes de réunion`, `transcript`; **or** sender is `meetings-noreply@google.com`, `calendar-notification@google.com`, or a Fireflies/Granola address **and** the subject names a meeting rather than onboarding |
 | 4 | 🎯 Recrutement | `Label_11` | subject or snippet contains `candidature`, `spontaneous application`, `alternance`, `stage`, `CV`, `entretien`, `recrutement`, `application for` — and the sender is **not** `@mobile.club` |
-| 5 | 👥 Interne Mobile Club | `Label_8` | sender domain is `mobile.club` or `cleaq.com`, excluding `tech@mobile.club` |
-| 6 | 🤝 Partenaires & Prestataires | `Label_9` | sender domain is `nextmobiles.com`, `techtribe.fr`, `egym-wellpass.com`; **or** sender is `ramzi@cloudflare.com`; **or** a DoIT address whose subject is relationship traffic rather than the monthly cost digest (the digest is row 2) |
+| 5 | 👥 Interne Mobile Club | `Label_8` | sender domain is `mobile.club`, `cleaq.com` or `nextmobiles.com`, excluding `tech@mobile.club` |
+| 6 | 🤝 Partenaires & Prestataires | `Label_9` | sender domain is `techtribe.fr`, `egym-wellpass.com`; **or** sender is `ramzi@cloudflare.com`; **or** a DoIT address whose subject is relationship traffic rather than the monthly cost digest (the digest is row 2) |
 | 7 | 📣 Newsletters & Pub | `Label_13` | sender is `learn@send.zapier.com`, `updates@dynatrace.ai`, `info@e.atlassian.com`, `em@em1.cloudflare.com`, `changelog@neon.tech`, `news@gifteo.fr`, `no-reply@email.claude.com`, `noreply@tm.openai.com`; **or** subject is a plain product-announcement/changelog/webinar/promo with no transaction and no account event |
 | 8 | 🛠️ Outils & SaaS | `Label_6` | sender domain is one of `mail.anthropic.com`, `anthropic.com`, `vercel.com`, `linear.app`, `github.com`, `dtdg.eu`, `datadoghq.com`, `1password.com`, `1password.eu`, `mail.notion.so`, `atlassian.com`, `atlassian.net`, `id.atlassian.com`, `cloudflare.com`, `openai.com`, `tm.openai.com`, `fivetran.com`, `zapier.com`, `neon.tech`, `granola.ai`, `fireflies.ai` — **and** the subject matches no row-1 and no row-2 cue. Those two negative filters are not redundant with the ordering: keep both, they are what stops a domain rule from eating a receipt or a security alert if a row above is ever edited |
 
@@ -237,9 +237,9 @@ pass the two IDs comma-separated in a single `--add-labels`. The canonical case
 is the DoIT monthly cost digest, which is `Label_7,Label_9`. Prefer one label.
 Never three.
 
-**`nextmobiles.com` routes to 🤝 Partenaires & Prestataires provisionally** —
-its sister-brand-versus-third-party status is unresolved (spec § Open items).
-Apply the rule; do not re-litigate it in a run; do not raise it in a report.
+**`nextmobiles.com` is us** — Gaetan ruled on 2026-08-12 that the sister brand
+is internal, so it routes to 👥 Interne Mobile Club (row 5). Settled: do not
+re-litigate it in a run; do not raise it in a report.
 
 ## 4. Apply labels
 
