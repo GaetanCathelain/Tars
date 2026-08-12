@@ -51,6 +51,32 @@ turns die after 3 continuation attempts (single-tool turns fine).
 
 ## Log
 
+- 2026-08-12 ~15:50Z — **WF7 shipped same-day (GCN-44): Gmail auto-triage live
+  — 8-label emoji taxonomy + hourly Tars labeler.** Trigger: Gaetan's DM after
+  seeing Olivier's Claude-organized mailbox. 90-day pattern analysis (inbox ~0%
+  human-labeled) → 8 labels created via Gmail MCP (`Label_6`–`Label_13`);
+  backfill labeled ~1,003 threads (908 rule pass + 95 LLM leftovers; 3 left
+  unlabeled on purpose, incl. a probable-phishing gmail sender deliberately NOT
+  tagged 👥 Interne). New skill `skills/email/gmail-triage/SKILL.md` v1.0.0
+  live (md5 `8eaa93e4…` repo==live), cron `191332ae6a24` `0 7-21 * * *` (Paris
+  via Hermes config tz — jobs.json has NO tz field; deliver bare `slack` →
+  `SLACK_HOME_CHANNEL` DM `D0BBYNM01BL`; NB the checker's literal
+  `slack:C…:<ts>` target is a pinned rotating thread, never copy it verbatim).
+  Labels are applied per-MESSAGE via `google_api.py gmail modify` (IDs only, no
+  batch; venv python, not python3). 3 test runs PASS incl. one natural 17:00
+  Paris tick; 4 labels applied, all hand-checked correct; DM contract honored
+  (1 bullet on self-healed state, then `[SILENT]`×2, no duplicate delivery).
+  Independent adversarial verify **15/15 PASS-with-notes**
+  (`status/probes/wf7/verification.md`); known minor: one-run state
+  under-count (`labelled:1` vs 2 live — idempotence unaffected). Rails are
+  structural: `--remove-labels` banned outright, `--add-labels` allowlisted to
+  the 8 IDs, ≤100 ops/run, never archive/read/delete. Gated on Gaetan:
+  nextmobiles.com routing (provisionally 🤝), `staging-recouvrement` label
+  deletion (dead: 17,868 msgs, 0 in 90d). Evidence:
+  `status/probes/wf7/deploy.md`; spec `docs/specs/wf7-gmail-triage.md`. State
+  backup from cursor-rollback test left at
+  `~/.hermes/state/gmail-triage.json.bak-gcn44-20260812T143556Z`.
+
 - 2026-08-12 ~11:10Z — **WF6 closed (GCN-7 Done) + engagement-checker v1.8.0
   live: the 2026-08-11 batch is fully landed.** R2 measured in-window on the
   UNMODIFIED semantics per Gaetan's split-diff ruling: check 2 **PASS on all
