@@ -51,6 +51,30 @@ turns die after 3 continuation attempts (single-tool turns fine).
 
 ## Log
 
+- 2026-08-12 ~11:10Z — **WF6 closed (GCN-7 Done) + engagement-checker v1.8.0
+  live: the 2026-08-11 batch is fully landed.** R2 measured in-window on the
+  UNMODIFIED semantics per Gaetan's split-diff ruling: check 2 **PASS on all
+  three legs** — 2a EC-EAF7BB→GCN-34 (natural 08:00Z fire), 2b no re-report
+  across 7 fires, 2c GCN-12 close reconciled `linear:completed` (board restored
+  to Todo after; its checker reminder loop is consumed — noted in MIGHT-DO).
+  Stage-1 plumbing (v1.7.2, `d5a051d`) had its first live exercise: §4
+  collector ran 7/7 from cron (8+ blocks the day before), Linear cursor
+  advanced 14:30:26Z(-1d)→11:00:37Z; email collection live post-interpreter
+  fix (GCN-34 came from email). GCN-25 was NEVER wrong-written (predicted
+  close-back path did not trigger; item's queue entry already terminal).
+  Stage-2 semantics applied 10:44Z (v1.8.0, `02d9c96`; live == origin/main ==
+  staged, md5 `d0adb891…`; gateway `ActiveEnterTimestamp` unchanged through
+  everything, still Mon 2026-08-10 20:00:38 UTC). First natural 1.8.0 run
+  11:00Z clean: P1–P5 + F2 regression all PASS, close-back guard exercised in
+  production (GCN-38). Closures: GCN-7, GCN-30, GCN-31, GCN-32 all Done with
+  evidence comments; GCN-33/35/37/38/39/40 are real checker-filed business
+  items (untouched). Residual on record: R1 inbound-DM full loop (protocol
+  `gcn7-wf6-e2e.md` §9.1, MIGHT-DO). Evidence: `status/probes/gcn7-r2-run.md`
+  (`105c000`), `gcn30-32-stage2-applied.md` (`aed3987`),
+  `gcn30-32-checker-fix.md`, `gcn31-collector.md`. Overnight, independently:
+  Tars self-merged a NEW skill via the fixed rule-2 recipe (PR #58,
+  slack-channel-context) — second in-the-wild proof of the GCN-13 fix.
+
 - 2026-08-11 ~18:25Z — **WF6 T7/GCN-7 §Verification pass — first measurement
   AFTER the GCN-10 prune; supersedes earlier WF6 evidence.** Every 2026-08-11
   cron fire (15 checker + 1 brief) predates the prune instant 16:59:45Z, so all

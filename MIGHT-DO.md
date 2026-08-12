@@ -47,3 +47,18 @@ word; delete when done or dead.
   "collected nothing" is distinguishable from "empty window". (GCN-31)
 - Unroot-caused: some cron sessions hit the `pending_approval` branch with
   seconds-long hangs instead of the documented instant cron-deny block. (GCN-31)
+- GCN-37 self-closed 4 minutes after a natural checker run filed it
+  (2026-08-12) — unexplained, out of R2's scope; worth one look. (R2)
+- `execute_code` is blocked UNCONDITIONALLY under cron — not only the chat-TTY
+  gate an earlier probe documented; every 08-12 fire fell back to `terminal`.
+  Candidate `docs/facts.md` row. (R2)
+- GCN-12's checker queue item was consumed by the R2 pull-leg test (reconciled
+  `linear:completed`); the board is back to Todo but the reminder loop is dead —
+  the checker re-detects only on a fresh Slack/email mention of the OAuth task.
+  (R2)
+- GCN-25's queue item carries a latched `linear_issue.closed_at` (its Linear
+  `canceledAt`), so the new `duplicate → dismissed` transition can never fire
+  for that one item; cosmetic (item already terminal locally) — clear by hand
+  only if the label matters. (stage-2 apply)
+- `gcn30-32-checker-fix.md` §8 P4 guard defect: `wc -c > 20` aborts on a
+  legitimately `[SILENT]` extraction; doc fix in the probe text. (stage-2 apply)
