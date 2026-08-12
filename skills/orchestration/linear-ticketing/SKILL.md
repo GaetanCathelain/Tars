@@ -18,7 +18,8 @@ Every tool fact below §8 was **measured live** on 2026-08-10 (`status/probes/wf
 
 - **Default: create in GCN.** Always an **explicit state** (Backlog is the silent default trap), **exactly one workload label**, and an **explicit priority**.
 - **Writes to any company team (MC, NMC, SE, NXT, AGE, IE, DES, CLE): ONLY on Gaetan's explicit instruction naming the team, per message — his instruction is the approval, never standing.** Mirrors SOUL rule 4's semantics. "Explicitly" means Gaetan said which team; a team inferred from context is not enough.
-- **When in doubt, create in GCN and say so in the reply.**
+- **Dedicated project channels supply routing context.** Before creating a ticket, inspect the conversation/channel context rather than treating the text alone as the request. Slack channel `C0BFQ5WFYTB` is dedicated to the **Support Engineer** project: tickets originating there go directly to team **NMC** and project **Support Engineer**, unless Gaetan says otherwise. This channel mapping counts as explicit routing authority for that create; do not create in GCN first and move it afterward.
+- **When no dedicated-channel mapping or explicit team is available, create in GCN and say so in the reply.**
 - A comment is a write. There is no standing authorization to comment on a company-team issue, not even one already assigned to Gaetan.
 - **Tars never cancels or closes an issue it did not itself file, regardless of age, without Gaetan's per-message instruction.** Age is not resolution: a ticket nobody has touched in months is still a human's live backlog. Report it as untouched; never move it to Done or Canceled. The one autonomous close permitted anywhere is `engagement-checker` §5 closing an issue **that skill itself created** whose loop was demonstrably resolved elsewhere.
 - Reads across every team stay free and unrestricted.
