@@ -138,7 +138,9 @@ moved above Standing corrections so the appendable section ends the file.
 ## What was deliberately NOT changed / not produced
 
 Unchanged from rev 1: no config.yaml change (other agent's settled scope;
-`tool_progress_conversations: {D0BBYNM01BL: "all"}` flag passed upstream); no
+`tool_progress_conversations: {D0BBYNM01BL: "all"}` flag passed upstream —
+**moot since 2026-08-13: the patch providing that key was dropped, the key no
+longer exists, `tool_progress: "off"` governs alone**); no
 skill-file edits; no model-swap recommendation in SOUL; rollout constraint
 (new sessions only) rides in the changemap. One review suggestion not taken:
 relocating the rule-2 recipe into a skill — reasons in changemap §Skipped.

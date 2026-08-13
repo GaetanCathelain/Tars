@@ -180,6 +180,12 @@ mcp_servers:
 > DM-only (`D0BBYNM01BL`). The `allowed_channels` and
 > `tool_progress_conversations` references to `C0BP2GZUFSR` above are
 > history, not live routing.
+> Corrected again, 2026-08-13 (later): the display patches are **dropped** —
+> the VM checkout is vanilla upstream `6e87d43`, so neither
+> `tool_progress_conversations` nor `tool_progress_dm` exists as a key.
+> Narration is governed solely by `display.platforms.slack.tool_progress:
+> "off"`, applied uniformly to every chat type
+> (`status/probes/patch-drop-2026-08-13.md`).
 
 Deliberately **absent**, each for a stated reason:
 

@@ -132,7 +132,9 @@ at current correction frequency.
 
 **None proposed.** Unchanged from rev 1: config.yaml (other agent's settled
 scope; `tool_progress_conversations: {D0BBYNM01BL: "all"}` flag passed
-upstream), behavioral skills (echo SOUL rules by number — rules 1–12 numbering
+upstream — **moot since 2026-08-13: the patch providing that key was dropped,
+the key no longer exists, `tool_progress: "off"` governs alone**),
+behavioral skills (echo SOUL rules by number — rules 1–12 numbering
 unchanged, new rule 13 is append-only), vendor AGENTS.md.
 
 ## Rollout notes (ride-along, not file changes)

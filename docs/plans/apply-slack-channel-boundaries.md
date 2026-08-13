@@ -1,5 +1,13 @@
 # Apply plan — Slack channel boundaries
 
+**SUPERSEDED 2026-08-13 — the display half of this plan is undone.** The
+per-conversation `tool_progress_conversations` patch (and `tool_progress_dm`)
+were dropped from the VM checkout, which is now vanilla upstream `6e87d43`;
+narration comes from `display.platforms.slack.tool_progress: "off"` alone,
+uniformly for every chat type. Everything below about the display scheme is
+history. The mention-routing half still stands.
+Evidence: `status/probes/patch-drop-2026-08-13.md`.
+
 **Source:** `patches/`, `status/probes/wf5/slack-channel-boundaries.md`
 (mention-routing evidence),
 `status/probes/wf5/slack-tool-visibility-correction.md` (display evidence).
