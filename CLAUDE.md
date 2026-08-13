@@ -92,7 +92,9 @@ agents write new files under `status/probes/`.
 - Every `~/.hermes/config.yaml` or `.env` edit on the VM: `.bak` copy first,
   then `flock ~/.hermes/.wf3.lock -c '<edit>'` — Hermes live-reloads (~30 s) —
   and merge, never append (a raw append once nearly dropped a sibling agent's
-  `mcp_servers` stanza).
+  `mcp_servers` stanza). tmp+mv does NOT preserve file mode: `chmod 600` the
+  file after every replace (a 2026-08-13 edit left the credential-bearing
+  config.yaml world-readable until caught).
 - CLI facts in specs are LLM-summarized vendor docs: run `--help` on the VM
   before scripting any non-interactive invocation, and measure before believing
   recon claims.
