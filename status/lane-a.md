@@ -51,6 +51,20 @@ turns die after 3 continuation attempts (single-tool turns fine).
 
 ## Log
 
+- 2026-08-13 ~15:52Z — **Tars v1 CLOSED: gated p-Hermes profile delete
+  executed (Gaetan's explicit go, this session).** `rm -rf
+  /home/hermes/.hermes/profiles/tars/` (57M, 79 files, 49 dirs) run from the
+  hub via the Tars VM after a fresh inventory probe matched `r3-p-hermes.md`
+  byte-for-byte and the old gateway re-confirmed inactive+disabled, no live
+  process. Post-check: path gone, all five sibling profiles intact
+  (immichbackup, immichresearch, justine, papainventory, privatelocal).
+  Evidence: `status/probes/phermes-cleanup-pre.md` / `phermes-cleanup-post.md`.
+  Inert `hermes-gateway-tars.service` unit + override.conf left on disk (never
+  in the gated scope). Same turn, Gaetan ruled the rest of the backlog done or
+  canceled — `staging-recouvrement` label deletion, WF5 LATER bucket
+  (A2A/GBrain/Hindsight), MIGHT-DO promotions. **v1 is done; further work
+  targets Tars v2 under a new plan.**
+
 - 2026-08-12 ~16:15Z — **GCN-44 amendment: nextmobiles.com is "us" (Gaetan's
   ruling) — gmail-triage v1.1.0.** Routing moved 🤝→👥 in SKILL.md §3 + spec
   taxonomy; re-shipped under the md5 guard (live was still our 1.0.0
