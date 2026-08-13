@@ -2,6 +2,11 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+Orchestration contract for sessions working in this repo (imported from
+cooper's `~/.claude/handoff/ORCHESTRATION-POLICY.md`, 2026-08-13):
+
+@ORCHESTRATION-POLICY.md
+
 ## What this repo is
 
 Build + ops repo for **Tars**: Gaetan's personal Hermes agent on a dedicated
