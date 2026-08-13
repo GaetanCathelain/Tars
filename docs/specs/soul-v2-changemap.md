@@ -117,6 +117,17 @@ long-context model), but Standing corrections grows by design — if the file
 approaches 20K, set `context_file_max_chars` explicitly in config or prune
 graduated corrections into rules. Worth a line in the deploy note.
 
+**Corrected 2026-08-13 (post-apply hermes recon,
+`docs/recon/hermes-prompt-engineering-facts-2026-08-13.md`):** the live cap is
+measured, not estimated — 65,280 chars for `gpt-5.6-sol` (272K window,
+`~/.hermes/context_length_cache.yaml`); no config action or pruning is needed
+until the file nears ~60K. When truncation fires it keeps head 70% + tail 20%
+and drops the MIDDLE with a marker — so the last-position Standing-corrections
+section survives truncation, the middle rules are what would be lost. One real
+cost stands: SOUL.md is byte-0 of the stable cache tier, so every append
+invalidates the whole downstream prompt cache at the next rebuild — acceptable
+at current correction frequency.
+
 ## Other system files
 
 **None proposed.** Unchanged from rev 1: config.yaml (other agent's settled
