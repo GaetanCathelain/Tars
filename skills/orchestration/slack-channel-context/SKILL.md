@@ -1,7 +1,7 @@
 ---
 name: slack-channel-context
 description: "Map Slack channels before interpreting routed requests."
-version: 0.1.0
+version: 0.2.0
 metadata:
   hermes:
     tags: [slack, context, routing, channels]
@@ -16,7 +16,7 @@ Use this skill whenever a Slack request depends on what the current channel is f
 
 1. Match on immutable channel ID, never the display name alone; names can change.
 2. Use `channels_me` to verify that the channel is still accessible and to refresh its name, topic, and purpose.
-3. Treat a channel's topic/purpose as the strongest source. Use recent history only when metadata is absent or ambiguous.
+3. Treat a channel's topic/purpose as the strongest source. Use recent history only when metadata is absent or ambiguous. This rations history reads **for classifying a channel's purpose only** — it never limits the reading SOUL rule 10 requires before answering a question about what happened.
 4. A project-specific channel supplies project context for the request. Apply any explicit routing recorded below before a generic default.
 5. Do not infer a Linear team merely from a broad department or product channel. Only mappings explicitly recorded as `Linear routing` authorize that routing.
 6. Never post in `#general`; Gaetan posts company-wide announcements himself.
