@@ -1,5 +1,12 @@
 # Daily report threading — one parent per Paris day, replies in-thread
 
+> **RETIRED 2026-08-13.** `C0BP2GZUFSR` (#gcn-tars-reporting) is closed;
+> all Tars deliveries and interaction moved to the DM (`D0BBYNM01BL`).
+> Scheduled reports now deliver **flat** to the DM — no parent, no
+> threading — and the `tars-report-thread.py` reconciler cron is
+> **disabled**. This spec is kept for history; do not re-enable the
+> reconciler or point jobs back at the channel.
+
 Status: spec settled 2026-08-10 (this file), implemented by
 `scripts/tars-report-thread.py` + one new no-agent cron job on the VM.
 

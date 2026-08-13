@@ -175,6 +175,11 @@ mcp_servers:
 > the chat-ID map subsumes it.
 > There is no toolset-gating profile key — the patch that introduced one is
 > withdrawn (`status/probes/wf5/slack-tool-visibility-correction.md`).
+> Corrected once more, 2026-08-13: `C0BP2GZUFSR` is **RETIRED** — the
+> reporting channel is closed, and both interaction and report delivery are
+> DM-only (`D0BBYNM01BL`). The `allowed_channels` and
+> `tool_progress_conversations` references to `C0BP2GZUFSR` above are
+> history, not live routing.
 
 Deliberately **absent**, each for a stated reason:
 

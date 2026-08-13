@@ -1,7 +1,8 @@
 # Tars
 
 Personal pro assistant for Gaetan — a dedicated [Hermes agent](https://hermes-agent.nousresearch.com/)
-running on its own Proxmox VM, interacting through Slack (DM-first, responds only to Gaetan),
+running on its own Proxmox VM, interacting through Slack (DM-only — the reporting channel
+retired 2026-08-13, responds only to Gaetan),
 wired into everything Gaetan touches professionally: Slack, Gmail, Linear, GitHub (incl.
 mc-metarepo), Notion, Calendar, the machines on the tailnet, and Orca on the cooper VM.
 

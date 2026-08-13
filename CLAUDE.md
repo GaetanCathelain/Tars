@@ -10,7 +10,8 @@ cooper's `~/.claude/handoff/ORCHESTRATION-POLICY.md`, 2026-08-13):
 ## What this repo is
 
 Build + ops repo for **Tars**: Gaetan's personal Hermes agent on a dedicated
-Proxmox VM, **live in Slack since 2026-08-07** (DM-first, answers only Gaetan;
+Proxmox VM, **live in Slack since 2026-08-07** (DM-only — the reporting
+channel retired 2026-08-13, answers only Gaetan;
 may post substantive content to conversations that include Gaetan when the
 message is Gaetan's call — his instruction to post is the approval, per
 message, never standing; #general-class broad channels off-limits — SOUL

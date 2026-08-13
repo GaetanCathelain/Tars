@@ -1,7 +1,7 @@
 ---
 name: slack-channel-context
 description: "Map Slack channels before interpreting routed requests."
-version: 0.2.0
+version: 0.3.0
 metadata:
   hermes:
     tags: [slack, context, routing, channels]
@@ -25,7 +25,7 @@ Use this skill whenever a Slack request depends on what the current channel is f
 ## Explicit routing
 
 - `C0BFQ5WFYTB` `#tech-project-support-engineer` — dedicated Support Engineer project channel. **Linear routing: NMC / Support Engineer.** Tickets originating here go directly there unless Gaetan says otherwise.
-- `C0BP2GZUFSR` `#gcn-tars-reporting` — Tars reporting/home channel. No inferred company-team Linear routing.
+- `C0BP2GZUFSR` `#gcn-tars-reporting` — **RETIRED 2026-08-13.** Formerly Tars reporting/home channel. Never post here — all Tars interaction and deliveries moved to the DM (`D0BBYNM01BL`). Kept in this map so future routing recognizes the ID as retired, not unknown or unmapped. No inferred company-team Linear routing.
 
 ## Channel map
 
@@ -110,7 +110,7 @@ Descriptions marked **metadata** come from Slack name/topic/purpose. **Observed*
 - `C0BFQ5WFYTB` `#tech-project-support-engineer` — Support Engineer project. **Metadata; explicit routing above**
 - `C0BK3AGFQFR` `#verdict-project` — Verdict project delivery: product questions, Auth0, HubSpot/Webflow, scoring and access dependencies. **Observed**
 - `C08RWSTU9LK` `#gcn-sandbox` — Gaetan's notification playground. **Metadata**
-- `C0BP2GZUFSR` `#gcn-tars-reporting` — Tars reports and progress. **Explicit routing above**
+- `C0BP2GZUFSR` `#gcn-tars-reporting` — **RETIRED 2026-08-13**, formerly Tars reports and progress. **Explicit routing above** — do not post here; DM-only now
 - `C09J4BKHTBL` `#ia-projects` — cross-department AI project portfolio, prioritisation and vendor collaboration. **Observed**
 
 ### Partners, vendors and specialised work
