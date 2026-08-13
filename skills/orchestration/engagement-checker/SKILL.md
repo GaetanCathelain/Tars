@@ -1,7 +1,7 @@
 ---
 name: engagement-checker
 description: "Use for incremental follow-up and commitment reminders."
-version: 1.9.0
+version: 2.0.0
 required_environment_variables: [LINEAR_API_KEY]
 metadata:
   hermes:
@@ -21,13 +21,14 @@ All human times use `Europe/Paris`. Scheduled runs are restricted to 10:00–17:
 
 ## Permitted writes
 
-Three, and no others:
+Four, and no others:
 
 1. **The scheduled reminder** to Gaetan (§8).
 2. **Create a GCN issue** for a retained open item — `mcp__linear__save_issue` with no `id` (§7).
 3. **Close a GCN issue this skill itself filed**, whose item was explicitly resolved outside Linear — `mcp__linear__save_issue` with `id` and `state` only (§5). Never an issue Tars did not file, and never on age alone.
+4. **Organize a non-terminal GCN issue into Todo, In Progress, Waiting for answer, or Delayed** when §5a has direct, source-backed evidence and no conflict — `mcp__linear__save_issue` with `id` and `state` only. Uncertainty means no write, not a best guess.
 
-Never a Slack message, email, or reaction from a source integration. Never a write to any team but GCN: a cron run carries no instruction from Gaetan, so `linear-ticketing` §1's company-team escape hatch never applies here. Writes 2 and 3 obey `linear-ticketing` §13 and are recorded only after its §10 success test passes.
+Never a Slack message, email, or reaction from a source integration. Never a write to any team but GCN: a cron run carries no instruction from Gaetan, so `linear-ticketing` §1's company-team escape hatch never applies here. Writes 2–4 obey `linear-ticketing` §13 and are recorded only after its §10 success test passes.
 
 ## Load only what is needed
 
@@ -528,6 +529,25 @@ Reconcile new events before scoring:
 - “Waiting for Alice”, “delegated to Bob”, or equivalent: `waiting` until a later event returns ownership to Gaetan.
 - “Tomorrow instead”, “remind me at 16:00”, or equivalent: `snoozed` with a Paris-local `snooze_until`.
 
+### 5a. Organize live GCN issues from evidence
+
+This is permitted write 4. It applies only to non-terminal GCN issues already seen in the Linear delta or already present in the compact pending queue. It never scans or rewrites the whole board merely to make it look tidy.
+
+Resolve the live GCN state IDs at the start of a run with the native `mcp__linear__list_issue_statuses` read. Require exactly one status for each exact name: `Todo`, `In Progress`, `Waiting for answer`, `Delayed`. If any name is absent or duplicated, organize nothing and report the coverage failure. Never infer an ID from memory, a previous run, or a similarly named status.
+
+For each candidate, build a bounded evidence packet from the issue description/comments/history, the source Slack thread or DM, the Gmail thread when the item is email-backed or mail is explicitly referenced, and recent read-only Cooper Claude/Orca evidence when it can show whether investigation actually began. Reuse the bounded Cooper inspection semantics in `daily-work-brief` §3: inspect current Orca session/worktree state and relevant Claude transcript turns, never spawn, prompt, resume, or modify a session. Absence of evidence is unknown, not evidence of inactivity.
+
+Map only these direct signals:
+
+- `In Progress`: Gaetan explicitly says he started/is working on it, or a matching Claude/Orca session contains substantive investigation or implementation activity for this issue. Merely opening a session, mentioning the topic, browsing, or having an old branch is insufficient.
+- `Waiting for answer`: a named other person owns the next response/decision and Gaetan has already sent the ask or handoff. A draft, an intended ask, or “I should ask” is insufficient.
+- `Delayed`: Gaetan explicitly defers/snoozes the work to a later time/date or says it cannot proceed until a later condition. Generic low priority, silence, or no recent activity is insufficient.
+- `Todo`: the issue is live and owned by Gaetan, but use this only when direct evidence shows the prior blocking/waiting/delay condition ended or Gaetan explicitly puts it back in the queue. Never downgrade `In Progress`, `Waiting for answer`, or `Delayed` to `Todo` merely because their positive evidence is absent from the current bounded window.
+
+Evidence precedence is explicit newer user direction, then source-backed newer Slack/email/Linear/Claude-Orca activity. A terminal Linear state always wins and is never reorganized. When two live states remain plausible, evidence conflicts, identity/topic matching is not unique, a required source failed, or the evidence packet is incomplete in a way that could change the verdict: **make no state write**. Keep the current Linear state and record the ambiguity; do not choose the safer-looking status.
+
+Write only when the target differs from the current flat `status`, using one native `mcp__linear__save_issue` call with `id` and resolved `state` only. Never pass labels, priority, assignee, description, or relations. Parse the result and require both returned `status` to equal the exact target name and returned `statusType` to match the resolved status's type. Then make one `mcp__linear__get_issue` read and verify the same `id`, GCN `teamId`, `status`, and `statusType` before recording the organization as done. An unconfirmed or silently no-op write is a failure and is reported under §8; never retry it as another status in the same run.
+
 Close in the item → Linear direction too, or every loop Gaetan resolves in Slack or email leaves a permanently open ghost issue on the board — and the daily brief's board renders those ghosts ahead of real work. This is permitted write 3. It runs for any item carrying `linear_issue` without `closed_at` whose status is `done` or `dismissed` **by an explicit resolution — a user instruction, a reply that closed the thread, or a terminal Linear state — and never by the 30-day staleness sweep**, including one that reached that status on an earlier run. Check the status-history reason, not the bare status: a `stale:30d` dismissal is Tars losing sight of the loop, not Gaetan resolving it, and closing on it would Cancel a live human ticket silently.
 
 1. **Skip the write when the issue is already terminal.** If this run's routed candidate reports a `state.type` in the terminal set above — that is how the item reached `done`/`dismissed` in the first place — set `linear_issue.closed_at` from that observation and make no call. Writing Done to an already-Done issue only bumps `updatedAt` and pulls it back into the next window for nothing.
@@ -713,6 +733,6 @@ Hermes global timezone must remain `Europe/Paris`. Use two recurring weekday job
 
 Both jobs use the same self-contained prompt:
 
-> Run `engagement-checker` end to end. Use Europe/Paris and the fixed run timestamp. Apply the same workday gate as `daily-work-brief` first: weekday, official metropolitan-France holiday, explicit PayFit leave, then the bounded actual-work override for a nominal day off; return exactly `[SILENT]` when the gate says not to run. Otherwise acquire the single-writer lock; read durable state; collect and exactly filter only Slack, email, and Linear deltas since each source cursor; reconcile user decisions and resolved loops; update each source cursor only after successful processing; evaluate the pending queue with cooldowns; then file retained open items as GCN issues **and close back the GCN issues this skill filed whose items were explicitly resolved elsewhere — never one dismissed merely for going stale**; persist state; release the lock; then return the compact reminder or exactly `[SILENT]`. Sources stay read-only, and the permitted writes are exactly the skill's "Permitted writes" section — that list, not this prompt, is the authority. Do not spawn or prompt another agent. Linear transport is mixed on purpose: run the delta scan through the audited local collector with the inherited `LINEAR_API_KEY`, because its coverage verdict gates the cursor, and take every other Linear read and every Linear write through the native `mcp__linear__*` tools per `linear-ticketing`. Never expose the key; never write outside GCN. Prove every native read complete by paging `cursor` until `hasNextPage` is false, never by narrowing the filter. If a required read cannot be proven complete or a write cannot be confirmed, say so in the delivery rather than proceeding as if it worked.
+> Run `engagement-checker` end to end. Use Europe/Paris and the fixed run timestamp. Apply the same workday gate as `daily-work-brief` first: weekday, official metropolitan-France holiday, explicit PayFit leave, then the bounded actual-work override for a nominal day off; return exactly `[SILENT]` when the gate says not to run. Otherwise acquire the single-writer lock; read durable state; collect and exactly filter only Slack, email, and Linear deltas since each source cursor; reconcile user decisions and resolved loops; update each source cursor only after successful processing; evaluate the pending queue with cooldowns; then file retained open items as GCN issues, close back the GCN issues this skill filed whose items were explicitly resolved elsewhere, and organize non-terminal GCN issues into Todo, In Progress, Waiting for answer, or Delayed only from direct, conflict-free source evidence under §5a — never infer from silence or write when uncertain; persist state; release the lock; then return the compact reminder or exactly `[SILENT]`. Sources stay read-only except for the permitted Linear writes, and the permitted writes are exactly the skill's "Permitted writes" section — that list, not this prompt, is the authority. Do not spawn or prompt another agent; Claude/Orca are read-only evidence sources only. Linear transport is mixed on purpose: run the delta scan through the audited local collector with the inherited `LINEAR_API_KEY`, because its coverage verdict gates the cursor, and take every other Linear read and every Linear write through the native `mcp__linear__*` tools per `linear-ticketing`. Never expose the key; never write outside GCN. Prove every native read complete by paging `cursor` until `hasNextPage` is false, never by narrowing the filter. If a required read cannot be proven complete or a write cannot be confirmed, say so in the delivery rather than proceeding as if it worked.
 
 The two jobs share the same state, so do not create separate per-job cursors.
