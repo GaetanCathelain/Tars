@@ -1,7 +1,7 @@
 ---
 name: linear-ticketing
 description: "Use whenever creating a ticket, updating, commenting on, or listing Linear issues — carries the write policy (tickets go to GCN unless Gaetan names another team), the required fields, the measured tool shapes, and the only sanctioned Linear tools."
-version: 1.3.0
+version: 1.4.0
 metadata:
   hermes:
     tags: [linear, tickets, gcn, priority, orchestration]
@@ -87,13 +87,21 @@ Pick exactly one. If two fit, pick the one naming the *outcome*.
 
 1 Urgent: blocks Gaetan or someone waiting on him today · 2 High: committed, dated, or blocking others this week · 3 Medium: real work, no date · 4 Low: nice-to-have · 0 only when genuinely unprioritised.
 
-## 6. Allowed tools — closed list
+## 6. Allowed tools
 
-`mcp__linear__save_issue` (create when `id` is omitted, update when it is passed), `mcp__linear__save_comment`, `mcp__linear__list_issues`, `mcp__linear__get_issue`, `mcp__linear__list_comments`. **Nothing else, ever** — no `delete_*`, no `merge_diff`, no label/team/state creation, no bulk operations, no document/project/initiative/release writes.
+**Default working set** — what an ordinary ticketing turn uses: `mcp__linear__save_issue` (create when `id` is omitted, update when it is passed), `mcp__linear__save_comment`, `mcp__linear__list_issues`, `mcp__linear__get_issue`, `mcp__linear__list_comments`. Reach past it when the task genuinely needs the wider surface, not by default.
 
 `mcp__linear__list_comments` is the read-only path for issue comments. Measured live 2026-08-11: pass `issueId`, `limit` (max 250), and `orderBy` (`createdAt` or `updatedAt`). The response envelope is `comments` / `hasNextPage` / optional `cursor`; page exactly as for `list_issues`. Each comment includes `id`, `body`, `createdAt`, `updatedAt`, `parentId`, `resolvedAt`, `quotedText`, and `author` (`id`, `name`). Sort client-side when a requested display order is not guaranteed by the server response.
 
-Since 2026-08-11 (GCN-10, `status/probes/gcn10-linear-prune.md`) the reachable surface is also enforced at registration by `mcp_servers.linear.tools.include` in `~/.hermes/config.yaml`: **10** `mcp__linear__*` tools register, not 58, so this closed list is no longer the **only** bound. The registered set is deliberately a little wider than the list above — it adds the resolution reads `list_issue_statuses`, `list_issue_labels`, `list_teams`, `list_users`, plus `delete_comment` for comment lifecycle. **Registered is not permission to use:** the closed list is unchanged by GCN-10 and still governs behaviour. `LINEAR_API_KEY` remains an unscoped full-write personal key — the prune shrinks what the model can *reach*, never what the credential can *do*. Respect the list as policy, not preference.
+The reachable surface is enforced at registration by `mcp_servers.linear.tools.include` in `~/.hermes/config.yaml`. Since 2026-08-13, on Gaetan's explicit instruction ("all read/write access, but no admin tools like delete teams"), that list registers **56** of the server's **58** `mcp__linear__*` tools — every content-level read and write: issues, comments, labels, projects, milestones, documents, initiatives, status updates, attachments, cycles, releases and release notes, diff reads and diff comments, plus the item-scoped deletes `delete_comment`, `delete_attachment`, `delete_status_update`, `delete_diff_comment`. This deliberately **reverses the GCN-10 prune** of 2026-08-11, which registered 10. Evidence: `status/probes/linear-full-access-2026-08-13.md`.
+
+**Excluded, and the only two: `merge_diff` and `submit_diff_review`.** SOUL rule 2 — Tars never merges, approves or pushes — so the tool surface must not offer them. Linear's MCP server ships **no** team, user, workspace, membership, webhook, API-key or integration mutation tool at all, so "no admin tools" costs nothing here: there was nothing else to exclude.
+
+**Registered is still not permission to use.** §1's write policy governs every write unchanged — GCN by default, a company team only on Gaetan's per-message instruction naming it. The same for destruction: SOUL's destruction rules govern the `delete_*` tools, and being able to reach one is not a reason to call it. `LINEAR_API_KEY` remains an unscoped full-write personal key — the filter bounds what the model can *reach*, never what the credential can *do*.
+
+**No workflow-status creation exists upstream.** `list_issue_statuses` and `get_issue_status` are reads; the server offers no create or update for a team's workflow states. Tars can *set* an issue's status (`save_issue.state`, §10) but cannot *create* one — a new state such as "Blocked" has to be added by a human in Linear's team settings.
+
+`include` is a whitelist and fails closed: a tool Linear ships tomorrow does **not** auto-register. Adding it is one line under `mcp_servers.linear.tools.include`, taken with a `.bak` under `flock ~/.hermes/.wf3.lock`. Never write a sibling `tools.exclude` — `include` takes precedence and silently makes `exclude` a no-op.
 
 ## 7. Company teams
 
