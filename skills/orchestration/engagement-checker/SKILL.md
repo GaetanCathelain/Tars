@@ -1,7 +1,7 @@
 ---
 name: engagement-checker
 description: "Use for incremental follow-up and commitment reminders."
-version: 1.8.0
+version: 1.9.0
 required_environment_variables: [LINEAR_API_KEY]
 metadata:
   hermes:
@@ -706,7 +706,7 @@ On an internal failure, preserve unadvanced source cursors. If no trustworthy re
 
 ## Scheduling contract
 
-Hermes global timezone must remain `Europe/Paris`. Use two recurring weekday jobs with this skill attached and delivery to the origin conversation:
+Hermes global timezone must remain `Europe/Paris`. Use two recurring weekday jobs with this skill attached and `--deliver slack` — the bare platform name, which resolves to `SLACK_HOME_CHANNEL` (Gaetan's DM) and posts a **new top-level message**. Never `--deliver origin` and never `--deliver slack:<chat_id>`: both inherit the job's origin `thread_id`, so the reminder lands as a reply buried inside whatever thread the job was created in (measured 2026-08-13 — reminders were landing in an 8 August DM thread). A reminder is never a thread reply, and never goes to the reporting channel `C0BP2GZUFSR`.
 
 - `*/30 10-16 * * 1-5` — 10:00, 10:30, …, 16:30
 - `0 17 * * 1-5` — the single final 17:00 pass; no 17:30 run

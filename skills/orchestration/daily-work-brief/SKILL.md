@@ -1,7 +1,7 @@
 ---
 name: daily-work-brief
 description: "Use for concise workday dailies from all activity sources."
-version: 1.5.0
+version: 1.6.0
 required_environment_variables: [LINEAR_API_KEY]
 metadata:
   hermes:
@@ -162,7 +162,7 @@ Completion criterion: every bullet maps to ledger evidence; stats reconcile; eve
 
 ## 6. Scheduled-run behavior
 
-One recurring weekday job at 08:30 Europe/Paris, with this skill attached and delivery to the configured reporting conversation. The job is reconciler-managed on the VM; reconcile it against this prompt and do not let the two drift.
+One recurring weekday job at 08:30 Europe/Paris, with this skill attached and `--deliver slack` — the bare platform name, which resolves to `SLACK_HOME_CHANNEL` (Gaetan's DM) and posts a **new top-level message**. Never `--deliver origin` and never `--deliver slack:<chat_id>`: both inherit the job's origin `thread_id` and bury the brief as a reply inside an old thread (measured 2026-08-13). The job is reconciler-managed on the VM; reconcile it against this prompt and do not let the two drift.
 
 > Run `daily-work-brief` end to end. Use Europe/Paris. Establish the window from the last successful delivery, then apply the workday gate — weekday, official metropolitan-France holiday, explicit PayFit leave, then the bounded actual-work override for a nominal day off — and return exactly `[SILENT]` when the gate says not to run. Otherwise collect Slack, Cooper (Orca state, Claude transcripts, shell history, git), GitHub, Linear, email and calendar evidence in parallel, keep raw results out of the message, and deliver the compact brief. Do Linear LAST. The brief must OPEN with the board block, and **the board block is the stdout of `python3 ${HERMES_HOME:-$HOME/.hermes}/skills/orchestration/daily-work-brief/scripts/linear_board.py`, run through the shell/terminal tool (never `execute_code`, which scrubs `LINEAR_API_KEY`) and included byte for byte.** Do not write, correct, re-order, re-title, filter or re-type a single row: the script already sorted, capped, computed `+N more` and emitted the `Coverage:` line. If it printed `board unavailable (coverage unproven)`, print exactly that one line as the board and nothing else. If its output is not in front of you — never run, scrolled away, or the context compacted — run it again rather than recalling rows; a fabricated board is worse than no board. Take `Linear tickets completed: N` from a separate native `mcp__linear__list_issues` read (`state` `"completed"`, `updatedAt` at the window start, `fields` `["id","title","completedAt"]`), proven complete by paging `cursor` until `hasNextPage == false` — never by narrowing the filter. `Since the last daily` must end with the labelled `Claude/Orca:` line covering the Cooper Claude/Orca history, or `Claude/Orca: none.` Every source is read-only: write nothing to Linear, and do not spawn, prompt, or delegate to another agent. Return only the brief.
 
