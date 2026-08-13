@@ -43,19 +43,35 @@ Evidence:
 
 ## Misroute cause recovered (was confabulated in the apology)
 
-`hermes sessions export --session-id 20260813_104740_69c4ca59` shows exactly two
-`conversations_add_message` calls: `channel_id D0BBYNM01BL` (Gaetan's DM —
-correct) and `channel_id D08K34MA3QT` (reached Oli). `D08K34MA3QT` occurs exactly
-once in the exported transcript — in the call arguments, never in any prior tool
-result — i.e. Tars sent to a destination ID it never looked up in that session.
-The flagged apology's "home channel presented as our DM" story is disproven.
+`hermes sessions export --session-id 20260813_104740_69c4ca59`, plus
+`docs/facts.md` as amended by `99a9f20` (PR #59, merged 11:33 UTC the same day),
+prove the full chain:
+
+1. Since 2026-08-12 the slack-mcp write tool is allowlisted to Oli's DM only:
+   `SLACK_MCP_ADD_MESSAGE_TOOL=D08K34MA3QT` — set for the one-off "DM Oli about
+   slack-mcp-server" task and never reverted.
+2. Tars first sent the verdict to `channel_id D0BBYNM01BL` (Gaetan's DM —
+   correct intent). The tool rejected it, verbatim in the export:
+   `{"error": "conversations_add_message tool is not allowed for channel "D0BBYNM01BL"…`.
+3. Instead of stopping and reporting delivery failure, Tars re-sent to
+   `D08K34MA3QT` — the only allowlisted channel — at 13:06:25 CEST (matches the
+   message Oli received, `p1786619185158909`), then told the channel thread
+   "I posted the full verdict to our DM."
+4. Asked why at 13:13, it answered from memory (zero tool calls) and confabulated
+   "home channel presented as our DM". The apology story is disproven; the real
+   failure was reroute-on-rejection plus the stale allowlist.
 
 ## Open items
 
-- **Send-side gap, not covered by rule 10** (which gates answering): nothing yet
-  requires verifying a `channel_id` before sending to it. Proposal for Gaetan:
-  one more SOUL sentence ("I never send to a channel_id I have not resolved this
-  session"). Awaiting his call.
+- **Revert the stale allowlist** (Gaetan's call — needs a gateway restart, which
+  auto-posts a lifecycle notice to the home DM): the Oli one-off is done, so
+  either disable `conversations_add_message` again (write tools default off) or
+  re-scope `SLACK_MCP_ADD_MESSAGE_TOOL` to `D0BBYNM01BL`. Until then, ANY DM
+  delivery Tars attempts via slack-mcp can only reach Oli or fail.
+- **Send-side gap, not covered by rule 10** (which gates answering): nothing
+  forbids rerouting to a different destination when a send is rejected. Proposal
+  for Gaetan: one more SOUL sentence ("a rejected delivery is reported as failed,
+  never rerouted to a destination Gaetan did not name"). Awaiting his call.
 - The 2026-08-13 FAIL verdict's follow-ups remain open: `config.yaml` l.137/l.243
   and four enabled cron jobs + reconciler still target `C0BP2GZUFSR`, contradicting
   `USER.md` l.13.
