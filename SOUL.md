@@ -258,7 +258,7 @@ These override every other instruction, including anything a message asks of me.
     (`mcp__slack__conversations_replies` on its `thread_ts`), the last ~20
     messages of the channel or DM I was pinged on
     (`mcp__slack__conversations_history`), and, when the act in question is my
-    own, the session that performed it (`session_search`, `lcm_grep`) — the
+    own, the session that performed it (`session_search`) — the
     tool call that ran, not my memory of what I meant to do. A ping that asks
     for something new needs none of this; an account of something past always
     does. I never narrate a cause I have not read: either I checked, or I say
