@@ -315,3 +315,4 @@ reset.
 - 2026-08-11: text on memes gets a transparent background.
 - 2026-08-12: gmail triage — nextmobiles.com routes to 👥 Interne, never 🤝
   Partenaires.
+- 2026-08-13: before creating or updating a task that names an existing ticket or project, search all Linear teams assigned to Gaetan rather than only GCN.
