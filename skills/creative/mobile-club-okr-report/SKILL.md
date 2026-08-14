@@ -1,84 +1,101 @@
 ---
 name: mobile-club-okr-report
-description: Recreate the mobile.club executive OKR report design.
-version: 0.1.0
+description: Apply the mobile.club board design to HTML reports.
+version: 0.2.0
 author: Gaetan Cathelain, Hermes Agent
 license: Proprietary
 platforms: [linux, macos, windows]
 metadata:
   hermes:
-    tags: [design, okr, report, html, mobile-club]
+    tags: [design, report, template, html, mobile-club]
     related_skills: [claude-design]
 ---
 
-# mobile.club OKR Report
+# mobile.club Report Template
 
-Recreate the exact visual language of the mobile.club executive OKR report as a self-contained HTML page. The frozen source template is `templates/report-okr-template.html`; preserve its layout and CSS and replace only the explicitly marked `<!-- SLOT: ... -->` content.
+Apply the visual language of the mobile.club board report to any executive HTML report. The source file `templates/report-okr-template.html` is a visual specimen and component library, not a fixed OKR content schema: reuse its design tokens, typography, surfaces, grids, status treatments, gauges, and responsive behavior while adapting the information architecture to the report being produced.
 
 ## When to Use
 
-- Build or refresh an OKR committee report in the established mobile.club board design.
-- Reuse this design for a structurally similar executive report.
-- Give Cooper or another implementation agent an exact visual starting point.
+- Create an executive, project, operational, audit, strategy, or KPI report in the mobile.club board style.
+- Restyle an existing HTML report with this visual system.
+- Give Tars, Cooper, or another implementation agent a shared report design reference.
 
-Don't use for unrelated dashboards, product UI, or generic presentation decks.
+Don't use for product interfaces, dashboards intended for continuous interaction, or presentation slides.
 
-## Prerequisites
+## Source Template
 
-- Load this skill before drafting or implementing the report.
-- Read the full template with `read_file` before changing anything.
-- Gather the current reporting period, measured values, statuses, milestones, decisions, risks, and source timestamp.
-- Treat business data as inputs; never infer missing metrics.
+Read `templates/report-okr-template.html` in full before designing. It is the canonical rendered example for visual decisions.
 
-## Design Contract
+Preserve from it:
 
-### Visual language
+- the palette and layered dark background;
+- the typography roles and scale;
+- the centered `1084px` content wrapper;
+- the compact uppercase section headings and horizontal rules;
+- the translucent cards, subtle borders, shadows, and corner radii;
+- the metric, status, progress, milestone, risk, and provenance components;
+- the `900px` responsive breakpoint and mobile stacking behavior;
+- the inline SVG brand treatment;
+- the self-contained HTML approach with no script or remote asset dependency.
 
-- Dark board canvas: `#08081a`, layered radial indigo glows, white primary copy.
-- Surfaces: translucent indigo cards, hairline violet borders, subtle deep shadows, 10–12 px corner radius.
-- Accent: electric violet `#7e7aff`; hero highlight: gold `#ffc000`.
-- Status colors: green `#4ade80`, yellow `#fcd34d`, red `#f87171`, neutral lavender `#b0aecc`.
-- Typography: DM Sans/Avenir/system for reading; Monument Extended/Arial Black for display; SF Mono/ui-monospace for metadata and dates.
-- Section rhythm: uppercase compact heading, long horizontal rule, then generous vertical spacing.
-- Composition: branded masthead, executive thesis, quarter clock, three key figures, three objective cards, detailed KR board, milestones, committee decisions, risks, provenance.
-- Preserve inline SVG branding and keep the page self-contained: no scripts and no remote assets.
+Do not preserve by default:
 
-### Layout rules
+- the OKR-specific section order;
+- quarter clocks, objectives, KRs, gauges, or status pills when the new report does not need them;
+- the original business copy, metrics, dates, sources, or number of cards;
+- the original `<!-- SLOT: ... -->` inventory.
 
-- Desktop content stays within the template's centered `1084px` wrapper.
-- Three-column card groups collapse to one column below `900px`.
-- Two-column month/risk groups collapse to one column below `900px`.
-- KR rows preserve the status stripe, narrative block, gauge, and right-hand verdict; on mobile they stack without removing information.
-- Use metric-aligned numerals and monospace metadata exactly as the template does.
-- Do not add navigation, gradients outside the existing background, illustrations, glass blur, or decorative UI chrome.
+## Design System
+
+### Palette
+
+- Canvas: `#08081a` with soft radial indigo glows.
+- Primary text: `#ffffff`; secondary text: `#b0aecc`; muted text: `#7a78a0`.
+- Accent: `#7e7aff`; deep accent: `#3b45c7`; hero highlight: `#ffc000`.
+- Positive: `#4ade80`; warning: `#fcd34d`; critical: `#f87171`.
+- Surfaces: translucent violet/indigo fills with hairline violet borders.
+
+### Typography
+
+- Reading: DM Sans, Avenir Next, Helvetica Neue, system sans-serif.
+- Display: Monument Extended, Arial Black, Avenir Next, sans-serif.
+- Metadata and numbers: SF Mono, ui-monospace, Menlo, monospace.
+- Use display type sparingly for report title, section labels, hero metrics, and short identifiers.
+
+### Composition
+
+- Start with a compact brand/meta row, a decisive title, and a short executive thesis.
+- Build a report-specific section sequence from the content; do not force the OKR example's structure.
+- Use three-column grids for comparable headline cards and two-column grids for paired narratives; collapse both to one column on narrow screens.
+- Keep one dominant insight per card. Use gold only for the single strongest takeaway.
+- Use status color as a narrow signal, never as a full-card fill.
+- End with provenance: sources, measurement date, and report owner or context.
 
 ## Procedure
 
-1. **Clone the frozen template.** Copy `templates/report-okr-template.html` to the requested output path. Completion criterion: the output is byte-identical before slot edits.
-2. **Inventory every slot.** Account for `TITLE`, `META`, `EYEBROW+H1`, `THESIS`, `CLOCK`, `KEYS`, `OBJECTIFS`, `BOARD`, `BOARD-FOOT`, `JALONS`, `DECISIONS`, `RISQUES`, and `PROVENANCE`. Completion criterion: each slot has an explicit input or is omitted only where the slot comment allows omission.
-3. **Replace content only.** Change HTML inside slot boundaries and allowed inline progress values; do not edit the CSS, class names, wrapper hierarchy, SVG paths, or responsive rules. Completion criterion: a diff shows no CSS changes.
-4. **Maintain executive altitude.** Lead with the quarter narrative, measured outcomes, dated tension, decisions, and structural risks. Exclude operational logs and vanity volumes. Completion criterion: every key figure carries a decision-relevant implication.
-5. **Render statuses honestly.** `On Track`, `Progressing`, `Off Track`, and neutral states use their existing classes. Uninstrumented work is neutral and shown as unavailable, never silently as zero. Completion criterion: every displayed number traces to a named source and measurement date.
-6. **Update time mechanics.** Set quarter-clock fill/current-marker percentages and per-KR gauge widths/ticks inline. For a closed quarter, follow the template comments: 100% clock, no “today” marker, no expected-at-date ticks. Completion criterion: percentages match the supplied dates and values.
-7. **Verify at desktop and mobile sizes.** Open the local HTML with `browser_navigate`, inspect with `browser_vision`, and test at approximately 1200px and 390px widths. Completion criterion: no horizontal overflow, clipped text, overlapping labels, or missing sections.
-8. **Check semantic integrity.** Use `browser_snapshot(full=true)` to confirm headings, metrics, statuses, and provenance remain readable without visual interpretation. Completion criterion: all report facts appear in the accessibility tree.
+1. **Read the source report and the new content.** Identify the audience, decision, hierarchy, and required sections. Completion criterion: every content block has a purpose before layout starts.
+2. **Choose components, not sections.** Reuse the template's masthead, section header, cards, pills, gauges, timelines, risk rows, and provenance only where they fit. Completion criterion: no OKR-only component remains without a content reason.
+3. **Build a self-contained HTML report.** Copy the CSS and component patterns from the source template, then compose a new semantic document structure. Completion criterion: the result has no JavaScript or remote asset dependency.
+4. **Keep the visual contract.** Preserve palette, type roles, spacing rhythm, wrapper width, border language, shadows, status signals, and responsive breakpoint. Completion criterion: a side-by-side view is recognizably the same design family without sharing the same report outline.
+5. **Protect information quality.** Use supplied facts only; show unavailable or unmeasured values explicitly instead of inventing zeroes. Completion criterion: every metric and status has a named source and measurement date when applicable.
+6. **Verify desktop and mobile.** Inspect at about `1200px` and `390px` with `browser_navigate` and `browser_vision`. Completion criterion: no horizontal overflow, clipping, overlap, or unreadable density.
+7. **Verify semantics.** Use `browser_snapshot(full=true)` to confirm the report remains complete and understandable without visual styling. Completion criterion: headings, facts, statuses, and provenance are present in the accessibility tree.
 
 ## Pitfalls
 
-- The template is frozen: “improving” the CSS destroys design continuity.
-- Monument Extended may fall back to Arial Black where the font is unavailable; preserve the stack rather than adding a network font.
-- Progress widths and the quarter position are inline data, not CSS redesigns.
-- The decision section is omitted when there are no open arbitrations or the quarter is closed.
-- Off Track does not automatically mean failure when a KR is intentionally back-loaded; explain the governing milestone.
-- Preserve “zero declarative numbers”: unmeasured means uninstrumented, not 0%.
-- Never publish the output or upload it to an unlisted host unless the user explicitly asks for that destination.
+- Treating the OKR report's content structure as the template instead of its design system.
+- Copying old business content as placeholder text into a new report.
+- Adding generic dashboard chrome, navigation, glass blur, illustrations, or extra gradients.
+- Overusing gold or status colors until hierarchy disappears.
+- Loading a remote display font when the established fallback stack already preserves the look.
+- Publishing or uploading the result without an explicit destination request.
 
 ## Verification
 
-- Template loaded from `templates/report-okr-template.html`.
-- All 13 named slots accounted for.
-- CSS, SVG branding, class names, and responsive rules unchanged.
-- No remote asset or JavaScript dependency introduced.
-- Desktop and mobile renders inspected visually.
-- Accessibility snapshot contains the complete report.
-- Every metric has a source and last-measured date.
+- The new report uses the mobile.club palette, typography roles, surfaces, spacing, and responsive rules.
+- Its information architecture fits the report rather than the OKR specimen.
+- The original business content is absent unless explicitly requested.
+- No remote asset or JavaScript dependency was introduced.
+- Desktop and mobile renders were inspected.
+- The accessibility snapshot contains the complete report.
