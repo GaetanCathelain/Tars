@@ -1,0 +1,60 @@
+#!/usr/bin/env bash
+# Drift check for the mirror-managed files (SOUL.md + skills/**) against the
+# live copies under ~/.hermes/ on the Tars VM. Clean => silent, exit 0; drift
+# => header + diff on stdout ('<' repo side, '>' VM side), exit 1. Skills the
+# VM has but this repo does not mirror are never looked at, so never reported.
+# --commit is the cron entry point: it lands the verdict in status/mirror-drift.md
+# so the next session's pull surfaces it (cooper has no MTA, cron output is lost).
+# It commits only when that verdict CHANGES — drift onset and return-to-clean.
+set -euo pipefail
+
+case "${1:-}" in
+  "") commit="" ;;
+  --commit) commit=1 ;;
+  *) echo "usage: $(basename "$0") [--commit]" >&2; exit 1 ;;
+esac
+
+repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+vm="${TARS_VM:-gaetan@192.168.0.9}"
+report="status/mirror-drift.md"
+cd "$repo_root"
+
+# ponytail: no rebase-conflict handling in --commit mode; if the report stops
+# updating, run it by hand.
+[ -z "$commit" ] || git pull --rebase -q origin main
+
+files="$(find SOUL.md skills -type f | sort)"
+mine="$(printf '%s\n' "$files" | xargs md5sum | awk '{print $2, $1}' | sort)"
+# A file missing on the VM is simply absent here (md5sum's stderr is dropped),
+# so it surfaces as a repo-only '<' line in the diff.
+theirs="$(printf '%s\n' "$files" | sed 's|^|.hermes/|' \
+  | ssh "$vm" 'cd ~ && xargs md5sum 2>/dev/null || true' \
+  | awk '{sub(/^\.hermes\//, "", $2); print $2, $1}' | sort)"
+
+drift="$(diff <(printf '%s\n' "$mine") <(printf '%s\n' "$theirs") || true)"
+stamp="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+header="$stamp mirror drift: $repo_root vs $vm"
+rc=0
+[ -z "$drift" ] || rc=1
+
+if [ -z "$commit" ]; then
+  [ "$rc" = 0 ] || printf '%s\n%s\n' "$header" "$drift"
+  exit "$rc"
+fi
+
+if [ "$rc" = 0 ]; then
+  # Clean verdict is a function of STATE, never of time: byte-identical on every
+  # quiet run, so the guard below skips the commit. Do not date this line.
+  # ponytail: a dead cron now reads as quiet; heartbeat if that ever bites.
+  printf '# mirror drift\n\nclean: %s mirrored files match %s\n' \
+    "$(printf '%s\n' "$files" | wc -l)" "$vm" > "$report"
+else
+  # shellcheck disable=SC2016  # the backticks are a markdown fence, not a subshell
+  printf '# mirror drift\n\n%s\n\n```\n%s\n```\n' "$header" "$drift" > "$report"
+fi
+git add "$report"
+if ! git diff --cached --quiet -- "$report"; then
+  git commit -q -m "drift: mirror check $stamp" -- "$report"
+  git push -q origin HEAD:main
+fi
+exit "$rc"

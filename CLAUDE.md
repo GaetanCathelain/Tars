@@ -46,6 +46,12 @@ PITCH.md → PLAN.md (run graph, §Amendments = settled decisions, §Phases = tr
                      SKILL.md, skills/email/himalaya/SKILL.md). No name→path mapping.
 ```
 
+`skills/` mirrors a managed subset only — Tars-authored/edited skills, not the
+whole live tree: 18 dirs (38 files) here vs 132 live SKILL.md dirs on the VM
+(measured 2026-08-14, this worktree); the ~114 unmirrored dirs are
+bundled/third-party and intentionally absent, so a missing dir there is not
+drift. `scripts/tars-mirror-drift` checks the managed set.
+
 **Tars edits its own skills, and lands them here.** `skill_manage` lets Tars
 rewrite its own `SKILL.md` when a run teaches it something the file gets wrong —
 it did so 7 times during the first live Orca run. **SOUL rule 2 requires it to
