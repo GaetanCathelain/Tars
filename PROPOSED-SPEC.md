@@ -1,6 +1,7 @@
 # PROPOSED SPEC — Tars V2 orchestration (Tars ↔ Orca sessions)
 
-**Status:** PROPOSED — draft, 2026-08-14. Not built, not exercised end-to-end.
+**Status:** PROPOSED — draft, 2026-08-14. Not built as automation; the round-trip
+MECHANISM is now exercised live end-to-end (three E2E tests, §E2E validation).
 Gaetan's call: "we'll get back to it later." This file captures the design so it
 survives context loss; it is not an execution order.
 **Ticket:** GCN-50 — *Engineer Tars ↔ Orca orchestration*.
@@ -30,6 +31,25 @@ it.
   discipline (a rule no probe can prove) and the whole inbound round-trip.
 
 If a line has no tag it is descriptive glue, not a claim.
+
+---
+
+## E2E validation (live)
+
+Since this spec was written the full loop was exercised live three ways — one per
+Wire-3 transport — plus a teardown pass. All three closed the round-trip; each
+self-cleaned or was cleaned (`gcn50-e2e-cleanup.md`).
+
+| Test | Wire-3 exercised | Verdict | Key number | Evidence |
+|---|---|---|---|---|
+| 1 — SendMessage round-trip | lean `claude -p` SendMessage | **E2E-ROUNDTRIP-PROVEN** | 6.3k tok / 6.8 s send, 16.5 s receipt | `gcn50-e2e-roundtrip.md` |
+| 2 — MCP Channel | file-drop into a watched inbox → channel push | **CHANNELS-E2E-PROVEN** | 0-token send, 8.18 s round-trip (French) | `gcn50-e2e-channels.md` |
+| 3 — Go non-Claude peer | one resident Go process holds both wires, no spawn | **GO-BIDIRECTIONAL-PEER-PROVEN** | ~0-token socket write; same-uid/same-box only | `gcn50-e2e-go-bridge.md` |
+
+**What this changes.** The Tars→session→operator→session round-trip MECHANISM is
+now VERIFIED end-to-end (test-1), not just component-wise. What stays unbuilt is
+the AUTOMATION — Wire-1 spawn hardening and the Wire-4 inbound relay (both hand-run
+in the tests). Details fold into the wires below.
 
 ---
 
@@ -123,6 +143,19 @@ called ListAgents and saw the live 12-session roster including the intended targ
 `[VERIFIED — gcn50-q12-headless-sendmessage.md §3]`. Registry hygiene after a
 *crash* (not clean exit) is unproven — the socket dir accumulates stale entries
 (59 sockets for 16 pids observed) `[INFERRED — review §1]`.
+
+**Startup-gate hardening (E2E finding).** `--dangerously-skip-permissions` does NOT
+auto-answer Claude's two startup gates — folder-trust and "Allow external CLAUDE.md
+imports?"; worse, the brief-seed is dropped while the dialogs are up and the
+type-but-not-submit race applies to the re-submit `[VERIFIED — gcn50-e2e-roundtrip.md
+wire-1 finding]`. **Mitigation, validated:** spawn the lane worktree OUTSIDE
+`$HOME`'s CLAUDE.md inheritance (e.g. a scratch repo under `/tmp`) → the
+external-import gate never fires, only folder-trust remains, cleared once at spawn
+`[VERIFIED — gcn50-e2e-channels.md: gate never fired]`. The launcher must
+confirm-submit the brief after clearing gates. **Orca hygiene:** this orca build has
+no `repo rm` verb, so each scratch-repo registration dangles after teardown — Tars
+spawning one repo per lane accumulates dead registrations; reuse a small pool of
+lane repos `[VERIFIED — gcn50-e2e-cleanup.md]`.
 
 ## Wire 2 — Session → Tars (three rungs)
 
@@ -243,6 +276,25 @@ SendMessage target. Step-3 JSON parsing + the ladder are the design's answer; th
 have not been exercised. A version tripwire (re-run q15 config G after every
 `claude` upgrade) guards the lean flag stack, which is newer surface.
 
+**Transport options — three E2E-proven; SendMessage stays default.**
+
+| Transport | E2E | Cost / latency | Constraints | Version-risk |
+|---|---|---|---|---|
+| **lean `claude -p` SendMessage** (default) | test-1 | 6.3k tok / 6.8 s per msg | headless-capable; official tool | low (official surface) |
+| **MCP Channel** (file-inbox) | test-2 | 0-token send, ~8 s round-trip | interactive-only receiver + persistent per-session MCP subprocess + dev-flag opt-in; `inbox/` is a raw prompt-injection surface | medium (research-preview) |
+| **resident Go / non-Claude socket peer** | test-3 | no per-msg spawn; socket write | **same-uid / same-box only** (0700 dirs) → needs a cooper-resident daemon; requires `accept` | **high** (undocumented reverse-engineered contract — `peerProtocol:1`, `sha256(socketpath)` key, `/proc` procStart; silent break on upgrade) |
+
+**Why SendMessage is default:** Tars is on the VM, sessions on cooper, so any
+same-box-only transport (the Channel MCP subprocess, the Go peer) needs a component
+co-located on cooper; SendMessage runs as `ssh cooper 'claude -p …'` landing as
+uid 1000 with no resident piece, works headless, and rides the official
+cross-session protocol. The Go peer is the *productized* form of the raw-socket
+escape hatch and the natural upgrade if per-message spawn cost ever hurts — at the
+price of owning an undocumented protocol (re-run the nonce self-test on every
+`claude` upgrade, fail loud on schema drift). Channels win on send-cost but pay with
+an interactive-only receiver and an injection surface. All three are E2E-proven
+`[VERIFIED — gcn50-e2e-roundtrip.md / -channels.md / -go-bridge.md]`.
+
 ## Wire 4 — Operator gate + `thread_ts → lane` index
 
 **Mechanism.** Gaetan replies in-thread → the gateway wakes with only thread
@@ -281,13 +333,16 @@ threads make zero Slack reads `[VERIFIED — gcn50-rehydrate-p2, docs/facts.md]`
 kanban-bound lanes and fires only on a kanban wake — correctly ruled out (kanban is
 dead per §Dropped) `[VERIFIED — gcn50-rehydrate-p2 §1]`.
 
-**[PROPOSED] the inbound composition is never yet exercised.** Gaetan's real
-threaded reply → gateway wake → lane-index resolution → gateway turn runs the
-Wire-3 relay to cooper: every component is individually proven, the composition is
-not. The DoD round-trip is its first test — everyone must know that is what the DoD
-is. A top-level DM (not in-thread) gets a synthetic `thread_ts = ts` and starts a
-new, lane-unbound session — a known trap; tell Gaetan once that answers go
-in-thread.
+**[VERIFIED-demonstrated — the gap is real] the inbound composition is unbuilt.**
+Test-1 showed it live: Gaetan's in-thread reply woke the gateway, which answered him
+conversationally ("English it is.") and did **not** relay inward to the session,
+because the lane-index lookup + Wire-3 relay logic is not built
+`[VERIFIED — gcn50-e2e-roundtrip.md wire-4 finding]`. Every *component* (wake,
+resume, lean relay) is individually proven; only their composition on gateway-wake
+is missing — **this is the top build item.** The DoD round-trip is its first
+end-to-end test. A top-level DM (not in-thread) gets a synthetic `thread_ts = ts`
+and starts a new, lane-unbound session — a known trap; tell Gaetan once that answers
+go in-thread.
 
 ## State & rehydration contract
 
@@ -328,7 +383,7 @@ shape drift).
 |---|---|---|
 | **Orca orchestration mailbox** | brittle: stale handles, ack replay, spawn race, 300 s cap. Its one good property (durable acked delivery) is re-covered by Wire 3's ListAgents + app-level ack. | `gcn50-review-fable-session-to-tars.md §D`; wf5-specs-digest |
 | **Kanban as wire** | RAW-POST with no lane context; the agent-wake is gated on `task.session_id`, settable only from *inside* a chat turn → requires Wire 2 as its own precondition, then adds a card + subscription + notifier + a duplicate template post to deliver **less**. Best-run kill in the set. | `gcn50-q10-kanban-smoke.md` (source `kanban_watchers.py` L637-646/L729-772 + positive control); `gcn50-q14 §W1` (W1 requires W2; posts twice; ~37 s incl. precondition) |
-| **Channel MCP** | works interactive-only; `-p` receiver FAILED 3/3 with silent drop; research-preview, dev flag needs a `\r` startup dialog (blocks unattended spawns). Adds a resident component Wire 3 makes unnecessary. **PARKED-WITH-TRIGGER** as the documented external-push path, not buried — re-evaluate if Tars→session traffic goes high-frequency or channels GA with `-p`. | `gcn50-q12-channels.md` |
+| **Channel MCP** | NOT dropped — **promoted to a documented Wire-3 alternative** after test-2 proved it E2E (0-token send, ~8 s round-trip). Constraints stand: interactive-only receiver, a persistent per-session MCP subprocess, dev-flag opt-in, an `inbox/` prompt-injection surface. Default stays SendMessage; see the Wire-3 transport matrix. | `gcn50-q12-channels.md`, `gcn50-e2e-channels.md` |
 | **TUI injection (`orca terminal send`)** | keystroke injection with an incident-logged type-but-unsubmitted race. Last-resort break-glass only. | `gcn50-review-fable-tars-to-session.md §2 row 4` |
 | **Resident warm relay (Agent SDK / long-lived `-p` daemon)** | the only alternative that wins an axis that matters (native held/denied/expired notices), but buys it with a resident stateful daemon the stateless-Tars axiom forbids. **Named upgrade path** if per-message cost or the ack gap ever hurts. | `gcn50-review-fable-tars-to-session.md §2 row 5` |
 
@@ -361,8 +416,12 @@ shape drift).
 session; a mid-flight question reaches Gaetan in the lane thread; his answer flows
 back (gateway wake → lane-index resolution → Wire-3 relay to cooper); completion is
 reported. Evidence in `status/`. Gaetan sends exactly one real DM at acceptance.
-**This round-trip is the first-ever exercise of the inbound half of Wire 4** — the
-DoD *is* that must-probe.
+**Status update:** the round-trip MECHANISM is now proven end-to-end (three E2E
+tests, §E2E validation) — spawn, Wire-2, operator answer, Wire-3 relay, session
+action, and completion all ran live with real parts. What the DoD still gates is
+the AUTOMATION: the Wire-1 startup-gate hardening and, above all, the built Wire-4
+inbound relay (lane-index resolution → Wire-3) on a real gateway wake — the one
+composition never yet run without a human hand-playing Tars.
 
 ---
 
@@ -464,6 +523,10 @@ Every file under `status/probes/`:
 | `gcn50-review-fable-session-to-tars.md` | Adversarial review, cruxes B/C/D: two-tier Wire 2, LANE.md write-back + atomicity, Linear triple, dropped-option kills sound. |
 | `gcn50-rehydrate-review.md` | Closing adversarial pass: rehydration verdict MET-WITH-CONDITIONS; `--resume` restructures Wire 2 into three rungs; lane index required. |
 | `gcn50-megaultracode-compat.md` | Fleet review: WORKS-WITH-ADAPTATIONS via composition (not substitution); three mandatory adaptations + stale in-repo skill side-blocker. |
+| `gcn50-e2e-roundtrip.md` | Live E2E test-1 (SendMessage wire-3): full round-trip PROVEN (English); wire-1 startup-gate + wire-4 inbound-gap findings. |
+| `gcn50-e2e-channels.md` | Live E2E test-2 (MCP Channel wire-3): PROVEN (French, 8.18 s, 0-token send); validated the spawn-outside-`$HOME` wire-1 fix. |
+| `gcn50-e2e-go-bridge.md` | Live E2E test-3 (Go non-Claude peer): SEND+RECEIVE both work; resident bidirectional peer viable same-box-only; high version-fragility. |
+| `gcn50-e2e-cleanup.md` | Test-1 teardown log; Orca "no `repo rm`" dangling-registration hygiene finding. |
 
 Supporting operational truth (not GCN-50-specific): `docs/facts.md` (thread /
 session-keying rows, gateway gating), `status/probes/2026-08-14-damien-followup-rootcause.md`
