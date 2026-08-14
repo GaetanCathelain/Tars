@@ -1,0 +1,601 @@
+<!--
+  TEMPLATE FIGÉ — report OKR comité (DA « board mobile.club », source deck 20260715).
+  Règle : le layout et le CSS ne bougent JAMAIS. Seuls les contenus marqués
+  <!== SLOT: ... ==> changent à chaque rendu. (Écrire les vrais délimiteurs SLOT
+  en commentaires HTML normaux — voir ci-dessous.)
+  - Les % de l'horloge (.clock-fill width / .clock-now left) sont définis à 37%
+    dans le CSS : les surcharger par style inline au rendu, ne pas éditer le CSS.
+  - Mode « bilan de clôture » (trimestre clos) : eyebrow « bilan de clôture »,
+    horloge à 100% sans marque « Aujourd'hui » ni dot, pas d'« attendu à date »
+    dans les gauges, jalons ✅ soldée / ✖ non soldée, section DECISIONS omise.
+  Contrat complet : .claude/skills/okr/SKILL.md § Report.
+-->
+<!-- SLOT: TITLE — « OKR Tech/Produit QX — Comité JJ/MM » ; bilan : « OKR Tech/Produit QX — Bilan de clôture » -->
+<title>OKR Tech/Produit Q3 — Comité 14/08</title>
+<style>
+  /* Charte board mobile.club GROUP — monde sombre assumé (deck 20260715) */
+  :root {
+    color-scheme: dark;
+    --bg: #08081a;
+    --card: rgba(126,122,255,.055);
+    --card2: rgba(11,11,35,.55);
+    --ink: #ffffff;
+    --ink2: #b0aecc;
+    --mute: #7a78a0;
+    --line: rgba(126,122,255,.16);
+    --line2: rgba(176,174,204,.28);
+    --accent: #7e7aff;
+    --accent-deep: #3b45c7;
+    --accent-soft: rgba(126,122,255,.12);
+    --gold: #ffc000;
+    --good: #4ade80;
+    --good-bg: rgba(74,222,128,.12);
+    --warn: #fcd34d;
+    --warn-bg: rgba(252,211,77,.12);
+    --crit: #f87171;
+    --crit-bg: rgba(248,113,113,.12);
+    --neut: #b0aecc;
+    --neut-bg: rgba(176,174,204,.12);
+    --track: rgba(126,122,255,.14);
+    --shadow: 0 1px 2px rgba(0,0,0,.4), 0 16px 40px -24px rgba(0,0,0,.8);
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    color: var(--ink);
+    background:
+      radial-gradient(1000px 560px at 80% -4%, rgba(59,69,199,.22), transparent 62%),
+      radial-gradient(760px 520px at 8% 24%, rgba(45,40,96,.38), transparent 64%),
+      radial-gradient(900px 700px at 55% 78%, rgba(26,20,64,.55), transparent 62%),
+      radial-gradient(600px 400px at 95% 96%, rgba(59,69,199,.14), transparent 60%),
+      var(--bg);
+    font-family: "DM Sans", "Avenir Next", "Helvetica Neue", system-ui, sans-serif;
+    font-size: 15px;
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: 1140px; margin: 0 auto; padding: 34px 28px 64px; }
+
+  .display, h1, h2, .big, .obj-id, .g-id, .month h3 {
+    font-family: "Monument Extended", "Arial Black", "Avenir Next", sans-serif;
+    font-weight: 800;
+    margin: 0;
+  }
+  .mono {
+    font-family: "SF Mono", ui-monospace, Menlo, monospace;
+    font-size: 11px;
+    letter-spacing: .04em;
+  }
+  .eyebrow {
+    font-family: "SF Mono", ui-monospace, Menlo, monospace;
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: .16em;
+    color: var(--accent);
+  }
+  .num { font-variant-numeric: tabular-nums; }
+  h1 { font-size: 30px; line-height: 1.12; letter-spacing: .005em; text-wrap: balance; }
+  h2 { font-size: 14px; text-transform: uppercase; letter-spacing: .1em; line-height: 1.4; }
+
+  /* ---------- brand row ---------- */
+  .brand { display: flex; justify-content: space-between; align-items: center; gap: 16px; padding-bottom: 22px; margin-bottom: 26px; border-bottom: 1px solid var(--line); }
+  .brand-left { display: flex; align-items: baseline; gap: 12px; color: #fff; }
+  .brand-left svg { height: 15px; width: auto; display: block; transform: translateY(1px); }
+  .brand-left .grp { font-family: "Monument Extended", "Arial Black", sans-serif; font-size: 9px; letter-spacing: .34em; color: var(--ink2); text-transform: uppercase; }
+  .brand-right { font-size: 13px; color: var(--ink2); text-align: right; }
+
+  /* ---------- masthead ---------- */
+  .mast-top { display: flex; justify-content: space-between; align-items: flex-end; gap: 16px; flex-wrap: wrap; margin-bottom: 10px; }
+  .thesis { max-width: 64ch; color: var(--ink2); font-size: 15.5px; margin: 16px 0 0; }
+  .thesis strong { color: var(--ink); font-weight: 600; }
+  .thesis .y { color: var(--gold); font-weight: 600; }
+
+  .clock { margin: 30px 0 6px; }
+  .clock-bar { position: relative; height: 6px; border-radius: 4px; background: var(--track); }
+  .clock-fill { position: absolute; inset: 0 auto 0 0; width: 37%; border-radius: 4px; background: linear-gradient(90deg, var(--accent-deep), var(--accent)); }
+  .clock-marks { position: relative; height: 42px; margin-top: 6px; }
+  .clock-mark { position: absolute; transform: translateX(-50%); text-align: center; }
+  .clock-mark .tick { display: block; width: 1px; height: 8px; background: var(--line2); margin: 0 auto 3px; }
+  .clock-mark .lab { font-family: "SF Mono", ui-monospace, Menlo, monospace; font-size: 10px; letter-spacing: .06em; color: var(--mute); white-space: nowrap; }
+  .clock-mark.hot .lab { color: var(--ink); font-weight: 600; }
+  .clock-mark.hot .tick { background: var(--ink2); height: 10px; }
+  .clock-mark.now .lab { color: var(--gold); font-weight: 700; }
+  .clock-mark:first-child { transform: none; text-align: left; }
+  .clock-mark:first-child .tick { margin-left: 0; }
+  .clock-mark:last-child { transform: translateX(-100%); text-align: right; }
+  .clock-mark:last-child .tick { margin-right: 0; }
+  .clock-now { position: absolute; top: -3px; transform: translateX(-50%); left: 37%; }
+  .clock-now .dot { width: 11px; height: 11px; border-radius: 50%; background: var(--gold); border: 2px solid #08081a; box-shadow: 0 0 12px rgba(255,192,0,.5); }
+
+  /* ---------- sections ---------- */
+  section { margin-top: 46px; }
+  .sec-head { display: flex; align-items: center; gap: 14px; margin-bottom: 16px; }
+  .sec-head h2 { color: var(--ink); }
+  .sec-head .rule { flex: 1; height: 1px; background: var(--line); }
+
+  /* ---------- l'essentiel ---------- */
+  .keys { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
+  .key { position: relative; background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 22px 22px 20px; box-shadow: var(--shadow); display: flex; flex-direction: column; gap: 9px; }
+  .key .big { font-size: 34px; line-height: 1.05; letter-spacing: .01em; }
+  .key .big small { font-size: 17px; color: var(--ink2); letter-spacing: 0; }
+  .key.k-gold .big { color: var(--gold); }
+  .key.k-ink .big { color: #fff; }
+  .key h3 { margin: 0; font-size: 14.5px; font-weight: 600; color: var(--ink); }
+  .key p { margin: 0; font-size: 13px; color: var(--ink2); }
+  .key p b { color: var(--ink); font-weight: 600; }
+  .stamp {
+    position: absolute; top: 16px; right: 16px; transform: rotate(-5deg);
+    font-family: "Monument Extended", "Arial Black", sans-serif;
+    font-size: 8.5px; letter-spacing: .12em; text-transform: uppercase;
+    color: #e14b4b; border: 1px solid #e14b4b; outline: 1px solid #e14b4b; outline-offset: 2.5px;
+    padding: 4px 8px; border-radius: 2px; white-space: nowrap;
+  }
+
+  /* ---------- pills ---------- */
+  .pill { display: inline-flex; align-items: center; gap: 6px; padding: 3px 10px 3px 8px; border-radius: 999px; font-size: 12px; font-weight: 600; white-space: nowrap; }
+  .pill::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
+  .pill.good { color: var(--good); background: var(--good-bg); }
+  .pill.warn { color: var(--warn); background: var(--warn-bg); }
+  .pill.crit { color: var(--crit); background: var(--crit-bg); }
+  .pill.neut { color: var(--neut); background: var(--neut-bg); }
+
+  /* ---------- objectifs ---------- */
+  .objs { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
+  .obj { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 20px; box-shadow: var(--shadow); }
+  .obj .obj-id { font-size: 20px; color: var(--accent); }
+  .obj h3 { margin: 6px 0 10px; font-size: 14.5px; font-weight: 600; line-height: 1.35; text-wrap: balance; }
+  .obj .obj-row { display: flex; justify-content: space-between; align-items: center; gap: 10px; }
+  .obj p { margin: 10px 0 0; font-size: 12.5px; color: var(--ink2); }
+
+  /* ---------- KR board ---------- */
+  .board { background: var(--card2); border: 1px solid var(--line); border-radius: 14px; box-shadow: var(--shadow); overflow: hidden; }
+  .board-group { padding: 6px 0; }
+  .board-group + .board-group { border-top: 1px solid var(--line); }
+  .board-group-head { padding: 16px 24px 6px; display: flex; align-items: baseline; gap: 12px; }
+  .board-group-head .g-id { font-size: 15px; color: var(--accent); }
+  .board-group-head .g-title { font-size: 11px; font-weight: 600; color: var(--ink2); text-transform: uppercase; letter-spacing: .1em; }
+  .kr { display: grid; grid-template-columns: 4px minmax(230px, 1.15fr) minmax(260px, 1.3fr) minmax(190px, .9fr); gap: 0 24px; align-items: center; padding: 15px 24px 15px 0; }
+  .kr + .kr { border-top: 1px dashed var(--line); }
+  .kr .stripe { align-self: stretch; border-radius: 0 3px 3px 0; }
+  .kr.s-good .stripe { background: var(--good); }
+  .kr.s-warn .stripe { background: var(--warn); }
+  .kr.s-crit .stripe { background: var(--crit); }
+  .kr.s-neut .stripe { background: var(--line2); }
+  .kr-name { font-size: 14px; font-weight: 600; line-height: 1.35; }
+  .kr-name .kr-id { color: var(--accent); font-weight: 700; font-family: "SF Mono", ui-monospace, Menlo, monospace; font-size: 11px; margin-right: 6px; }
+  .kr-src { margin-top: 4px; color: var(--mute); }
+
+  .gauge { display: flex; flex-direction: column; gap: 7px; }
+  .gauge-nums { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+  .gauge-val { font-size: 15px; font-weight: 700; }
+  .gauge-val small { font-weight: 500; color: var(--mute); font-size: 12px; }
+  .gauge-exp { font-size: 11.5px; color: var(--mute); }
+  .gauge-bar { position: relative; height: 8px; border-radius: 4px; background: var(--track); }
+  .gauge-fill { position: absolute; top: 0; bottom: 0; left: 0; border-radius: 4px; min-width: 3px; }
+  .gauge-fill.f-good { background: var(--good); }
+  .gauge-fill.f-warn { background: var(--warn); }
+  .gauge-fill.f-crit { background: var(--crit); }
+  .gauge-fill.f-zero { background: transparent; min-width: 0; }
+  .gauge-tick { position: absolute; top: -3px; bottom: -3px; width: 2px; background: #fff; opacity: .65; border-radius: 1px; }
+  .gauge-over { position: absolute; right: -2px; top: 50%; transform: translateY(-50%); font-size: 11px; font-weight: 700; color: var(--good); }
+
+  .kr-right { display: flex; flex-direction: column; align-items: flex-start; gap: 6px; }
+  .kr-next { font-size: 12.5px; color: var(--ink2); line-height: 1.4; }
+  .kr-next b { color: var(--ink); font-weight: 600; }
+  .kr-next .d { font-family: "SF Mono", ui-monospace, Menlo, monospace; font-size: 11px; color: var(--accent); font-weight: 600; }
+
+  .board-foot { padding: 13px 24px; border-top: 1px solid var(--line); background: rgba(8,8,26,.45); font-size: 12px; color: var(--mute); }
+
+  /* ---------- timeline ---------- */
+  .months { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  .month { background: var(--card); border: 1px solid var(--line); border-radius: 12px; box-shadow: var(--shadow); padding: 20px; }
+  .month h3 { margin: 0 0 12px; font-size: 16px; }
+  .month h3 small { font-size: 11px; font-weight: 500; color: var(--mute); font-family: "DM Sans", "Avenir Next", sans-serif; margin-left: 10px; letter-spacing: .02em; }
+  .ms { display: grid; grid-template-columns: 52px 1fr; gap: 12px; padding: 8px 0; align-items: baseline; }
+  .ms + .ms { border-top: 1px dashed var(--line); }
+  .ms .d { font-family: "SF Mono", ui-monospace, Menlo, monospace; font-size: 11.5px; font-weight: 700; color: var(--accent); }
+  .ms .t { font-size: 13.5px; line-height: 1.4; }
+  .ms .t small { display: block; color: var(--mute); font-size: 11.5px; }
+  .ms.hot { background: rgba(255,192,0,.07); border: 1px solid rgba(255,192,0,.28); border-radius: 8px; padding: 9px 10px; margin: 4px -10px; }
+  .ms.hot + .ms { border-top: none; }
+  .ms.hot .t { font-weight: 600; }
+  .ms.hot .d { color: var(--gold); }
+  .ms .flag { display: inline-block; font-size: 11px; font-weight: 700; padding: 1px 7px; border-radius: 999px; margin-left: 6px; vertical-align: 1px; }
+  .ms .flag.crit { color: var(--crit); background: var(--crit-bg); }
+  .ms .flag.warn { color: var(--warn); background: var(--warn-bg); }
+
+  /* ---------- décisions ---------- */
+  .decs { display: grid; grid-template-columns: repeat(2, 1fr); gap: 14px; }
+  .dec { background: var(--card); border: 1px solid var(--line); border-left: 3px solid var(--gold); border-radius: 12px; padding: 18px 20px; box-shadow: var(--shadow); }
+  .dec .who { color: var(--accent); }
+  .dec h3 { margin: 7px 0 6px; font-size: 15px; font-weight: 600; line-height: 1.4; }
+  .dec p { margin: 0; font-size: 13px; color: var(--ink2); }
+
+  /* ---------- risques ---------- */
+  .risks { display: grid; grid-template-columns: 1fr 1fr; gap: 0 28px; margin: 0; padding: 0; list-style: none; }
+  .risks li { position: relative; font-size: 13.5px; color: var(--ink2); padding: 11px 0 11px 22px; border-bottom: 1px dashed var(--line); }
+  .risks li::before { content: ""; width: 8px; height: 8px; border-radius: 2px; background: var(--warn); position: absolute; left: 0; top: 17px; }
+  .risks li.hard::before { background: var(--crit); }
+  .risks b { color: var(--ink); font-weight: 600; }
+
+  /* ---------- provenance ---------- */
+  .prov { margin-top: 50px; border-top: 1px solid var(--line); padding-top: 22px; display: flex; gap: 20px; align-items: flex-start; flex-wrap: wrap; justify-content: space-between; }
+  .prov p { margin: 0; max-width: 66ch; font-size: 13px; color: var(--ink2); }
+  .prov p b { color: var(--ink); }
+  .prov .right { display: flex; flex-direction: column; align-items: flex-end; gap: 14px; }
+  .prov .sources { display: flex; gap: 8px; flex-wrap: wrap; justify-content: flex-end; }
+  .src-chip { font-family: "SF Mono", ui-monospace, Menlo, monospace; font-size: 10.5px; letter-spacing: .04em; color: var(--ink2); border: 1px solid var(--line2); border-radius: 6px; padding: 3px 8px; white-space: nowrap; }
+  .prov .brandfoot { display: flex; align-items: baseline; gap: 10px; color: #fff; opacity: .85; }
+  .prov .brandfoot svg { height: 12px; width: auto; }
+  .prov .brandfoot .grp { font-family: "Monument Extended", "Arial Black", sans-serif; font-size: 8px; letter-spacing: .34em; color: var(--ink2); text-transform: uppercase; }
+
+  /* ---------- animation ---------- */
+  @media (prefers-reduced-motion: no-preference) {
+    .gauge-fill { animation: grow .8s cubic-bezier(.2,.7,.2,1) both; transform-origin: left; }
+    @keyframes grow { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+    .clock-fill { animation: grow 1.1s cubic-bezier(.2,.7,.2,1) both; transform-origin: left; }
+  }
+
+  /* ---------- responsive ---------- */
+  @media (max-width: 900px) {
+    .keys, .objs, .decs { grid-template-columns: 1fr; }
+    .months, .risks { grid-template-columns: 1fr; }
+    .kr { grid-template-columns: 4px 1fr; gap: 10px 16px; padding-right: 16px; }
+    .kr .stripe { grid-row: 1 / 4; }
+    h1 { font-size: 24px; }
+    .brand-right { text-align: left; }
+  }
+</style>
+
+<div class="wrap">
+
+  <div class="brand">
+    <div class="brand-left">
+      <svg width="240" height="26" viewBox="0 0 240 26" fill="none" aria-label="mobile.club" role="img" xmlns="http://www.w3.org/2000/svg">
+<path d="M32.659 6.45185C27.9934 6.45185 24.638 8.08889 22.2094 9.91852C20.7714 7.28642 18.0871 6.45185 15.243 6.45185C10.5774 6.45185 7.50965 8.21728 5.46447 9.85432V6.77284H0V25.679H5.46447V14.5407C7.03031 12.8395 10.0981 11.2025 13.2617 11.2025C17.1604 11.2025 17.8314 13.2889 17.8314 17.3012V25.679H23.2959L23.3598 15.0864C23.3598 14.7333 23.3598 14.4123 23.3279 14.0914C24.9896 12.5827 27.8017 11.2025 30.6777 11.2025C34.5764 11.2025 35.2474 13.2889 35.2474 17.3012V25.679H40.7119L40.7758 15.0864C40.7119 8.24938 36.8772 6.45185 32.659 6.45185Z" fill="currentColor"/>
+<path d="M55.7529 26C63.5182 26 68.7909 23.1753 68.7909 16.242C68.7909 9.27654 63.5182 6.45185 55.7529 6.45185C47.9557 6.45185 42.7149 9.27654 42.7149 16.242C42.7149 23.1753 47.9557 26 55.7529 26ZM55.7529 21.4099C50.6719 21.4099 48.1794 20.158 48.1794 16.242C48.1794 12.2938 50.6719 11.042 55.7529 11.042C60.802 11.042 63.2945 12.2938 63.2945 16.242C63.2945 20.158 60.802 21.4099 55.7529 21.4099Z" fill="currentColor"/>
+<path d="M85.7306 6.45185C81.6722 6.45185 78.3807 7.57531 76.3355 9.72593V0H70.8711V25.679H76.3355V22.7259C78.3807 24.8765 81.6722 26 85.7306 26C91.7703 26 96.9471 23.4642 96.9471 16.242C96.9471 9.01975 91.7703 6.45185 85.7306 6.45185ZM83.9091 21.4099C79.0199 21.4099 76.3355 19.9654 76.3355 16.242C76.3355 12.4864 79.0199 11.042 83.9091 11.042C88.7984 11.042 91.4507 12.4864 91.4507 16.242C91.4507 19.9654 88.7984 21.4099 83.9091 21.4099Z" fill="currentColor"/>
+<path d="M99.0198 0V4.78272H104.484V0H99.0198ZM99.0198 6.77284V25.679H104.484V6.77284H99.0198Z" fill="currentColor"/>
+<path d="M107.04 0V25.679H112.504V0H107.04Z" fill="currentColor"/>
+<path d="M127.303 21.5383C123.66 21.5383 120.784 20.5432 120.177 17.5259H140.501C140.501 8.92346 134.781 6.45185 127.623 6.45185C119.985 6.45185 114.585 9.27654 114.585 16.242C114.585 23.1753 120.145 26 127.303 26C134.269 26 138.935 23.721 140.181 18.9062H134.749C133.375 20.8321 131.074 21.5383 127.303 21.5383ZM127.591 10.6247C131.042 10.6247 133.726 11.363 134.653 14.0272H120.369C121.231 11.363 123.852 10.6247 127.591 10.6247Z" fill="currentColor"/>
+<path d="M142.179 21.3778V25.679H147.644V21.3778H142.179Z" fill="currentColor"/>
+<path d="M149.318 16.242C149.318 23.1753 154.559 26 162.356 26C169.386 26 174.339 23.6889 175.234 18.1358H169.642C168.907 20.5753 166.319 21.4099 162.356 21.4099C157.658 21.4099 154.782 20.158 154.782 16.242C154.782 12.2938 157.658 11.042 162.356 11.042C166.319 11.042 168.907 11.8765 169.642 14.3161H175.234C174.339 8.76296 169.386 6.45185 162.356 6.45185C154.559 6.45185 149.318 9.27654 149.318 16.242Z" fill="currentColor"/>
+<path d="M177.318 0V25.679H182.783V0H177.318Z" fill="currentColor"/>
+<path d="M206.046 6.77284V17.3654C204.352 19.3556 200.39 21.2494 196.715 21.2494C192.209 21.2494 190.867 19.163 190.867 15.1506V6.77284H185.37L185.306 17.237C185.37 24.2025 190.068 26 195.085 26C199.655 26 203.361 24.4914 206.046 22.3728V25.679H211.51V6.77284H206.046Z" fill="currentColor"/>
+<path d="M228.783 6.45185C224.725 6.45185 221.434 7.57531 219.388 9.72593V0H213.924V25.679H219.388V22.7259C221.434 24.8765 224.725 26 228.783 26C234.823 26 240 23.4642 240 16.242C240 9.01975 234.823 6.45185 228.783 6.45185ZM226.962 21.4099C222.073 21.4099 219.388 19.9654 219.388 16.242C219.388 12.4864 222.073 11.042 226.962 11.042C231.851 11.042 234.504 12.4864 234.504 16.242C234.504 19.9654 231.851 21.4099 226.962 21.4099Z" fill="currentColor"/>
+</svg>
+      <span class="grp">Group</span>
+    </div>
+    <!-- SLOT: META — date du comité · « données mesurées le JJ/MM » (date du dernier tick) · jour X / N du trimestre (trimestre clos : « 92 / 92 · trimestre clos ») -->
+    <div class="brand-right num">Comité OKR · jeudi 14 août 2026<br><span class="mono" style="color:var(--mute)">données mesurées le 14/08 · jour 45 / 92</span></div>
+  </div>
+
+  <header>
+    <div class="mast-top">
+      <!-- SLOT: EYEBROW+H1 — eyebrow « Tech / Produit — point mensuel » (courant) ou « Tech / Produit — bilan de clôture » (clos) ; h1 = « OKR QX YYYY » -->
+      <div>
+        <div class="eyebrow">Tech / Produit — point mensuel</div>
+        <h1 style="margin-top:8px">OKR Q3 2026</h1>
+      </div>
+    </div>
+    <!-- SLOT: THESIS — 2-3 phrases d'altitude comité : le récit du trimestre, pas d'opérationnel. <span class="y"> pour le fait saillant, <strong> pour l'affirmation clé. -->
+    <p class="thesis">Presque mi-trimestre. <span class="y">La delivery IA tourne à plus du double de la baseline</span>, et le support résolu par l'IA est enfin mesuré : 10 % pour une cible à 50. Restent deux chantiers datés de septembre qui avancent sans owner : <strong>la sonde uptime (échéance dépassée ce jour) et l'automatisation de la facturation</strong>. Rien d'autre ne bloque.</p>
+
+    <!-- SLOT: CLOCK — fill/now = jour÷92 en % (style inline). Marks : bornes du trimestre + 2-3 échéances externes (hot). Trimestre clos : fill 100%, pas de mark « Aujourd'hui » ni de .clock-now. -->
+    <div class="clock" aria-label="Avancement du trimestre : jour 45 sur 92">
+      <div class="clock-bar">
+        <div class="clock-fill" style="width:49%"></div>
+        <div class="clock-now" style="left:49%"><div class="dot"></div></div>
+      </div>
+      <div class="clock-marks">
+        <div class="clock-mark" style="left:0%"><span class="tick"></span><span class="lab">01/07</span></div>
+        <div class="clock-mark hot now" style="left:49%"><span class="tick"></span><span class="lab">Aujourd'hui</span></div>
+        <div class="clock-mark" style="left:61%"><span class="tick"></span><span class="lab">25/08 · POC migration</span></div>
+        <div class="clock-mark hot" style="left:77%"><span class="tick"></span><span class="lab">09/09 · Keynote</span></div>
+        <div class="clock-mark hot" style="left:100%"><span class="tick"></span><span class="lab">30/09 · MEP Verdict</span></div>
+      </div>
+    </div>
+  </header>
+
+  <!-- ============ L'ESSENTIEL ============ -->
+  <section>
+    <!-- SLOT: KEYS — exactement 3 cartes .key. Héros = métrique officielle du KR (jamais une composante seule), chiffres porteurs d'enjeu, zéro volume sans tension. k-gold + .stamp réservés au vrai fait saillant. -->
+    <div class="sec-head"><h2>L'essentiel en trois chiffres</h2><div class="rule"></div></div>
+    <div class="keys">
+      <div class="key k-gold">
+        <div class="stamp">×2,7 la cible</div>
+        <div class="big num">+108<small> %</small></div>
+        <h3>La delivery IA fait plus du double de la baseline</h3>
+        <p>Score officiel du KR : ¾ × PRs mergées <b>+98 %</b> (109,7/sem vs 55,5 au Q2, hors bots &amp; docs) + ¼ × issues terminées <b>+138 %</b> = <b>+108 %</b>, pour une cible à +40. L'effet vacances n'a pas cassé le rythme.</p>
+      </div>
+      <div class="key k-ink">
+        <div class="big num">10<small> % / cible 50</small></div>
+        <h3>Le support résolu par l'IA, enfin mesuré</h3>
+        <p>Label « Fixed By AI » retenu ce jour : <b>21 des 206 tickets Help-Tech</b> fermés au Q3 portent la marque de l'agent. Le KR sort du déclaratif — la rampe d'adoption doit faire <b>≥ 25 %/sem avant le gel iPhone</b> (04/09).</p>
+      </div>
+      <div class="key k-ink">
+        <div class="big num">J-26</div>
+        <h3>Keynote iPhone : l'uptime toujours pas mesurable</h3>
+        <p>Toujours <b>zéro sonde Datadog</b> sur nextmobiles.com — l'échéance de pose expirait <b>aujourd'hui</b>, sans owner. Sans sonde avant le 09/09, le « 100 % d'uptime » du lancement sera invérifiable.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ OBJECTIFS ============ -->
+  <section>
+    <!-- SLOT: OBJECTIFS — 3 cartes .obj (O1/O2/O3) : titre, pill statut (pire statut des KRs enfants), compteur KRs, 2-3 phrases de lecture. -->
+    <div class="sec-head"><h2>Trois objectifs, un trimestre en deux temps</h2><div class="rule"></div></div>
+    <div class="objs">
+      <div class="obj">
+        <div class="obj-id">O1</div>
+        <h3>Unifier les systèmes des entités du groupe</h3>
+        <div class="obj-row"><span class="pill crit">Off Track</span><span class="mono num" style="color:var(--mute)">2 KRs mesurés · 1 manuel</span></div>
+        <p>La migration suit son plan — POC en cours, go-live contrats calé sur fin octobre — mais tout atterrit sur septembre. Le vrai point dur est ailleurs : l'automatisation de la facturation n'a toujours <b>ni équipe ni backlog</b>, six semaines avant le run de septembre qu'elle doit réussir.</p>
+      </div>
+      <div class="obj">
+        <div class="obj-id">O2</div>
+        <h3>Augmenter la productivité du département Tech / Produit</h3>
+        <div class="obj-row"><span class="pill crit">Off Track</span><span class="mono num" style="color:var(--mute)">3 KRs mesurés</span></div>
+        <p>Le pari IA paie : delivery à ×2,7 de la cible, complétion des sprints en hausse (76 pour 90 visé). Le support résolu par l'IA est enfin mesuré — <b>10 % pour une cible à 50</b> : c'est la rampe d'adoption de la console qui fait le statut de l'objectif, sur six semaines.</p>
+      </div>
+      <div class="obj">
+        <div class="obj-id">O3</div>
+        <h3>Soutenir la croissance : Verdict &amp; lancement iPhone</h3>
+        <div class="obj-row"><span class="pill crit">Off Track</span><span class="mono num" style="color:var(--mute)">2 KRs · 2 dates externes</span></div>
+        <p>Verdict avance vite sur le tunnel client (73 %) avec Ellipro validé, mais scoring et back-office restent devant, sur une équipe réduite en septembre. Côté iPhone, les chantiers prestas tournent — il manque la sonde qui prouvera le résultat.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ BOARD KR ============ -->
+  <section>
+    <!-- SLOT: BOARD — 3 .board-group (O1/O2/O3), 8 KRs. Par KR : nom+sources, gauge Current/cible + tick « attendu à date » (trimestre courant seulement ; clos : pas de tick ni d'attendu), pill statut, tenue des jalons + prochaine échéance (clos : ✅ soldée / ✖ non soldée). Non instrumenté : gauge vide + pill neut, jamais un 0. -->
+    <div class="sec-head"><h2>Le board — 8 résultats clés</h2><div class="rule"></div></div>
+    <div class="board">
+
+      <div class="board-group">
+        <div class="board-group-head"><span class="g-id">O1</span><span class="g-title">Unifier les systèmes du groupe</span></div>
+
+        <div class="kr s-crit">
+          <div class="stripe"></div>
+          <div>
+            <div class="kr-name"><span class="kr-id">KR1</span>Migration des contrats B2C dans Vecna + décom site MC</div>
+            <div class="kr-src mono">Plan pondéré · Linear POC+MVP · SQL Loop/Vecna</div>
+          </div>
+          <div class="gauge">
+            <div class="gauge-nums"><span class="gauge-val num">10 %</span><span class="gauge-exp num">attendu à date : 49 %</span></div>
+            <div class="gauge-bar"><div class="gauge-fill f-crit" style="width:10%"></div><div class="gauge-tick" style="left:49%"></div></div>
+          </div>
+          <div class="kr-right">
+            <span class="pill crit">Off Track</span>
+            <div class="kr-next"><b>POC en cours</b> (7/26 issues), MVP encore 100 % backlog.<br><span class="d">18–25/08</span> imports + facturation POC · <span class="d">15/09</span> issue décom</div>
+          </div>
+        </div>
+
+        <div class="kr s-crit">
+          <div class="stripe"></div>
+          <div>
+            <div class="kr-name"><span class="kr-id">KR2</span>Automatisation de la facturation Vecna</div>
+            <div class="kr-src mono">Plan pondéré · SQL Vecna · GitHub · Datadog</div>
+          </div>
+          <div class="gauge">
+            <div class="gauge-nums"><span class="gauge-val num">0 %</span><span class="gauge-exp num">attendu à date : 49 %</span></div>
+            <div class="gauge-bar"><div class="gauge-fill f-zero"></div><div class="gauge-tick" style="left:49%"></div></div>
+          </div>
+          <div class="kr-right">
+            <span class="pill crit">Off Track</span>
+            <div class="kr-next"><b>Point dur</b> — projet Linear créé le 08/08, toujours vide (ni lead ni issue).<br><span class="d">27/08</span> invariants auto · <span class="d">30/09</span> run auto supervisé</div>
+          </div>
+        </div>
+
+        <div class="kr s-neut">
+          <div class="stripe"></div>
+          <div>
+            <div class="kr-name"><span class="kr-id">KR4</span>Recouvrement Cleaq (ex-Payt)</div>
+            <div class="kr-src mono">Suivi manuel — hors mesure auto</div>
+          </div>
+          <div class="gauge">
+            <div class="gauge-nums"><span class="gauge-val num">—</span><span class="gauge-exp">pas de mesure auto</span></div>
+            <div class="gauge-bar"></div>
+          </div>
+          <div class="kr-right">
+            <span class="pill neut">À re-scoper</span>
+            <div class="kr-next">Exit Payt acté — à rebrancher sur le <b>projet maison de recouvrement</b> dès son cadrage.</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="board-group">
+        <div class="board-group-head"><span class="g-id">O2</span><span class="g-title">Productivité Tech / Produit</span></div>
+
+        <div class="kr s-crit">
+          <div class="stripe"></div>
+          <div>
+            <div class="kr-name"><span class="kr-id">KR1</span>50 % des tickets Help-Tech résolus par l'IA</div>
+            <div class="kr-src mono">Linear — label « Fixed By AI » (hors B2B Cleaq)</div>
+          </div>
+          <div class="gauge">
+            <div class="gauge-nums"><span class="gauge-val num">10<small> % / 50</small></span><span class="gauge-exp num">attendu à date : 24 %</span></div>
+            <div class="gauge-bar"><div class="gauge-fill f-crit" style="width:20%"></div><div class="gauge-tick" style="left:49%"></div></div>
+          </div>
+          <div class="kr-right">
+            <span class="pill crit">Off Track</span>
+            <div class="kr-next"><b>Instrumenté ce jour</b> — 21 / 206 tickets fermés au Q3.<br><span class="d">04/09</span> ≥ 25 %/sem avant le gel · <span class="d">30/09</span> ≥ 50 % sur 4 sem.</div>
+          </div>
+        </div>
+
+        <div class="kr s-warn">
+          <div class="stripe"></div>
+          <div>
+            <div class="kr-name"><span class="kr-id">KR2</span>90 % de complétion des sprints en moyenne</div>
+            <div class="kr-src mono">Linear cycles MC + NMC · fenêtre 4 cycles</div>
+          </div>
+          <div class="gauge">
+            <div class="gauge-nums"><span class="gauge-val num">76<small> / 90</small></span><span class="gauge-exp num">84 % de la cible</span></div>
+            <div class="gauge-bar"><div class="gauge-fill f-warn" style="width:84%"></div><div class="gauge-tick" style="left:100%"></div></div>
+          </div>
+          <div class="kr-right">
+            <span class="pill warn">Progressing</span>
+            <div class="kr-next"><b>NMC progresse</b> (69 → 71), MC stable à 81.<br><span class="d">~25/08</span> prochains cycles clos · <span class="d">22/09</span> 2 cycles ≥ 75 %</div>
+          </div>
+        </div>
+
+        <div class="kr s-good">
+          <div class="stripe"></div>
+          <div>
+            <div class="kr-name"><span class="kr-id">KR3</span>+40 % de delivery grâce à l'IA</div>
+            <div class="kr-src mono">GitHub + Linear vs baseline Q2 figée</div>
+          </div>
+          <div class="gauge">
+            <div class="gauge-nums"><span class="gauge-val num">+108 %<small> = ¾×PRs (+98) + ¼×issues (+138)</small></span><span class="gauge-exp num">cible +40 → ×2,7</span></div>
+            <div class="gauge-bar"><div class="gauge-fill f-good" style="width:100%"></div><div class="gauge-over num">×2,7</div></div>
+          </div>
+          <div class="kr-right">
+            <span class="pill good">On Track</span>
+            <div class="kr-next"><b>Garde-fous actifs</b> : hors bots &amp; docs ; part documentation 24 %, en hausse lente — surveillée.<br><span class="d">31/08</span> point mi-trimestre</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="board-group">
+        <div class="board-group-head"><span class="g-id">O3</span><span class="g-title">Croissance : nouveaux développements</span></div>
+
+        <div class="kr s-crit">
+          <div class="stripe"></div>
+          <div>
+            <div class="kr-name"><span class="kr-id">KR1</span>Lancement du parcours KYB Cleaq (Verdict)</div>
+            <div class="kr-src mono">Plan pondéré · GitHub risk · Linear Verdict</div>
+          </div>
+          <div class="gauge">
+            <div class="gauge-nums"><span class="gauge-val num">25 %</span><span class="gauge-exp num">attendu à date : 49 %</span></div>
+            <div class="gauge-bar"><div class="gauge-fill f-crit" style="width:25%"></div><div class="gauge-tick" style="left:49%"></div></div>
+          </div>
+          <div class="kr-right">
+            <span class="pill crit">Off Track</span>
+            <div class="kr-next"><b>Ellipro validé, tunnel KYB à 73 %</b> — scoring &amp; back-office à 0, chargés sur sept.<br><span class="d">29/08</span> tunnel complet staging · <span class="d">30/09</span> MEP + 1ᵉʳ client réel</div>
+          </div>
+        </div>
+
+        <div class="kr s-warn">
+          <div class="stripe"></div>
+          <div>
+            <div class="kr-name"><span class="kr-id">KR2</span>100 % d'uptime du site Next au lancement iPhone</div>
+            <div class="kr-src mono">Datadog synthetics (à créer) · prestas Numendo/Adactim</div>
+          </div>
+          <div class="gauge">
+            <div class="gauge-nums"><span class="gauge-val num">32 %</span><span class="gauge-exp num">attendu à date : 49 %</span></div>
+            <div class="gauge-bar"><div class="gauge-fill f-warn" style="width:32%"></div><div class="gauge-tick" style="left:49%"></div></div>
+          </div>
+          <div class="kr-right">
+            <span class="pill warn">Progressing</span>
+            <div class="kr-next"><b>Prestas lancés, env de test livré</b> — la sonde d'uptime manque, échéance du jour non tenue.<br><span class="d">28/08</span> tests de charge · <span class="d">09/09</span> bascule mesure uptime</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- SLOT: BOARD-FOOT — légende de lecture + KRs hors périmètre (droppés/archivés/manuels). -->
+      <div class="board-foot num">Lecture : la barre = réel / cible · le trait blanc = où il faudrait être aujourd'hui (progression linéaire). Off Track ≠ échec : O1-KR1 et O3-KR1 sont volontairement chargés sur septembre — leur juge de paix est la tenue des jalons, affichée à droite. Hors périmètre : O1-KR3 (droppé le 31/07) et O3-KR4 (archivé).</div>
+    </div>
+  </section>
+
+  <!-- ============ TIMELINE ============ -->
+  <section>
+    <!-- SLOT: JALONS — 2 colonnes .month (mois restants du trimestre ; clos : les 3 mois au bilan). .ms.hot = échéances externes. Clos : chaque jalon ✅ soldée / ✖ non soldée, pas de flag « à J-x ». -->
+    <div class="sec-head"><h2>Ce qui atterrit, et quand</h2><div class="rule"></div></div>
+    <div class="months">
+      <div class="month">
+        <h3>Août<small>préparer &amp; instrumenter</small></h3>
+        <div class="ms"><span class="d num">14/08</span><span class="t">Sondes Datadog sur nextmobiles.com : l'uptime devient mesurable <span class="flag crit">échue</span><small>O3-KR2 — toujours zéro sonde, owner à nommer — J-26 de la keynote</small></span></div>
+        <div class="ms"><span class="d num">18–25/08</span><span class="t">POC migration : imports client / commande / abonnement, puis facturation<small>O1-KR1 — première vraie preuve de la fusion des systèmes ; POC à 7/26 issues</small></span></div>
+        <div class="ms"><span class="d num">27/08</span><span class="t">Vérification automatique des invariants de facturation <span class="flag warn">sans équipe</span><small>O1-KR2 — le run de fin août est le seul banc d'essai avant celui de septembre</small></span></div>
+        <div class="ms"><span class="d num">28/08</span><span class="t">Tests de charge multi-parcours + caching double-version (Numendo)<small>O3-KR2 — reproduire la panne annuelle avant qu'elle n'arrive</small></span></div>
+        <div class="ms"><span class="d num">29/08</span><span class="t">Tunnel KYB client complet en staging<small>O3-KR1 — Verdict devient démontrable de bout en bout (aujourd'hui : 73 %)</small></span></div>
+      </div>
+      <div class="month">
+        <h3>Septembre<small>livrer sous contrainte</small></h3>
+        <div class="ms"><span class="d num">04/09</span><span class="t">Fiabilisation de la facturation + purge du backlog Help-Tech<small>O1-KR2 · O2-KR2 — donnée saine et capacité protégée avant l'automatisation</small></span></div>
+        <div class="ms"><span class="d num">05/09</span><span class="t">Recette métier du POC migration (campagne 5 jours)<small>O1-KR1</small></span></div>
+        <div class="ms"><span class="d num">08/09</span><span class="t">Runbook, astreinte nominative, gel des déploiements 08 → 14/09<small>O3-KR2</small></span></div>
+        <div class="ms hot"><span class="d num">09/09</span><span class="t">Keynote Apple — le site Next passe sous mesure d'uptime en continu<small>puis release &amp; précommandes le 11/09, war room vendredi</small></span></div>
+        <div class="ms"><span class="d num">12/09</span><span class="t">Moteur de scoring Verdict avec grilles paramétrables<small>O3-KR1 — dépend des seuils métier Risk <span class="flag warn">à sécuriser</span></small></span></div>
+        <div class="ms"><span class="d num">15/09</span><span class="t">Jalon PSP / mandats SEPA + plan de décom du site MC validé<small>O1-KR1</small></span></div>
+        <div class="ms"><span class="d num">22/09</span><span class="t">Fin des devs MVP migration · back-office Verdict · 2 cycles ≥ 75 %<small>O1-KR1 · O3-KR1 · O2-KR2 — la semaine la plus chargée du trimestre</small></span></div>
+        <div class="ms hot"><span class="d num">30/09</span><span class="t">Run de facturation 100 % auto supervisé · MEP Verdict + 1ᵉʳ client réel scoré<small>clôture Q3 — trois KRs se soldent le même jour, zéro buffer</small></span></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ DECISIONS ============ -->
+  <section>
+    <!-- SLOT: DECISIONS — section entière pilotée par « ## Arbitrages ouverts » de decisions.md (état du dernier tick). OMISE si la liste est vide ou si trimestre clos. Une carte .dec par arbitrage : qui/quoi (.who = KR · type), titre, enjeu en 1-2 phrases. -->
+    <div class="sec-head"><h2>À acter en comité aujourd'hui</h2><div class="rule"></div></div>
+    <div class="decs">
+      <div class="dec">
+        <div class="who mono">O3-KR2 · Owners</div>
+        <h3>Nommer deux owners : sondes uptime &amp; routing base de données</h3>
+        <p>L'échéance de pose des sondes est passée aujourd'hui sans owner. Sans sonde Datadog avant le 09/09, l'uptime du lancement iPhone sera invérifiable ; sans owner du routing des lectures vers les réplicas, l'investissement infra Adactim reste décoratif.</p>
+      </div>
+      <div class="dec">
+        <div class="who mono">O1-KR2 · Staffing</div>
+        <h3>Donner une équipe à l'automatisation de la facturation</h3>
+        <p>Le projet Linear existe depuis le 08/08 mais reste une coquille vide : ni lead, ni issue. Le run de fin août est le seul banc d'essai avant celui de septembre — sans owner nommé cette semaine, le KR est mécaniquement perdu.</p>
+      </div>
+      <div class="dec">
+        <div class="who mono">O2-KR2 · Arbitrage</div>
+        <h3>Cible sprints : garder 90 ou re-scoper ?</h3>
+        <p>Fenêtre actuelle : 76, en hausse. MC plafonne à 81, NMC à 71. Soit on maintient 90 comme étoile polaire avec 75 en seuil intermédiaire (jalon du 22/09), soit on re-scope — à trancher maintenant, pas en fin de trimestre.</p>
+      </div>
+      <div class="dec">
+        <div class="who mono">O1-KR1 · Ratification</div>
+        <h3>Assumer la mesure « avancement projet » pour la migration</h3>
+        <p>Le go-live contrats est structurellement en Q4 (26–28/10, cohortes en novembre). Le KR mesure donc la tenue du plan Q3 — dit explicitement au comité, pour que « Off Track » se lise correctement.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ RISQUES ============ -->
+  <section>
+    <!-- SLOT: RISQUES — 4-6 risques assumés, .hard pour les durs. Altitude comité : structurels, pas de bugs opé. -->
+    <div class="sec-head"><h2>Les risques qu'on regarde en face</h2><div class="rule"></div></div>
+    <ul class="risks">
+      <li class="hard"><b>Septembre à effectifs réduits.</b> Congés simultanés sur Verdict et l'infra au moment où tout atterrit — les jalons de sept. se jouent sur une équipe resserrée.</li>
+      <li class="hard"><b>Zéro buffer le 30/09.</b> Run auto, MEP Verdict et 1ᵉʳ client réel se soldent le dernier jour ; le gel iPhone fige déjà les semaines du 08 au 14/09.</li>
+      <li class="hard"><b>L'uptime iPhone toujours sans instrument.</b> Le seul KR encore invérifiable : zéro sonde sur nextmobiles.com à J-26 de la keynote — le retard de mesure devient le risque principal du lancement.</li>
+      <li><b>La panne annuelle du lancement.</b> Les crashs historiques viennent des flux métier (import catalogue + précommandes), pas du trafic — le scénario « jour type » doit être transmis aux prestas.</li>
+      <li><b>Volume ≠ valeur sur la delivery IA.</b> Le +108 % est nettoyé (bots, docs exclus) et surveillé : part documentation en hausse lente (19 → 24 %), reverts et taille des PRs suivis.</li>
+      <li><b>Août, mois creux.</b> Vacances : la delivery et la complétion des sprints peuvent retomber — point de contrôle mi-trimestre le 31/08.</li>
+    </ul>
+  </section>
+
+  <!-- ============ PROVENANCE ============ -->
+  <!-- SLOT: PROVENANCE — texte fixe + chips sources + « dernier tick : JJ/MM/YYYY ». Toujours afficher la date de mesure, même si le report est lancé plus tard. -->
+  <div class="prov">
+    <p><b>Zéro chiffre déclaratif.</b> Chaque valeur de cette page est mesurée automatiquement par l'agent OKR sur les systèmes eux-mêmes, recalculée à chaque point et historisée. Ce qui n'est pas mesurable est affiché « non instrumenté » — jamais un zéro silencieux.</p>
+    <div class="right">
+      <div class="sources">
+        <span class="src-chip">Linear API</span>
+        <span class="src-chip">GitHub</span>
+        <span class="src-chip">SQL prod Loop</span>
+        <span class="src-chip">SQL prod Vecna</span>
+        <span class="src-chip">Datadog</span>
+        <span class="src-chip">Notion Goals</span>
+        <span class="src-chip num">dernier tick : 14/08/2026</span>
+      </div>
+      <div class="brandfoot"><svg width="240" height="26" viewBox="0 0 240 26" fill="none" aria-label="mobile.club" role="img" xmlns="http://www.w3.org/2000/svg">
+<path d="M32.659 6.45185C27.9934 6.45185 24.638 8.08889 22.2094 9.91852C20.7714 7.28642 18.0871 6.45185 15.243 6.45185C10.5774 6.45185 7.50965 8.21728 5.46447 9.85432V6.77284H0V25.679H5.46447V14.5407C7.03031 12.8395 10.0981 11.2025 13.2617 11.2025C17.1604 11.2025 17.8314 13.2889 17.8314 17.3012V25.679H23.2959L23.3598 15.0864C23.3598 14.7333 23.3598 14.4123 23.3279 14.0914C24.9896 12.5827 27.8017 11.2025 30.6777 11.2025C34.5764 11.2025 35.2474 13.2889 35.2474 17.3012V25.679H40.7119L40.7758 15.0864C40.7119 8.24938 36.8772 6.45185 32.659 6.45185Z" fill="currentColor"/>
+<path d="M55.7529 26C63.5182 26 68.7909 23.1753 68.7909 16.242C68.7909 9.27654 63.5182 6.45185 55.7529 6.45185C47.9557 6.45185 42.7149 9.27654 42.7149 16.242C42.7149 23.1753 47.9557 26 55.7529 26ZM55.7529 21.4099C50.6719 21.4099 48.1794 20.158 48.1794 16.242C48.1794 12.2938 50.6719 11.042 55.7529 11.042C60.802 11.042 63.2945 12.2938 63.2945 16.242C63.2945 20.158 60.802 21.4099 55.7529 21.4099Z" fill="currentColor"/>
+<path d="M85.7306 6.45185C81.6722 6.45185 78.3807 7.57531 76.3355 9.72593V0H70.8711V25.679H76.3355V22.7259C78.3807 24.8765 81.6722 26 85.7306 26C91.7703 26 96.9471 23.4642 96.9471 16.242C96.9471 9.01975 91.7703 6.45185 85.7306 6.45185ZM83.9091 21.4099C79.0199 21.4099 76.3355 19.9654 76.3355 16.242C76.3355 12.4864 79.0199 11.042 83.9091 11.042C88.7984 11.042 91.4507 12.4864 91.4507 16.242C91.4507 19.9654 88.7984 21.4099 83.9091 21.4099Z" fill="currentColor"/>
+<path d="M99.0198 0V4.78272H104.484V0H99.0198ZM99.0198 6.77284V25.679H104.484V6.77284H99.0198Z" fill="currentColor"/>
+<path d="M107.04 0V25.679H112.504V0H107.04Z" fill="currentColor"/>
+<path d="M127.303 21.5383C123.66 21.5383 120.784 20.5432 120.177 17.5259H140.501C140.501 8.92346 134.781 6.45185 127.623 6.45185C119.985 6.45185 114.585 9.27654 114.585 16.242C114.585 23.1753 120.145 26 127.303 26C134.269 26 138.935 23.721 140.181 18.9062H134.749C133.375 20.8321 131.074 21.5383 127.303 21.5383ZM127.591 10.6247C131.042 10.6247 133.726 11.363 134.653 14.0272H120.369C121.231 11.363 123.852 10.6247 127.591 10.6247Z" fill="currentColor"/>
+<path d="M142.179 21.3778V25.679H147.644V21.3778H142.179Z" fill="currentColor"/>
+<path d="M149.318 16.242C149.318 23.1753 154.559 26 162.356 26C169.386 26 174.339 23.6889 175.234 18.1358H169.642C168.907 20.5753 166.319 21.4099 162.356 21.4099C157.658 21.4099 154.782 20.158 154.782 16.242C154.782 12.2938 157.658 11.042 162.356 11.042C166.319 11.042 168.907 11.8765 169.642 14.3161H175.234C174.339 8.76296 169.386 6.45185 162.356 6.45185C154.559 6.45185 149.318 9.27654 149.318 16.242Z" fill="currentColor"/>
+<path d="M177.318 0V25.679H182.783V0H177.318Z" fill="currentColor"/>
+<path d="M206.046 6.77284V17.3654C204.352 19.3556 200.39 21.2494 196.715 21.2494C192.209 21.2494 190.867 19.163 190.867 15.1506V6.77284H185.37L185.306 17.237C185.37 24.2025 190.068 26 195.085 26C199.655 26 203.361 24.4914 206.046 22.3728V25.679H211.51V6.77284H206.046Z" fill="currentColor"/>
+<path d="M228.783 6.45185C224.725 6.45185 221.434 7.57531 219.388 9.72593V0H213.924V25.679H219.388V22.7259C221.434 24.8765 224.725 26 228.783 26C234.823 26 240 23.4642 240 16.242C240 9.01975 234.823 6.45185 228.783 6.45185ZM226.962 21.4099C222.073 21.4099 219.388 19.9654 219.388 16.242C219.388 12.4864 222.073 11.042 226.962 11.042C231.851 11.042 234.504 12.4864 234.504 16.242C234.504 19.9654 231.851 21.4099 226.962 21.4099Z" fill="currentColor"/>
+</svg><span class="grp">Group</span></div>
+    </div>
+  </div>
+
+</div>
