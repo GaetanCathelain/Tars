@@ -30,9 +30,9 @@ one Slack DM thread. Four wires:
   `hermes chat --resume <gw_session> … | hermes send` with **LANE.md inlined**
   (question/escalation/completion — the turn *is* Tars) / cold `chat -q` (no gateway
   session yet).
-- **Wire 3 Tars→session** — lean `claude -p` SendMessage (**default**); MCP Channels
-  and a resident Go non-Claude peer are **proven alternatives** (transport matrix in
-  spec); raw-socket escape hatch.
+- **Wire 3 Tars→session** — **transport choice is OPEN (undecided — see Decisions).**
+  Candidates, all E2E-proven: lean `claude -p` SendMessage, MCP Channels, a resident
+  Go/custom non-Claude peer, raw socket. Swappable behind the `lean-send` helper.
 - **Wire 4 Operator gate** — Gaetan replies in-thread → gateway wakes → reads the
   `~/.hermes/lanes/<thread_ts>.md` index → relays inward via Wire 3.
 State: Linear = ticket record; LANE.md (Tars, single-writer, enforced same-turn
@@ -68,6 +68,11 @@ ESCALATE/RESOLVED prompt discipline.
 one real DM at acceptance.
 
 ## Needs Gaetan (decisions before/at build)
+- **Wire-3 messaging transport — NOT chosen yet (the live open decision).** Custom/Go
+  peer messaging vs MCP Channels vs lean `claude -p` SendMessage vs raw socket — all
+  E2E-proven, each with trade-offs (spec Wire-3 matrix + open-q #0). Swappable behind
+  the `lean-send` helper, so it can be decided at build and changed later. Leaning
+  SendMessage-to-start, but open.
 - **Accept the restated rehydration bar:** "all *decision-relevant* context, under
   enforced write-back" (literal "ALL context" is unachievable by this shape). Spec
   open-question #5.

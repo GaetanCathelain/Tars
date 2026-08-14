@@ -276,7 +276,7 @@ SendMessage target. Step-3 JSON parsing + the ladder are the design's answer; th
 have not been exercised. A version tripwire (re-run q15 config G after every
 `claude` upgrade) guards the lean flag stack, which is newer surface.
 
-**Transport options — three E2E-proven; SendMessage stays default.**
+**Transport options — three E2E-proven; the choice is OPEN (Gaetan undecided).**
 
 | Transport | E2E | Cost / latency | Constraints | Version-risk |
 |---|---|---|---|---|
@@ -284,16 +284,21 @@ have not been exercised. A version tripwire (re-run q15 config G after every
 | **MCP Channel** (file-inbox) | test-2 | 0-token send, ~8 s round-trip | interactive-only receiver + persistent per-session MCP subprocess + dev-flag opt-in; `inbox/` is a raw prompt-injection surface | medium (research-preview) |
 | **resident Go / non-Claude socket peer** | test-3 | no per-msg spawn; socket write | **same-uid / same-box only** (0700 dirs) → needs a cooper-resident daemon; requires `accept` | **high** (undocumented reverse-engineered contract — `peerProtocol:1`, `sha256(socketpath)` key, `/proc` procStart; silent break on upgrade) |
 
-**Why SendMessage is default:** Tars is on the VM, sessions on cooper, so any
-same-box-only transport (the Channel MCP subprocess, the Go peer) needs a component
-co-located on cooper; SendMessage runs as `ssh cooper 'claude -p …'` landing as
-uid 1000 with no resident piece, works headless, and rides the official
-cross-session protocol. The Go peer is the *productized* form of the raw-socket
-escape hatch and the natural upgrade if per-message spawn cost ever hurts — at the
-price of owning an undocumented protocol (re-run the nonce self-test on every
-`claude` upgrade, fail loud on schema drift). Channels win on send-cost but pay with
-an interactive-only receiver and an injection surface. All three are E2E-proven
-`[VERIFIED — gcn50-e2e-roundtrip.md / -channels.md / -go-bridge.md]`.
+**Leaning, NOT a decision (the transport is an OPEN question — see §Open questions).**
+Tars is on the VM, sessions on cooper, so any same-box-only transport (the Channel
+MCP subprocess, the Go peer) needs a component co-located on cooper; SendMessage runs
+as `ssh cooper 'claude -p …'` landing as uid 1000 with no resident piece, works
+headless, and rides the official cross-session protocol — which is why it is the
+recommended *starting* point, not a committed choice. The Go peer is the
+*productized* form of the raw-socket escape hatch and the natural upgrade if
+per-message spawn cost ever hurts — at the price of owning an undocumented protocol
+(re-run the nonce self-test on every `claude` upgrade, fail loud on schema drift).
+Channels win on send-cost but pay with an interactive-only receiver and an injection
+surface. All three are E2E-proven
+`[VERIFIED — gcn50-e2e-roundtrip.md / -channels.md / -go-bridge.md]`. **The transport
+is swappable behind the `lean-send` helper** — so the pick can be made at build time
+and even changed later without touching the other wires. Gaetan has not committed to
+one yet.
 
 ## Wire 4 — Operator gate + `thread_ts → lane` index
 
@@ -539,6 +544,20 @@ session-keying rows, gateway gating), `status/probes/2026-08-14-damien-followup-
 Noted broad-first; hardening deferred by design (workflow rule: no
 security/guardrail hardening in the first push, but flag a control that would
 lapse).
+
+**0. Wire-3 messaging transport — OPEN, not yet chosen (Gaetan undecided).** All
+three (+ raw socket) are E2E-proven; the pick is **deferred and swappable behind the
+`lean-send` helper**, so it can be decided at build time and changed later without
+touching the other wires. Trade-offs: **lean `claude -p` SendMessage** — official,
+headless, works cross-host as `ssh cooper`, robust to Claude upgrades, but ~6.3k
+tokens + a spawn per message; **MCP Channels** — 0-token send, fastest, but
+interactive-only receiver + a persistent per-session MCP subprocess + dev-flag + an
+inbox prompt-injection surface; **resident Go / custom peer** — no per-message spawn,
+one bidirectional process, but same-uid/same-box-only (needs a cooper-resident
+daemon) and rides an undocumented protocol (high version-fragility); **raw socket** —
+cheapest, hand-rolled undocumented wire. Recommendation *if forced today*: SendMessage
+to start, Go peer as the upgrade if per-message cost bites — but this is a lean, not a
+decision.
 
 1. **Exact skill-v3 structure** — one skill or a small family (`delegate`,
    `notify`, `lane-index`)? Where the helper scripts live (in-skill vs a
