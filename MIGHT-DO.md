@@ -122,3 +122,8 @@ word; delete when done or dead.
 - No liveness check on the drift-check cron — now that a clean verdict is
   byte-identical run to run, a dead cron reads exactly like "no drift"; revisit if the check ever
   matters more than the mirror does. (scripts/tars-mirror-drift)
+- RUNBOOK v2 gate 10 cites `hermes prompt-size --json` as the whole-inclusion
+  proof for SOUL.md; it is not one — its `sections[]` reports context=0 because
+  SOUL rides the identity slot inside `stable`. The real offline check is
+  `prompt_builder.load_soul_md()`; fold it into the next runbook revision.
+  (2026-08-14-polish-report.md, surprise 1)
