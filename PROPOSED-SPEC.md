@@ -1,5 +1,12 @@
 # PROPOSED SPEC — Tars V2 orchestration (Tars ↔ Orca sessions)
 
+> **SUPERSEDED-PENDING-RESPEC (2026-08-16, GCN-50 wayfinder map).** This spec's
+> design commitments are void wholesale — Gaetan's call: keep only the end goal
+> and the evidence, re-derive the rest. The distilled evidence lives in
+> `docs/gcn50-knowledge-ledger.md` (branch `research/gcn50-knowledge-ledger`
+> until merged); the respec is charted as child tickets of GCN-50. Do not build
+> from this file.
+
 **Status:** PROPOSED — draft, 2026-08-14. Not built as automation; the round-trip
 MECHANISM is now exercised live end-to-end (three E2E tests, §E2E validation).
 Gaetan's call: "we'll get back to it later." This file captures the design so it
