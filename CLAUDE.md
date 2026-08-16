@@ -105,3 +105,17 @@ agents write new files under `status/probes/`.
   before scripting any non-interactive invocation, and measure before believing
   recon claims.
 - The gated cleanup (p-Hermes old-profile delete) needs Gaetan's explicit go.
+
+## Agent skills
+
+### Issue tracker
+
+Issues live in Linear, team GCN (via the Linear MCP tools). See `docs/agents/issue-tracker.md`.
+
+### Triage labels
+
+Default five canonical triage roles, label string = name. See `docs/agents/triage-labels.md`.
+
+### Domain docs
+
+Single-context (`CONTEXT.md` + `docs/adr/` at the repo root). See `docs/agents/domain.md`.
