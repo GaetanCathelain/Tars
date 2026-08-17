@@ -317,6 +317,22 @@ def atomic_write(path: Path, data: dict) -> str:
     return hashlib.sha256(raw).hexdigest()
 
 
+def atomic_write_ndjson(path: Path, rows: list[dict]) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    raw = b"".join((json.dumps(row, ensure_ascii=False, separators=(",", ":"), sort_keys=True) + "\n").encode("utf-8") for row in rows)
+    fd, tmp_name = tempfile.mkstemp(prefix=path.name + ".", suffix=".tmp", dir=path.parent)
+    try:
+        os.fchmod(fd, 0o600)
+        with os.fdopen(fd, "wb") as handle:
+            handle.write(raw)
+            handle.flush()
+            os.fsync(handle.fileno())
+        os.replace(tmp_name, path)
+    finally:
+        if os.path.exists(tmp_name):
+            os.unlink(tmp_name)
+
+
 def apply_mutations(path: Path, expected_hash: str, mutations: dict) -> dict:
     before = state_hash(path)
     if before != expected_hash:
@@ -368,7 +384,12 @@ def cmd_slack(args):
             compact({"coverage": {"source": "slack", "authenticated": True, "complete": True}, "events": []})
             return 0
         result = collect_slack(client, instant(args.cursor), instant(args.run_end), (xoxc, xoxd))
-        compact(result)
+        if args.output:
+            rows = [{"coverage": result["coverage"]}] + [{"event": event} for event in result["events"]]
+            atomic_write_ndjson(Path(args.output).expanduser(), rows)
+            compact({"output": str(Path(args.output).expanduser()), "coverage": result["coverage"]})
+        else:
+            compact(result)
         return 0
     except Exception as exc:
         code = str(exc) if isinstance(exc, RuntimeError) else "unexpected"
@@ -380,6 +401,29 @@ def cmd_snapshot(args):
     path = Path(args.state).expanduser()
     data = read_state(path)
     compact({"sha256": state_hash(path), "size": path.stat().st_size, "items": len(data["items"]), "sources": {k: {"cursor": v.get("cursor"), "last_success": v.get("last_success"), "seen": len(v.get("seen", []))} for k, v in data["sources"].items()}})
+    return 0
+
+
+def cmd_export(args):
+    path = Path(args.state).expanduser()
+    data = read_state(path)
+    header = {key: value for key, value in data.items() if key not in {"items", "sources"}}
+    source_meta = {
+        source: {key: value for key, value in record.items() if key != "seen"}
+        for source, record in data["sources"].items()
+    }
+    header["sources"] = source_meta
+    rows = [{"state": header, "sha256": state_hash(path), "size": path.stat().st_size}]
+    seen_lines = 0
+    for source, record in sorted(data["sources"].items()):
+        seen = record.get("seen", [])
+        for offset in range(0, len(seen), 100):
+            rows.append({"seen": {"source": source, "ids": seen[offset:offset + 100]}})
+            seen_lines += 1
+    rows.extend({"item": value} for _, value in sorted(data["items"].items()))
+    output = Path(args.output).expanduser()
+    atomic_write_ndjson(output, rows)
+    compact({"output": str(output), "sha256": state_hash(path), "items": len(data["items"]), "seen_lines": seen_lines, "lines": len(rows)})
     return 0
 
 
@@ -462,11 +506,16 @@ def parser():
     slack.add_argument("--credentials")
     slack.add_argument("--cursor")
     slack.add_argument("--run-end")
+    slack.add_argument("--output")
     slack.add_argument("--probe", action="store_true")
     slack.set_defaults(func=cmd_slack)
     snapshot = sub.add_parser("state-snapshot")
     snapshot.add_argument("--state", default="~/.hermes/state/engagement-checker.json")
     snapshot.set_defaults(func=cmd_snapshot)
+    export = sub.add_parser("state-export")
+    export.add_argument("--state", default="~/.hermes/state/engagement-checker.json")
+    export.add_argument("--output", required=True)
+    export.set_defaults(func=cmd_export)
     apply = sub.add_parser("state-apply")
     apply.add_argument("--state", default="~/.hermes/state/engagement-checker.json")
     apply.add_argument("--expected-hash", required=True)

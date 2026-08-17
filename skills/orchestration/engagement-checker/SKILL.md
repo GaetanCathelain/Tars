@@ -1,7 +1,7 @@
 ---
 name: engagement-checker
 description: "Use for incremental follow-up and commitment reminders."
-version: 2.1.1
+version: 2.2.0
 required_environment_variables: [LINEAR_API_KEY]
 metadata:
   hermes:
@@ -32,8 +32,8 @@ Never a Slack message, email, or reaction from a source integration. Never a wri
 
 ## Load only what is needed
 
-- Use the Slack MCP tools directly. Gaetan's Slack user ID is `U08BDJAMSRZ`.
-- Load `google-workspace` for Gmail. Its existing OAuth is the primary mailbox path; if its auth check fails, load and check `himalaya` before declaring email unavailable.
+- Run the bundled `scripts/gcn73_helper.py` through `terminal` for Slack delta discovery and every durable-state read/write. It loads the existing protected Slack MCP credentials inside the process, calls only the read-only Slack methods it allowlists, and emits bounded NDJSON instead of filling the agent context with raw pages. Never print or pass either Slack token in argv. Native Slack tools remain the path for the bounded per-candidate thread and delivery-time conversation reads.
+- Load `google-workspace` for Gmail. Its existing OAuth is the primary mailbox path. Run `setup.py --check` before Gmail collection; record the bounded auth verdict through the state helper. If it fails, load and check `himalaya` before declaring email unavailable. The email cursor remains held on auth failure, and the first later authenticated, successfully reconciled Gmail run reports recovery once.
 - **Linear transport is mixed on purpose. Delta scan: the audited raw collector in §4, coverage-gated. Everything else: native tools.** The collector stays raw because the coverage verdict it emits — complete, truncated, incomplete — is what gates durable cursor advancement, and a tool that paginates internally would make that verdict unknowable. Its scope is exactly the delta scan and the per-candidate bounded context. Every other Linear read, and every write in "Permitted writes", goes through the native `mcp__linear__*` tools per `linear-ticketing`. Do not unify the two; the split is load-bearing.
 - The collector queries the fixed endpoint `https://api.linear.app/graphql` with Python stdlib `urllib` and the inherited `LINEAR_API_KEY`. The key must remain inside the process: never print, log, hash, inspect, persist, or place it in argv, and never use `curl` with an expanded authorization header. It reads only the hardcoded query operations in §4, on a path that rejects anything containing `mutation`, and it holds no write path at all.
 - Load `linear-ticketing` before any Linear write. It carries the team, state, and label ids, the label and priority rubrics, the closed tool list, the measured request and response shapes, the success test, and the priority-sort rule used for rendering. Where a Linear behaviour is not recorded there, it is unknown — say so rather than assuming it.
@@ -54,7 +54,7 @@ If holiday or leave evidence cannot be checked, continue rather than silently sk
 
 ## Durable state
 
-The source of truth is `~/.hermes/state/engagement-checker.json`. It is operational state, not model memory and not git. Create the parent directory if needed. Read it at the start and overwrite it after every successfully reconciled source, so one later source failure cannot lose earlier progress.
+The source of truth is `~/.hermes/state/engagement-checker.json`. It is operational state, not model memory and not git. Create the parent directory if needed. **Never read or rewrite this file through `read_file`, an inline Python snippet, or hand-spliced pages.** Export its compact NDJSON view with `gcn73_helper.py state-export`; read that bounded file in chunks. Apply one compact mutation document with `state-apply --expected-hash <exported sha256>` after every successfully reconciled source. The helper reads JSON directly, preserves unknown top-level keys, trims `seen` rings, writes mode `0600` through temp + fsync + replace, and rereads the exact object before reporting success. A hash mismatch means another writer won: make no write, release the lock, and fail closed.
 
 Linear/GCN is the source of truth for any item that has been filed. `~/.hermes/state/engagement-checker.json` is a working queue, a cache, and an id-map — never the authority for a filed item's status. When the two disagree about a filed item, Linear wins.
 
@@ -117,26 +117,18 @@ Advance a source cursor to the run's fixed end timestamp only after all of that 
 
 ## 2. Collect Slack deltas
 
-Slack search is paginated newest-first and each MCP call returns at most 100 rows. **That per-page limit is transport pagination, never the source cap.** A full-cursor search that simply keeps the first page and holds the cursor repeats the same newest 100 messages forever once activity crosses the limit.
+Run the audited helper, writing its bounded NDJSON to a mode-0600 scratch file:
 
-Drain the window oldest-first with bounded Paris-calendar subwindows:
+```bash
+HELPER="${HERMES_HOME:-$HOME/.hermes}/skills/orchestration/engagement-checker/scripts/gcn73_helper.py"
+python3 "$HELPER" slack --cursor '<stored Slack cursor>' --run-end '<fixed run end>' --output "${HERMES_HOME:-$HOME/.hermes}/state/engagement-slack-delta.ndjson"
+```
 
-1. Start on the Paris-local calendar date containing the stored Slack cursor. Use `filter_date_on=<YYYY-MM-DD>` — not a broad `filter_date_after` spanning several days — and the fixed run end as the final upper bound.
-2. For each date, run both views below. Exhaust each view's returned page cursor before treating that date as complete: repeat the identical call with `cursor=<returned cursor>` until the cursor is empty. Cap each view at 8 pages per date. A call error, an unavailable page, or an eighth page that still carries a cursor makes that date incomplete; advance nothing past the previously completed date and report the Slack source failure.
-3. Filter every fetched row locally to `stored_cursor < ts <= run_end`, then apply the sender exclusions and deduplicate the two views by channel and timestamp. Sort the resulting exact events by `ts` ascending.
-4. The shared processing budget remains 100 exact events per run. If the complete date contains more than the remaining budget, retain the oldest 100, including every event tied at the edge timestamp, process them, and propose that edge timestamp as the Slack cursor. The newer remainder is fetched again next run and drains without loss.
-5. If the date fits inside the remaining budget, process all of it and continue to the next date. Once every date through the run end is complete and processed, propose the fixed run end as the cursor.
+The helper calls Slack's fixed Web API endpoint with the protected `xoxc`/`xoxd` values loaded inside the process, never accepted on argv or emitted. It runs the `from:<@U08BDJAMSRZ>` and `with:<@U08BDJAMSRZ>` views for each Paris date, exhausts cursor or legacy page pagination, exact-filters `stored_cursor < ts <= run_end`, removes bots and Tars, deduplicates across views, sorts oldest-first, and returns at most the oldest 100 exact events including edge ties. It emits a `proposed_cursor`: the edge timestamp when more events remain, otherwise the fixed run end. A page cap, repeated cursor, auth/HTTP/API error, malformed response, redirect, or missing completeness verdict exits nonzero with `complete:false`, `incomplete:true`, `fail_closed:true`, no events, and no advancing cursor.
 
-The page cap and event budget have different meanings: the event budget advances over a known contiguous prefix; a page-cap overflow does not, because unseen rows may be older than the fetched subset. Only advance the Slack cursor after every retained event and required candidate context call succeeds and the resulting state is persisted. Append processed stable IDs to `seen` before the flush. This is the Slack analogue of §4's bounded backlog drain: a busy interval self-heals across runs instead of wedging.
+Read the NDJSON scratch file in bounded line chunks. Line 1 is coverage; each later line contains one minimal event. Do not reconstruct raw Slack pages in model context. Only after every retained event and required candidate thread read is classified and its item mutation is ready may the proposed cursor be included in a `state-apply` mutation with all processed stable IDs in `append_seen.slack`. Delete the scratch file after that confirmed state write; on any failure keep the source cursor unchanged and remove the scratch file without using its partial contents.
 
-Run two views for every date:
-
-1. `filter_users_from=U08BDJAMSRZ` for commitments, replies, completion signals, and deferral instructions authored by Gaetan.
-2. `filter_users_with=U08BDJAMSRZ` for DMs, threads, and messages involving him that may contain a direct ask or someone waiting.
-
-Discard every Slack message whose sender is not a human user — **any result carrying a `bot_id` is discarded outright, before any content is looked at** — and every message Tars authored. The `bot_id` presence test is structural and carries the rule on its own; Tars's own measured Slack user id is `U0BBH85NAKH`, so discard that sender explicitly as well as applying the structural `bot_id` test. View 2 (`filter_users_with=U08BDJAMSRZ`) returns Tars's own reminder DMs to Gaetan; that is exactly where they live, so the filter must name the sender, not the tone. Tars's own reminders are never candidates. A reminder that survives intake becomes an item, the item becomes a GCN issue, and its fresh timestamp each cycle defeats `seen[]`, the routing index and every other dedup — none of them key on content. §7 carries the structural backstop for the same failure.
-
-Filter every result by exact Slack `ts` against the cursor before classifying it. Deduplicate the two views by channel and timestamp. For a new candidate only, use `mcp__slack__conversations_replies(channel_id, thread_ts)` to recover enough thread context to decide whether there is a commitment, unanswered ask, resolution, or user instruction. Do not fetch unrelated channel history — with one exception: **one bounded** `conversations_history` read, per person named in an item **this run is delivering**, of Gaetan's conversation with them (DM or channel), and only when the delivery owes conversation state (SOUL rule 10). Resolve names from source data rather than guessing.
+For a new candidate only, use `mcp__slack__conversations_replies(channel_id, thread_ts)` to recover enough thread context to decide whether there is a commitment, unanswered ask, resolution, or user instruction. Do not fetch unrelated channel history — with one exception: **one bounded** `conversations_history` read, per person named in an item **this run is delivering**, of Gaetan's conversation with them (DM or channel), and only when the delivery owes conversation state (SOUL rule 10). Resolve names from source data rather than guessing.
 
 **Unthreaded DM handoffs are one conversational unit, not independent messages.** When a new unthreaded DM turn offers a choice about who will act (for example, “do you want to do X or shall I?”) and the next human reply selects Gaetan (“do it please”), classify the pair together as a direct ask owned by Gaetan. Use only the bounded adjacent DM turns already returned by the delta scan, widening with one bounded `conversations_history` read for that DM only when the handoff cannot otherwise be resolved. Do not append either event to `seen` until the pair has been classified and any retained item has been persisted; marking both individual rows seen while dropping the combined handoff permanently loses the ask.
 
@@ -144,12 +136,16 @@ Also inspect new messages in the configured Slack reporting conversation for dec
 
 ## 3. Collect email deltas
 
-Use the configured Google Workspace script read-only:
+Use the configured Google Workspace scripts read-only. Check auth first:
 
 ```bash
+GSETUP="${HERMES_HOME:-$HOME/.hermes}/hermes-agent/venv/bin/python ${HERMES_HOME:-$HOME/.hermes}/skills/productivity/google-workspace/scripts/setup.py"
 GAPI="${HERMES_HOME:-$HOME/.hermes}/hermes-agent/venv/bin/python ${HERMES_HOME:-$HOME/.hermes}/skills/productivity/google-workspace/scripts/google_api.py"
+$GSETUP --check
 $GAPI gmail search "after:YYYY/MM/DD" --max 100
 ```
+
+`AUTHENTICATED` with exit 0 is the only successful auth verdict. On `invalid_grant`, `REFRESH_FAILED`, `NOT_AUTHENTICATED`, a nonzero exit, or an unrecognized response: make no Gmail collection call, hold the email cursor and `last_success`, and persist `auth.email={"ok":false,"at":"<run end>"}` through `state-apply`. Never persist stderr or OAuth details. On the first later authenticated run, collect from the still-held cursor; only after the whole Gmail window reconciles successfully persist `auth.email={"ok":true,"at":"<run end>"}` together with the advancing email cursor. When the helper returns `recovered_sources:["email"]`, include `Gmail authentication recovered; no email interval was skipped` once in Coverage. A successful auth probe without a successful collection is not recovery and does not advance anything.
 
 Widen from the email cursor's Paris-local date, then filter returned message dates strictly newer than the cursor. Inspect the full body only for new candidate messages where sender/subject/snippet cannot establish whether a response is expected. Use thread IDs to combine sent and received events and to close an item when Gaetan has replied.
 
