@@ -117,9 +117,19 @@ Advance a source cursor to the run's fixed end timestamp only after all of that 
 
 ## 2. Collect Slack deltas
 
-Use `mcp__slack__conversations_search_messages` with a bounded date filter derived from the Slack cursor and paginate until `next_cursor` is empty or 100 exact delta events have been retained.
+Slack search is paginated newest-first and each MCP call returns at most 100 rows. **That per-page limit is transport pagination, never the source cap.** A full-cursor search that simply keeps the first page and holds the cursor repeats the same newest 100 messages forever once activity crosses the limit.
 
-Run two views:
+Drain the window oldest-first with bounded Paris-calendar subwindows:
+
+1. Start on the Paris-local calendar date containing the stored Slack cursor. Use `filter_date_on=<YYYY-MM-DD>` — not a broad `filter_date_after` spanning several days — and the fixed run end as the final upper bound.
+2. For each date, run both views below. Exhaust each view's returned page cursor before treating that date as complete: repeat the identical call with `cursor=<returned cursor>` until the cursor is empty. Cap each view at 8 pages per date. A call error, an unavailable page, or an eighth page that still carries a cursor makes that date incomplete; advance nothing past the previously completed date and report the Slack source failure.
+3. Filter every fetched row locally to `stored_cursor < ts <= run_end`, then apply the sender exclusions and deduplicate the two views by channel and timestamp. Sort the resulting exact events by `ts` ascending.
+4. The shared processing budget remains 100 exact events per run. If the complete date contains more than the remaining budget, retain the oldest 100, including every event tied at the edge timestamp, process them, and propose that edge timestamp as the Slack cursor. The newer remainder is fetched again next run and drains without loss.
+5. If the date fits inside the remaining budget, process all of it and continue to the next date. Once every date through the run end is complete and processed, propose the fixed run end as the cursor.
+
+The page cap and event budget have different meanings: the event budget advances over a known contiguous prefix; a page-cap overflow does not, because unseen rows may be older than the fetched subset. Only advance the Slack cursor after every retained event and required candidate context call succeeds and the resulting state is persisted. Append processed stable IDs to `seen` before the flush. This is the Slack analogue of §4's bounded backlog drain: a busy interval self-heals across runs instead of wedging.
+
+Run two views for every date:
 
 1. `filter_users_from=U08BDJAMSRZ` for commitments, replies, completion signals, and deferral instructions authored by Gaetan.
 2. `filter_users_with=U08BDJAMSRZ` for DMs, threads, and messages involving him that may contain a direct ask or someone waiting.
