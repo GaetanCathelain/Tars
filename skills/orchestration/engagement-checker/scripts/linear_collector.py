@@ -12,11 +12,12 @@ ENDPOINT = "https://api.linear.app/graphql"
 MAX_RESPONSE_BYTES = 2 * 1024 * 1024
 ISSUE_PAGE = 50
 MAX_ISSUE_PAGES = 4
-MAX_CANDIDATES = 100
-SUBWINDOWS = 16
+MAX_CANDIDATES = 100  # shared budget across both delta views, not per view
+SUBWINDOWS = 16  # secure-delta-collectors: a capped interval splits into adjacent subwindows
 CONTEXT_PAGE = 20
 MAX_CONTEXT_PAGES = 2
-GCN_TEAM_ID = "81e7b769-2a46-4e2a-8db5-c165a7963b0e"
+
+GCN_TEAM_ID = "81e7b769-2a46-4e2a-8db5-c165a7963b0e"  # the team delta view; the only id this block needs
 
 class NoRedirectHandler(urllib.request.HTTPRedirectHandler):
     def redirect_request(self, req, fp, code, msg, headers, newurl):
@@ -24,12 +25,19 @@ class NoRedirectHandler(urllib.request.HTTPRedirectHandler):
 
 TLS_CONTEXT = ssl.create_default_context()
 HTTP = urllib.request.build_opener(
-    urllib.request.HTTPSHandler(context=TLS_CONTEXT), NoRedirectHandler())
+    urllib.request.HTTPSHandler(context=TLS_CONTEXT),
+    NoRedirectHandler(),
+)
+
 SECRET_ASSIGNMENT = re.compile(
     r"(?i)\b(authorization|api[_-]?key|access[_-]?token|token|secret|password)"
-    r"(\s*[:=]\s*)(?:bearer\s+)?(?:\"[^\"]*\"|'[^']*'|[^\s,;]+)")
+    r"(\s*[:=]\s*)(?:bearer\s+)?(?:\"[^\"]*\"|'[^']*'|[^\s,;]+)"
+)
 BEARER_TOKEN = re.compile(r"(?i)\bbearer\s+[A-Za-z0-9._~+/=-]{12,}")
-COMMON_TOKEN = re.compile(r"\b(?:lin_api_|sk-|gh[pousr]_|xox[baprs]-)[A-Za-z0-9._~+/=-]{8,}")
+COMMON_TOKEN = re.compile(
+    r"\b(?:lin_api_|sk-|gh[pousr]_|xox[baprs]-)[A-Za-z0-9._~+/=-]{8,}"
+)
+
 OPS = {
     "AssignedIssues": """query AssignedIssues($since: DateTimeOrDuration!, $first: Int!, $after: String) {
       viewer { id }
@@ -51,6 +59,8 @@ OPS = {
         pageInfo { hasNextPage endCursor }
       }
     }""",
+    # Subwindow variants: identical, plus a closed upper bound. Used ONLY on the
+    # page-cap drain path, so the measured unbounded queries above stay byte-identical.
     "AssignedIssuesWindow": """query AssignedIssuesWindow($since: DateTimeOrDuration!, $until: DateTimeOrDuration!, $first: Int!, $after: String) {
       viewer { id }
       issues(first: $first, after: $after, includeArchived: true,
@@ -95,13 +105,16 @@ def instant(value):
     return parsed.astimezone(dt.timezone.utc)
 
 def _post(operation, query, variables):
-    if "mutation" in query.lower():
+    if "mutation" in query.lower():  # the choke point: no path to the network skips this
         raise RuntimeError("non-allowlisted GraphQL operation")
     request = urllib.request.Request(
         ENDPOINT,
-        data=json.dumps({"operationName": operation, "query": query, "variables": variables}).encode("utf-8"),
-        headers={"Content-Type": "application/json", "Authorization": os.environ["LINEAR_API_KEY"]},
-        method="POST")
+        data=json.dumps({"operationName": operation, "query": query,
+                         "variables": variables}).encode("utf-8"),
+        headers={"Content-Type": "application/json",
+                 "Authorization": os.environ["LINEAR_API_KEY"]},
+        method="POST",
+    )
     with HTTP.open(request, timeout=20) as response:
         if response.geturl() != ENDPOINT:
             raise RuntimeError("Linear response URL mismatch")
@@ -149,17 +162,20 @@ def bounded_context(operation, field, issue_id):
             raise RuntimeError(f"stalled {field} pagination")
         after = next_after
     return nodes, {"pages_succeeded": pages, "items": len(nodes),
-                   "bound": CONTEXT_PAGE * MAX_CONTEXT_PAGES, "source_has_more": source_has_more}
+                   "bound": CONTEXT_PAGE * MAX_CONTEXT_PAGES,
+                   "source_has_more": source_has_more}
 
 def iso(moment):
     return moment.isoformat().replace("+00:00", "Z")
 
 def scan_issues(operation, extra, since, until=None):
+    # `until` selects the subwindow variant of the operation; the unbounded form is
+    # the measured one and stays the default.
     name = operation + "Window" if until is not None else operation
     nodes, after, pages, truncated = [], None, 0, False
     while True:
         if pages >= MAX_ISSUE_PAGES:
-            truncated = True
+            truncated = True  # cap overflow is a coverage problem, never an integrity failure
             break
         variables = {"since": since, "first": ISSUE_PAGE, "after": after}
         if until is not None:
@@ -180,6 +196,10 @@ def scan_issues(operation, extra, since, until=None):
     return nodes, pages, truncated
 
 def drain(operation, extra, start, end):
+    """`secure-delta-collectors`: when a wide interval hits a cap, split it into
+    deterministic adjacent subwindows and require every subwindow to complete
+    before advancing the aggregate cursor. Returns the nodes, the pages spent, the
+    instant through which this view is provably complete, and whether it truncated."""
     nodes, pages, truncated = scan_issues(operation, extra, iso(start))
     if not truncated:
         return nodes, pages, end, False
@@ -189,9 +209,9 @@ def drain(operation, extra, start, end):
     for lo, hi in zip(edges, edges[1:]):
         batch, used, cut = scan_issues(operation, extra, iso(lo), iso(hi))
         pages += used
-        if cut:
+        if cut:  # this subwindow is itself incomplete: stop, keep what is contiguous
             return nodes, pages, complete_through, True
-        nodes.extend(batch)
+        nodes.extend(batch)  # adjacent bounds are inclusive; the caller dedupes by id
         complete_through = hi
     return nodes, pages, end, False
 
@@ -217,33 +237,48 @@ try:
     if run_end < cursor:
         raise RuntimeError("run end precedes cursor")
     overlap = cursor - dt.timedelta(minutes=5)
-    assigned, assigned_pages, assigned_through, assigned_cut = drain("AssignedIssues", {}, overlap, run_end)
-    team, team_pages, team_through, team_cut = drain("TeamIssues", {"teamId": GCN_TEAM_ID}, overlap, run_end)
+
+    assigned, assigned_pages, assigned_through, assigned_cut = drain(
+        "AssignedIssues", {}, overlap, run_end)
+    team, team_pages, team_through, team_cut = drain(
+        "TeamIssues", {"teamId": GCN_TEAM_ID}, overlap, run_end)
     issue_pages = assigned_pages + team_pages
     pages_truncated = assigned_cut or team_cut
+    # the aggregate cursor may only move over ground BOTH views proved complete
     window_end = min(assigned_through, team_through, run_end)
+
     scanned, seen_ids = [], set()
-    for issue in assigned + team:
+    for issue in assigned + team:  # dedupe the two views by stable issue id
         if not isinstance(issue, dict) or not issue.get("id") or not issue.get("identifier"):
             raise RuntimeError("malformed issue node")
         if issue["id"] in seen_ids:
             continue
         seen_ids.add(issue["id"])
         scanned.append(issue)
+
     candidates = []
     for issue in scanned:
         updated = instant(issue.get("updatedAt", ""))
-        if cursor < updated <= window_end:
+        if cursor < updated <= window_end:  # exact local filtering after overlap retrieval
             candidates.append(issue)
-    candidates.sort(key=lambda item: item["updatedAt"])
+    candidates.sort(key=lambda item: item["updatedAt"])  # oldest first: a batch drains from the cursor
     candidates_dropped = 0
-    if len(candidates) > MAX_CANDIDATES:
+    if len(candidates) > MAX_CANDIDATES:  # truncate deterministically; raising wedges the source
         edge = candidates[MAX_CANDIDATES - 1]["updatedAt"]
-        kept = [item for item in candidates if item["updatedAt"] <= edge]
+        kept = [item for item in candidates if item["updatedAt"] <= edge]  # keep the edge's ties
         candidates_dropped = len(candidates) - len(kept)
         candidates = kept
     truncated = pages_truncated or candidates_dropped > 0
-    proposed_cursor = instant(candidates[-1]["updatedAt"]) if candidates_dropped else max(cursor, window_end)
+    if candidates_dropped:
+        # the retained batch is every event from the cursor up to `edge`, contiguous and
+        # complete, so advancing to `edge` skips nothing; the rest is re-fetched next run
+        # and the backlog drains one bounded batch per run instead of wedging.
+        proposed_cursor = instant(candidates[-1]["updatedAt"])
+    else:
+        # every completed subwindow is contiguous from the cursor, so the aggregate
+        # cursor advances over exactly that ground and no further.
+        proposed_cursor = max(cursor, window_end)
+
     output_items = []
     for issue in sorted(candidates, key=lambda item: (item["updatedAt"], item["identifier"])):
         comments, comments_meta = bounded_context("IssueComments", "comments", issue["id"])
@@ -251,19 +286,39 @@ try:
         issue["description"] = sanitized(issue.get("description"), 2000)
         for comment in comments:
             comment["body"] = sanitized(comment.get("body"), 1000)
-        output_items.append({"id": "linear:" + issue["identifier"], "issue": issue,
-            "comments": comments, "activity": history,
-            "context_completeness": {"all_required_calls_succeeded": True,
-                "comments": comments_meta, "activity": history_meta}})
-    print(json.dumps({"source": "linear", "retrieval": {
-        "overlap_start": iso(overlap), "exact_cursor": iso(cursor),
-        "proposed_cursor": iso(proposed_cursor), "cursor_advances": proposed_cursor > cursor,
-        "complete_through": iso(window_end), "views": ["AssignedIssues", "TeamIssues"],
-        "deduplicated_by_issue_id": True, "issue_connection_exhausted": not pages_truncated,
-        "issue_pages_succeeded": issue_pages, "issues_scanned": len(scanned),
-        "exact_candidates": len(output_items), "candidates_dropped": candidates_dropped,
-        "truncated": truncated, "all_required_context_calls_succeeded": True,
-        "context_is_bounded": True}, "items": output_items}, ensure_ascii=False))
+        output_items.append({
+            "id": "linear:" + issue["identifier"],  # the issue key: same namespace as native `id`
+            "issue": issue,
+            "comments": comments,
+            "activity": history,
+            "context_completeness": {
+                "all_required_calls_succeeded": True,
+                "comments": comments_meta,
+                "activity": history_meta,
+            },
+        })
+
+    print(json.dumps({
+        "source": "linear",
+        "retrieval": {
+            "overlap_start": iso(overlap),
+            "exact_cursor": iso(cursor),
+            "proposed_cursor": iso(proposed_cursor),
+            "cursor_advances": proposed_cursor > cursor,
+            "complete_through": iso(window_end),
+            "views": ["AssignedIssues", "TeamIssues"],
+            "deduplicated_by_issue_id": True,
+            "issue_connection_exhausted": not pages_truncated,
+            "issue_pages_succeeded": issue_pages,
+            "issues_scanned": len(scanned),
+            "exact_candidates": len(output_items),
+            "candidates_dropped": candidates_dropped,
+            "truncated": truncated,
+            "all_required_context_calls_succeeded": True,
+            "context_is_bounded": True,
+        },
+        "items": output_items,
+    }, ensure_ascii=False))
 except (KeyError, ValueError, RuntimeError, OSError, json.JSONDecodeError) as exc:
     print(f"linear collector failed closed: {type(exc).__name__}: {exc}", file=sys.stderr)
     raise SystemExit(1)

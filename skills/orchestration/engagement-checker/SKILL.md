@@ -1,7 +1,7 @@
 ---
 name: engagement-checker
 description: "Use for incremental follow-up and commitment reminders."
-version: 2.1.0
+version: 2.1.1
 required_environment_variables: [LINEAR_API_KEY]
 metadata:
   hermes:
