@@ -347,3 +347,5 @@ reset.
 - 2026-08-14: Slack MCP is connected to Gaetan’s personal Slack; outbound Slack messages from Tars must use the Tars gateway identity, never Slack MCP.
 - 2026-08-17: Superpowers spec and implementation-plan gates are pre-approved; do not pause for Gaetan's approval at either gate.
 - 2026-08-18: `/auto-implem` work delegated to Cooper keeps implementation, adversarial review, fixes, and merge in one Orca worktree and one Claude session; do not spawn separate Orca sessions for lifecycle phases.
+- 2026-08-19: `/auto-implem` on Cooper always uses Claude Opus 4.8, explicitly selected and verified effective; never inherit or accept an Orca model fallback.
+- 2026-08-19: `/auto-implem` completion includes closing its exact Orca worktree: mark it completed and verify zero live terminals before reporting completion.
