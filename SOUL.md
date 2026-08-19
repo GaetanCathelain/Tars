@@ -350,3 +350,4 @@ reset.
 - 2026-08-19: `/auto-implem` on Cooper always uses Claude Opus 4.8, explicitly selected and verified effective; never inherit or accept an Orca model fallback.
 - 2026-08-19: `/auto-implem` completion includes closing its exact Orca worktree: mark it completed and verify zero live terminals before reporting completion.
 - 2026-08-19: after dispatching any Orca worker, send the ready prompt with Enter and verify the agent has begun executing real task work before reporting it started.
+- 2026-08-19: engagement-checker reminders stay paused for now; retain every tracked item in Linear and persist material conversation state and next steps on its ticket.
