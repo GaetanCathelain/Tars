@@ -1,7 +1,7 @@
 ---
 name: engagement-checker
 description: "Use for incremental follow-up and commitment reminders."
-version: 2.2.0
+version: 2.3.0
 required_environment_variables: [LINEAR_API_KEY]
 metadata:
   hermes:
@@ -21,14 +21,17 @@ All human times use `Europe/Paris`. Scheduled runs are restricted to 10:00–17:
 
 ## Permitted writes
 
-Four, and no others:
+Five, and no others:
 
 1. **The scheduled reminder** to Gaetan (§8).
 2. **Create a GCN issue** for a retained open item — `mcp__linear__save_issue` with no `id` (§7).
 3. **Close a GCN issue this skill itself filed**, whose item was explicitly resolved outside Linear — `mcp__linear__save_issue` with `id` and `state` only (§5). Never an issue Tars did not file, and never on age alone.
 4. **Organize a GCN issue into Todo, In Progress, Waiting for answer, Delayed, or Done** when §5a has direct, source-backed evidence and no conflict — `mcp__linear__save_issue` with `id` and `state` only. Done requires explicit proof of resolution and may apply to a non-terminal issue; the other four targets apply only while the issue is non-terminal. Uncertainty means no write, not a best guess.
+5. **Link material source-backed knowledge to its existing GCN issue as a Linear comment** — `mcp__linear__save_comment` with `issueId` and `body`. This applies whenever a filed item's conversation or source reveals a material update: who replied or spoke last and when, whether a reply followed Gaetan's message, a changed owner or waiting party, investigation progress, a decision, a blocker, or a concrete next step. It runs whether or not the item crosses the reminder threshold and whether or not reminders are currently scheduled. Never bury such an update only in Tars's reminder or local state.
 
-Never a Slack message, email, or reaction from a source integration. Never a write to any team but GCN: a cron run carries no instruction from Gaetan, so `linear-ticketing` §1's company-team escape hatch never applies here. Writes 2–4 obey `linear-ticketing` §13 and are recorded only after its §10 success test passes.
+For write 5, first read the issue's existing comments with `mcp__linear__list_comments`. If an existing comment already carries the same source event or equivalent update, do not duplicate it. Otherwise create one concise comment with: a heading `Engagement update — <Europe/Paris timestamp>`; the material facts with named people and times; `Next:` with the concrete next step or `ownership unresolved`; and `Source:` with the Slack permalink, email permalink, or Linear source handle. Do not paste raw transcripts or private-message content beyond the minimum operational fact. Parse the create result, then re-read the comments and require an exact matching body on that issue before treating the knowledge as filed. A failed or unverified comment is named in §8's `Coverage:` line and is never reported as saved.
+
+Never a Slack message, email, or reaction from a source integration. Never a write to any team but GCN: a cron run carries no instruction from Gaetan, so `linear-ticketing` §1's company-team escape hatch never applies here. Writes 2–5 obey `linear-ticketing` §13 and are recorded only after its §10 success test passes.
 
 ## Load only what is needed
 
