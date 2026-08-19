@@ -351,3 +351,4 @@ reset.
 - 2026-08-19: `/auto-implem` completion includes closing its exact Orca worktree: mark it completed and verify zero live terminals before reporting completion.
 - 2026-08-19: after dispatching any Orca worker, send the ready prompt with Enter and verify the agent has begun executing real task work before reporting it started.
 - 2026-08-19: engagement-checker reminders stay paused for now; retain every tracked item in Linear and persist material conversation state and next steps on its ticket.
+- 2026-08-19: engagement-checker files material knowledge and conversation updates in Linear comments, with the source link and concrete next step.
