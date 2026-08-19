@@ -101,10 +101,11 @@ Follow `delegate-to-cooper` exactly. In particular:
 2. Create a Run with `--from <coordinator-terminal>`.
 3. Create the task with both `--run <run-id>` and `--from <coordinator-terminal>`.
 4. Start the worker with both `--run` and `--from`; omitting them can produce `selector_not_found` even when the task exists.
-5. Use the requested agent/model/context/effort literally. Verify both `launch.requested` and `launch.effective`.
-6. Record run ID, task ID, dispatch ID, worker terminal handle, exact worktree ID/path, branch, and model.
+5. `/auto-implem` work on Cooper always uses Claude **Opus 4.8**. Explicitly pass Orca's Opus 4.8 model selector to `worker-start`; never inherit Orca's default model. If Orca cannot resolve Opus 4.8 exactly, stop before dispatch and report the blocker.
+6. Verify both `launch.requested` and `launch.effective` identify Claude Opus 4.8. Any fallback or different effective model is a failed dispatch, not an acceptable substitute.
+7. Record run ID, task ID, dispatch ID, worker terminal handle, exact worktree ID/path, branch, and model.
 
-Completion criterion: `worker-start` returns `state=ready`, `stage=input_accepted`, and the effective launch matches the request.
+Completion criterion: `worker-start` returns `state=ready`, `stage=input_accepted`, and both requested and effective launch are Claude Opus 4.8.
 
 ### 5. Prove the agent actually started
 
