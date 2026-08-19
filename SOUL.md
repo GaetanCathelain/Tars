@@ -349,3 +349,4 @@ reset.
 - 2026-08-18: `/auto-implem` work delegated to Cooper keeps implementation, adversarial review, fixes, and merge in one Orca worktree and one Claude session; do not spawn separate Orca sessions for lifecycle phases.
 - 2026-08-19: `/auto-implem` on Cooper always uses Claude Opus 4.8, explicitly selected and verified effective; never inherit or accept an Orca model fallback.
 - 2026-08-19: `/auto-implem` completion includes closing its exact Orca worktree: mark it completed and verify zero live terminals before reporting completion.
+- 2026-08-19: after dispatching any Orca worker, send the ready prompt with Enter and verify the agent has begun executing real task work before reporting it started.
