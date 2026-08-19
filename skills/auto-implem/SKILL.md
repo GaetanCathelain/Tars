@@ -185,23 +185,26 @@ Completion criterion: Linear reflects the verified result and contains a durable
 
 ### 10. Clean up execution resources
 
-Cleanup scope must be explicit.
+Cleanup scope must be explicit, and cleanup is part of `/auto-implem` completion rather than an optional follow-up.
 
 1. Identify the exact terminal handle, worktree ID/path, and branch.
-2. A request to stop or close a session is not a request to delete a branch. Close or release the terminal without deleting unrelated artifacts.
-3. Worktree removal is destructive. Name the exact path before removal. If Gaetan previously asked for deletion and Tars confirmed it in the same conversation, quote that instruction and obtain the required one-line confirmation before deleting.
-4. If confirmed, remove only the named worktree. Use `--force` only when Gaetan explicitly authorizes forced removal or normal removal is blocked and he names that remedy.
-5. Do not delete the branch, PR, Run, task, or other worktrees unless Gaetan named them too.
+2. After a worker settles, call `worker-release` for that exact dispatch so Orca captures the transcript and closes the owned agent terminal.
+3. If release reports `retainedReason=user_takeover`, list the exact worktree's terminals and close every live terminal handle belonging to that completed run. Never close terminals from another worktree.
+4. Set the exact worktree's `workspaceStatus` to `completed`.
+5. Re-read both surfaces: the exact worktree must report `workspaceStatus=completed`, and `terminal list --worktree <exact-selector>` must report `totalCount=0`. Do not report `/auto-implem` complete before both are true.
+6. Closing a completed worktree does **not** mean deleting its branch, Run, task, transcript archive, or filesystem checkout. Worktree removal is a separate destructive act. Name the exact path before removal; if Gaetan requested deletion and Tars confirmed it in the same conversation, quote that instruction and obtain the required one-line confirmation before deleting.
+7. If deletion was explicitly confirmed, remove only the named worktree. Use `--force` only when Gaetan explicitly authorizes forced removal or normal removal is blocked and he names that remedy.
+8. Do not delete the branch, PR, Run, task, or other worktrees unless Gaetan named them too.
 
-Verify worktree removal three ways:
+For explicitly authorized worktree removal, verify three ways:
 
 - Orca lookup returns `selector_not_found`;
 - the exact filesystem path is absent;
 - `git worktree list --porcelain` no longer contains it.
 
-A retained terminal after `user_takeover` does not mean the task failed; it means cleanup still needs explicit handling.
+A retained terminal after `user_takeover` does not mean the task failed; it means mandatory close cleanup still has to enumerate and close that run's exact terminal handles.
 
-Completion criterion: every authorized resource is absent or released, and every unauthorized resource is untouched.
+Completion criterion: the exact worktree is marked completed with zero live terminals; any separately authorized removal is also proven absent, and every unauthorized resource is untouched.
 
 ### 11. Report the verdict
 
