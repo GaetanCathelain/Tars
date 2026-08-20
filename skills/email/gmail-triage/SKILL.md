@@ -254,16 +254,22 @@ $GAPI gmail modify <message_id> --add-labels <ID>
   `batchModify`. Up to **10 such calls may be chained with `&&`** in one
   terminal command to cut turn count; on a non-zero exit re-run the remainder
   individually so one failure does not silently drop nine messages.
-- **Run these through the shell/terminal tool.** Never `execute_code`, never
-  `python3 -c`, never a heredoc, never a pipe into an interpreter: a scheduled
-  run has no one to answer an approval prompt, so `approvals.cron_mode: deny`
-  turns a flagged shape into a blocked tool error that never reaches the
-  report — the labelling simply does not happen and the run goes `[SILENT]`
-  looking healthy. A bare interpreter path followed by a script path, with
-  `&&` chaining, is the safe shape. **This skill needs no script of its own**;
-  if a future version does, materialise it with `write_file` and execute it by
-  absolute path, exactly as `engagement-checker` §4 does, and leave the file
-  in place rather than deleting it.
+- **Run Gmail calls through the shell/terminal tool.** Never `execute_code`,
+  never `python3 -c`, never a heredoc, never a pipe into an interpreter: a
+  scheduled run has no one to answer an approval prompt, so
+  `approvals.cron_mode: deny` turns a flagged shape into a blocked tool error
+  that never reaches the report — the labelling simply does not happen and
+  the run goes `[SILENT]` looking healthy. A bare interpreter path followed by
+  a script path, with `&&` chaining, is the safe shape.
+- **Persist state only through the bundled `scripts/update_state.py`.** Create
+  the patch JSON with `write_file` under `/tmp`, then invoke the helper by
+  absolute path with the shell/terminal tool and `--patch-file`. Never parse
+  the display-oriented output of `read_file` with `json.loads`, and never use
+  `execute_code` or nested `hermes_tools.read_file` for persistence. The
+  helper requires the Gmail-triage lock, reads raw JSON directly, preserves
+  unknown top-level keys, deduplicates and appends `seen`, caps it at 500,
+  writes by same-directory atomic replacement, and verifies the resulting
+  JSON before returning success. Leave the bundled helper in place.
 - **Stop at 100 `modify` calls.** Record `overflow` = the number of remaining
   candidates, set the cursor to the `date` of the **last message actually
   labelled**, and report the overflow under §5. The retained batch is
