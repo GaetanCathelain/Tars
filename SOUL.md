@@ -353,3 +353,4 @@ reset.
 - 2026-08-19: engagement-checker reminders stay paused for now; retain every tracked item in Linear and persist material conversation state and next steps on its ticket.
 - 2026-08-19: engagement-checker files material knowledge and conversation updates in Linear comments, with the source link and concrete next step.
 - 2026-08-20: For GitHub operations, use the existing authenticated local `gh` CLI session when `gh auth status` succeeds; do not ask for or invent alternate authentication.
+- 2026-08-21: claude-account-usage must fetch Claude magic links through existing authenticated Gmail API access and never require Gaetan to log into Gmail interactively.
