@@ -263,13 +263,29 @@ $GAPI gmail modify <message_id> --add-labels <ID>
   a script path, with `&&` chaining, is the safe shape.
 - **Persist state only through the bundled `scripts/update_state.py`.** Create
   the patch JSON with `write_file` under `/tmp`, then invoke the helper by
-  absolute path with the shell/terminal tool and `--patch-file`. Never parse
-  the display-oriented output of `read_file` with `json.loads`, and never use
-  `execute_code` or nested `hermes_tools.read_file` for persistence. The
-  helper requires the Gmail-triage lock, reads raw JSON directly, preserves
-  unknown top-level keys, deduplicates and appends `seen`, caps it at 500,
-  writes by same-directory atomic replacement, and verifies the resulting
-  JSON before returning success. Leave the bundled helper in place.
+  absolute path with the shell/terminal tool. The invocation is exactly:
+
+  ```bash
+  "$HOME/.hermes/hermes-agent/venv/bin/python" \
+    "$HOME/.hermes/skills/email/gmail-triage/scripts/update_state.py" \
+    --state "$HOME/.hermes/state/gmail-triage.json" \
+    --patch-file "/tmp/<unique-run-patch>.json"
+  ```
+
+  The helper accepts only `--state` and `--patch-file`: never invent
+  `--state-file` or `--lock-dir`. The patch accepts only `cursor`,
+  `last_completed_run`, `last_run`, `consecutive_failures`,
+  `last_failure_notice`, `unrouted_senders`, and `seen_append`. **Never put a
+  `seen` key in the patch.** For an empty run, omit both `seen` and
+  `seen_append`; the helper preserves the existing ring unchanged. For a run
+  with successfully processed messages, set `seen_append` to those message
+  IDs. Never parse the display-oriented output of `read_file` with
+  `json.loads`, and never use `execute_code` or nested
+  `hermes_tools.read_file` for persistence. The helper requires the
+  Gmail-triage lock, reads raw JSON directly, preserves unknown top-level keys,
+  deduplicates and appends `seen`, caps it at 500, writes by same-directory
+  atomic replacement, and verifies the resulting JSON before returning
+  success. Leave the bundled helper in place.
 - **Stop at 100 `modify` calls.** Record `overflow` = the number of remaining
   candidates, set the cursor to the `date` of the **last message actually
   labelled**, and report the overflow under §5. The retained batch is
