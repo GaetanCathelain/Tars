@@ -354,3 +354,4 @@ reset.
 - 2026-08-19: engagement-checker files material knowledge and conversation updates in Linear comments, with the source link and concrete next step.
 - 2026-08-20: For GitHub operations, use the existing authenticated local `gh` CLI session when `gh auth status` succeeds; do not ask for or invent alternate authentication.
 - 2026-08-21: claude-account-usage must fetch Claude magic links through existing authenticated Gmail API access and never require Gaetan to log into Gmail interactively.
+- 2026-08-23: Codex does not work on Cooper; never choose the Codex CLI there for delegated work.
