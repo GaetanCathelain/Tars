@@ -86,10 +86,10 @@ Repeat this whole section for exactly one target email before moving to the next
    ```bash
    PY="$HOME/.hermes/hermes-agent/venv/bin/python"
    API="$HOME/.hermes/skills/productivity/google-workspace/scripts/google_api.py"
-   "$PY" "$API" gmail search 'to:<TARGET> subject:"Your secure link to Claude.ai is here" newer_than:1d' --max 5
+   "$PY" "$API" gmail search 'to:<TARGET> from:(mail.anthropic.com) newer_than:1d' --max 5
    ```
 
-2. Poll for at most ten minutes, roughly every 10–20 seconds. Select only a message newer than the pre-request message ID and received after the request. Confirm its `to` value exactly matches the target account.
+2. Poll for at most ten minutes, roughly every 10–20 seconds. Select only a message newer than the pre-request message ID and received after the request. Confirm its `to` value exactly matches the target account and that the fetched body contains a Claude magic link. Do not depend on the subject language; Anthropic localizes it.
 3. Fetch that exact message with `gmail get` inside a local process whose stdout is captured, not printed. Extract the `https://claude.ai/magic-link#...` href in process memory. Never return or log the URL, fragment, body, or code.
 4. In that same local process, connect directly to the existing CloakBrowser CDP WebSocket and send `Page.navigate` to the retained Claude target with the full fresh magic-link URL. Print only a non-secret status such as `FRESH_MAGIC_LINK_NAVIGATED`.
 5. Never call `Runtime.evaluate` on `location.href`, `Network.getCookies`, or any other command whose result would expose the bearer link or cookie values.
