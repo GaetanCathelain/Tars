@@ -67,6 +67,22 @@ The official documentation is authoritative and the installed source is the auth
    - Inspect logs/status for platform connection success without printing tokens.
    - Where feasible, test one allowed and one denied surface; label synthetic/config-loader checks separately from live message tests.
 
+## Desktop as a remote-only client
+
+When Desktop runs on one computer and Hermes Agent runs on another, distinguish the local **Desktop shell** from an optional local **Agent runtime**. Verify remote-only behavior against the user's exact released tag, not only current documentation or `main`.
+
+Before recommending or provisioning a connection path:
+
+1. Confirm the Desktop and remote Agent versions separately.
+2. Verify the tagged first-run flow offers **Connect to existing Hermes** before local bootstrap and that its tests prove the remote choice bypasses local installation.
+3. Identify the transport the first-run UI actually accepts. A generic claim that Desktop “supports SSH” is insufficient when first-run onboarding accepts only an authenticated HTTP(S) Gateway URL and exposes SSH later under Settings → Connections.
+4. Inspect the remote host for a real Desktop backend endpoint. A running Slack/Discord gateway does not prove that `hermes serve` is listening or reachable.
+5. **Preflight the exact SSH direction before creating either lifecycle artifact.** For a conventional local forward, prove Desktop→Agent noninteractive SSH using the exact hostname, remote username, host key, and identity that the tunnel will use. Verify a newly discovered host key against the server's local public-host-key fingerprint before trusting it. A DNS/TCP connection followed by `Permission denied (publickey)` is not a usable route. If the task says to stop on SSH authentication failure, leave both lifecycle artifacts absent rather than creating a half-deployment. When Desktop→Agent auth is unavailable but an already-authorized Agent→Desktop route exists, use the equivalent reverse-tunnel design: run `hermes serve` on Agent loopback and request `-R 127.0.0.1:9119:127.0.0.1:9119` from the Agent host. Do not create a second identity or widen the listener merely to preserve the conventional direction.
+6. For a persistent loopback endpoint, treat liveness auth and API/WebSocket auth as separate layers. `/api/health` and `/api/status` may be public while Desktop still classifies `auth_required: false` as token mode and requires the dashboard session token for protected REST and `/api/ws`. If a stable token is needed across service restarts, use the installed release's supported `HERMES_DASHBOARD_SESSION_TOKEN` input, keep it in a mode-0600 secret file or equivalent credential store, and never place or print the value in the service command line, plist, logs, or report.
+7. For Bot Mode, verify remote connectivity and Bot Mode version support as independent gates, then ensure creation targets the intended remote connection.
+
+Keep loopback-bound services private and prefer a loopback SSH tunnel or trusted private network over a public bind. Snapshot unrelated listeners and daemons first, and re-check them after deployment. See `references/desktop-remote-only.md` for the evidence hierarchy, token contract, and onboarding distinction.
+
 ## Outbound delivery from an active agent
 
 Use this when the user asks the bot to post into a different configured conversation or thread.
@@ -100,6 +116,7 @@ A completion report should include:
 
 ## References
 
+- `references/private-desktop-reverse-tunnel.md` — Verified reverse-tunnel architecture, credential-safe persistent token pattern, user-systemd lifecycle, and end-to-end HTTP/WebSocket/privacy checks when only Agent→Desktop SSH works.
 - `references/slack-progress-scoping.md` — Slack tool-progress scoping, DM/channel semantics, and verification pattern discovered on Hermes v0.20.0.
 - `references/slack-busy-ack-diagnostics.md` — Evidence hierarchy for reconciling erroneous busy acknowledgments with thread-scoped Slack sessions.
 - `references/slack-mcp-write-policy.md` — Diagnose and safely change external Slack MCP outbound write allowlists without confusing them with Hermes sender or inbound-channel gates.
