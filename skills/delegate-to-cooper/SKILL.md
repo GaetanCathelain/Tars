@@ -296,6 +296,12 @@ ssh cooper '~/.local/bin/orca orchestration worker-start \
 #   result.dispatch.id (also workers[].dispatchId), CONFIRMED live 2026-08-07.
 #   Its shape is **ctx_<12 hex>**, NOT `dispatch_…` — do not pattern-match the
 #   prefix. THIS is the address I keep between turns.
+#   On agent_prompt_stalled, inspect the exact terminal screen before any retry.
+#   A workspace-trust prompt can default to "No, exit": Enter alone exits Claude.
+#   For the named, known-owned authorized workspace, select the trust choice
+#   explicitly; do not send repeated Enter or spawn replacement workers blindly.
+#   Then verify the effective model AND actual task tool use, not just a ready
+#   lifecycle flag or a visible prompt. Reuse the existing worktree/terminal.
 #   Measured 2026-08-07: worker-start can return state=ready/stage=input_accepted
 #   while Claude's prompt is only typed into the TUI and has NOT been submitted.
 #   The job then never starts and every wait times out looking like "still running".
