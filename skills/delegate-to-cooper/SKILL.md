@@ -96,6 +96,11 @@ and report.
 ### Secret hygiene — not a confinement rule
 
 I can read anything on cooper; that is never a reason to *move* a secret.
+For transcript/status reads below, capture output inside the reading process,
+project only needed fields, and mask secret values and bearer URLs before
+clipping or returning text. Prefer handles/counts; omit uncertain excerpts.
+Never dump a raw historical transcript to inspect it for secrets.
+
 Credentials live at, among others:
 
 `~/.ssh/`, `~/.aws/`, `~/.claude.json`, `~/.claude/.credentials.json`,
@@ -212,7 +217,7 @@ ssh cooper '~/.local/bin/orca status --json'
 #   result.runtime.reachable must be true. If it is false, STOP and tell Gaetan
 #   the Orca app is not open on cooper — nothing below will work.
 ssh cooper '~/.local/bin/orca account list --json'
-#   an active claude (or codex) account with usage headroom.
+#   an active claude account with usage headroom; never Codex on Cooper.
 # For mc-metarepo, also count the kept worktrees before spawning:
 ssh cooper '~/.local/bin/orca worktree list --repo id:8099e312-3232-46f2-83a9-97aeaf5de5a2 --json'
 #   A delegation creates one more kept worktree. If current count + 1 would be
