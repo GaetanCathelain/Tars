@@ -34,6 +34,19 @@ If the user says “our conversation,” default to the **interaction arc**, not
 5. **End at the current state.** Close with the latest decision, remaining uncertainty, or promised follow-up.
 6. **Keep operational secrets out.** Avoid credentials, tokens, private transcript content, and unnecessary internal paths in stakeholder messages.
 
+## Cross-conversation audits and ranked recommendations
+
+When asked to analyse interactions across many conversations, use this procedure rather than expanding a single-thread recap:
+
+1. **Establish coverage before interpreting patterns.** Record the requested time window, earliest retrievable evidence, cutoff and source boundaries. Combine live platform history with retained local sessions where useful; distinguish an available-history audit from a complete platform export.
+2. **Separate actual turns from injected context.** Treat quoted roots, rehydrated messages, summaries and worker notifications as context, not new user requests. Preserve platform event IDs where present; label content-based deduplication as heuristic because intentionally repeated messages can be identical.
+3. **Build a coverage manifest before dividing the reading.** Partition large corpora by non-overlapping message-time windows, retain source/session/message identifiers, and reconcile the union of reviewed sessions. Do not add per-window session counts: one conversation can span several windows. Report stored rows separately from unique messages or human turns.
+4. **Redact before emitting or delegating excerpts.** Inspect sensitive source material locally and pass only the minimum safe evidence; redacting the final report does not undo exposure in intermediate tool output or worker context.
+5. **Read both successful and difficult interaction arcs.** Preserve clarifications, rejected assumptions, recovery and positive feedback. Detailed requested reports can work well; do not turn complaints about noisy status messages into a universal brevity rule.
+6. **Verify representative causes against primary records.** Check actual tool calls, results and platform messages before attributing a failure to the assistant, worker or transport. An apology proves an acknowledgment, not its explanation; a successful retry proves recovery, not root-cause resolution. Distinguish historical incidents from defects verified to remain active.
+7. **Rank recommendations by harm, recurring supervision cost and practical leverage.** Give each recommendation its evidence, proposed change, responsible layer and observable acceptance criterion. Prefer repairing existing mechanisms over introducing another orchestration layer. Separate execution enforcement, durable task state, evidence-backed completion and communication policy instead of prescribing more instructions for every failure.
+8. **Deliver the synthesis with explicit limits.** Lead with the main finding, then a short chronology, strengths worth preserving and ranked recommendations. Keep detailed source IDs and methodology in an evidence appendix. State which recommendations are proposed versus implemented; an analytical request does not authorize the fixes.
+
 ## Draft-before-send rule
 
 When asked to “first draft” a message:
