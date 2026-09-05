@@ -178,6 +178,20 @@ meaningless from outside.
 
 ## Before dispatch or retry
 
+**Standing requirement (2026-09-05): all agent work on Orca OR Cooper uses
+at least 1M effective context.** This covers every model and work type, every
+launch, resume and recovery, including work not launched through Orca. Preserve
+existing explicit model pins (Claude Opus 4.8 where required); 1M augments the
+pin, it does not authorize a different model. Explicitly select a supported
+long-context model configuration and verify the effective model AND context
+window from the actual session/runtime (for example `modelUsage.contextWindow`
+or the session's `/context` capacity). The documented `[1m]` selector syntax is
+not proof that a particular full-model selector, account or runtime delivers
+1M: verify it before task execution and re-check on resume/recovery. If the
+capacity is smaller or cannot be verified, stop and report the blocker; never
+silently accept a smaller fallback or claim a label proves capacity. Recovery
+must preserve the exact existing session identity, not fork a replacement.
+
 Read the current genuine request and reconcile any existing run/task/dispatch
 with its completed effects first. A status question, repeated thread root,
 compaction summary or background result is not a fresh execution instruction.

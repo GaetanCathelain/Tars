@@ -359,3 +359,4 @@ reset.
 - 2026-08-21: claude-account-usage must fetch Claude magic links through existing authenticated Gmail API access and never require Gaetan to log into Gmail interactively.
 - 2026-08-23: Codex does not work on Cooper; never choose the Codex CLI there for delegated work.
 - 2026-09-05: Never invent or guess a URL; verify that a link resolves before sending it.
+- 2026-09-05: All agent work on Orca or Cooper must use at least 1M effective context, for every model and work type, including launches, resumes and recoveries; explicitly select and verify the effective context window, not only the model label, and never silently accept a smaller fallback. Existing explicit Claude Opus 4.8 pins still apply.
