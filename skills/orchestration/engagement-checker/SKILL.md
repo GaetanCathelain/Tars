@@ -15,7 +15,17 @@ A half-hourly, source-backed monitor for Gaetan's open loops: explicit commitmen
 
 Tars owns and executes this workflow directly. Do not spawn, prompt, resume, modify, or delegate through Claude, a worktree/session, or another non-Tars agent system. Outside Tars's own state the permitted writes are **exactly the list in "Permitted writes" below** — that section is the authority, and nothing else in this file, in the cron prompt, or in a reminder restates or extends it.
 
-All human times use `Europe/Paris`. Scheduled runs are restricted to 10:00–17:00 on workdays. Most runs must return exactly `[SILENT]`.
+**Reminders remain paused under SOUL's 2026-08-19 correction.** Do not create,
+resume or send engagement reminders unless Gaetan explicitly unpauses them.
+Pausing alerts does not stop authorized knowledge filing: preserve tracked
+items in Linear and persist material source-backed conversation facts, owner
+and next step on the existing ticket, deduplicating comments. Do not delete
+knowledge or close issues merely to silence notifications.
+
+All human times use `Europe/Paris`. The scheduling and delivery rules below
+apply only after an explicit unpause; a manual knowledge-only run keeps alerts
+silent, including routine Coverage notices, and records failures in its task
+result/state without pretending the filing succeeded.
 
 **Empty is a value, not a failure — this rule is stated once, here, and every step obeys it.** An empty result set, a zero count, an omitted optional field (`assignee`), an explicit `null` (`completedAt`), and an empty collection (`labels`, `seen`, `items`, the routing index) are all legitimate readings of a call that worked. Only three things are failures: a response carrying `error`/`errors`, a call that could not be made at all, and a read that hit its page cap with `hasNextPage` still `true`. Nothing may block a write, hold a cursor, or claim incompleteness on anything else, and every one of those three must surface in §8's `Coverage:` line.
 
@@ -23,7 +33,7 @@ All human times use `Europe/Paris`. Scheduled runs are restricted to 10:00–17:
 
 Five, and no others:
 
-1. **The scheduled reminder** to Gaetan (§8).
+1. **The scheduled reminder** to Gaetan (§8), only after explicit unpause; currently disabled by policy.
 2. **Create a GCN issue** for a retained open item — `mcp__linear__save_issue` with no `id` (§7).
 3. **Close a GCN issue this skill itself filed**, whose item was explicitly resolved outside Linear — `mcp__linear__save_issue` with `id` and `state` only (§5). Never an issue Tars did not file, and never on age alone.
 4. **Organize a GCN issue into Todo, In Progress, Waiting for answer, Delayed, or Done** when §5a has direct, source-backed evidence and no conflict — `mcp__linear__save_issue` with `id` and `state` only. Done requires explicit proof of resolution and may apply to a non-terminal issue; the other four targets apply only while the issue is non-terminal. Uncertainty means no write, not a best guess.
@@ -92,7 +102,7 @@ The routing index is the whole mechanism and it is derived from `items{}` at loa
 
 Never persist raw Slack threads, email bodies, Linear descriptions/comments, credentials, tokens, headers, or private transcript dumps. Redact obvious secret forms; when uncertain, omit the snippet. Keep at most 500 stable event IDs per source. Delete done/dismissed items after 14 days. **One exception: a done/dismissed item whose `linear_issue` has no `closed_at` is kept past 14 days** — §5's close-back retries only while the item survives, and deleting it strands an open GCN issue nobody will ever close. Drop it at 30 days and name the still-open issue once in §8's `Coverage:` line. State writes must preserve unknown future top-level keys.
 
-**The 30-day staleness sweep REPORTS; it never writes.** An open item untouched for 30 days is dropped from the local queue with status-history reason `stale:30d`, and that reason **never triggers §5's close-back**. Going quiet is not resolution: silence is the normal life of a low-priority backlog ticket, and a cron job that Cancels one is cancelling a live human ticket with nothing in the delivery to say so. If such an item carried a `linear_issue`, count it and surface `N filed tickets untouched for 30+ days` in §8's `Coverage:` line — that is the whole of the sweep's output. `linear-ticketing` §1 states the general rule: Tars never closes or cancels an issue it did not itself file, regardless of age, without Gaetan's per-message instruction.
+**The 30-day staleness sweep REPORTS; it never writes.** An open item untouched for 30 days is dropped from the local queue with status-history reason `stale:30d`, and that reason **never triggers §5's close-back**. Going quiet is not resolution: silence is the normal life of a low-priority backlog ticket, and a cron job that Cancels one is cancelling a live human ticket with nothing in the delivery to say so. If such an item carried a `linear_issue`, count it and surface `N filed tickets untouched for 30+ days` in §8's `Coverage:` line — that is the whole of the sweep's output. `linear-ticketing` §1 names the exact close-back and evidence-backed organization exceptions; neither permits a close or cancellation on age or silence.
 
 Stable item IDs:
 
@@ -412,6 +422,11 @@ Do not restate the rate limit anywhere else; point at this paragraph.
 On an internal failure, preserve unadvanced source cursors. If no trustworthy reminder can be produced, return `[SILENT]`; never fabricate substitute evidence. **That ban covers the explanation as much as the evidence.** A delivery-or-silence decision cites only a gate this run actually evaluated, and quotes that gate's live text. The run gate is the "Workday gate" section and the schedule is the "Scheduling contract" section; neither is restated here, so read the live text there rather than recalling it. Measured: a run justified its silence with "the cycle ran outside the 09:00–19:00 window", a window no live text anywhere defines — the live restriction is 10:00–17:00. An invented reason reads to the next person exactly like a real rule and is the same failure as an invented reminder. **When nothing crossed §6's threshold there is no gate to cite**: the run is the bare `[SILENT]` of this section's first rule, and if it is ever asked why it was silent the whole answer is that nothing crossed the threshold. Reaching for a gate is where the invention starts.
 
 ## Scheduling contract
+
+**Inactive while reminders are paused.** The recipe below documents a future
+explicitly authorized unpause; loading this skill or fixing it does not
+activate jobs. Preserve existing jobs/state rather than deleting or recreating
+them, and verify every job's active state and target before claiming unpause.
 
 Hermes global timezone must remain `Europe/Paris`. Use two recurring weekday jobs with this skill attached and `--deliver slack` — the bare platform name, which resolves to `SLACK_HOME_CHANNEL` (Gaetan's DM) and posts a **new top-level message**. Never `--deliver origin` and never `--deliver slack:<chat_id>`: both inherit the job's origin `thread_id`, so the reminder lands as a reply buried inside whatever thread the job was created in (measured 2026-08-13 — reminders were landing in an 8 August DM thread). A reminder is never a thread reply, and never goes to the reporting channel `C0BP2GZUFSR`.
 

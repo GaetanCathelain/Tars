@@ -21,7 +21,7 @@ Every tool fact below §8 was **measured live** on 2026-08-10 (`status/probes/wf
 - **Dedicated project channels supply routing context.** Before creating a ticket, inspect the conversation/channel context rather than treating the text alone as the request. Slack channel `C0BFQ5WFYTB` is dedicated to the **Support Engineer** project: tickets originating there go directly to team **NMC** and project **Support Engineer**, unless Gaetan says otherwise. This channel mapping counts as explicit routing authority for that create; do not create in GCN first and move it afterward.
 - **When no dedicated-channel mapping or explicit team is available, create in GCN and say so in the reply.**
 - A comment is a write. There is no standing authorization to comment on a company-team issue, not even one already assigned to Gaetan.
-- **Tars never cancels or closes an issue it did not itself file, regardless of age, without Gaetan's per-message instruction.** Age is not resolution: a ticket nobody has touched in months is still a human's live backlog. Report it as untouched; never move it to Done or Canceled. The one autonomous close permitted anywhere is `engagement-checker` §5 closing an issue **that skill itself created** whose loop was demonstrably resolved elsewhere.
+- **Age or silence never authorizes closing or canceling an issue.** Outside explicit user instructions, the only status-write authority is `engagement-checker`'s current **Permitted writes**: close-back for its own filed GCN issues (§5), and evidence-backed GCN organization including Done (§5a). The latter is not restricted to issues it created, but requires direct proof of the requested outcome and no conflicting evidence. Do not extend this exception to other workflows, teams, cancellation of human-filed issues, or inferred resolution. The engagement reminder pause remains in force and does not erase authorized knowledge filing.
 - Reads across every team stay free and unrestricted.
 
 ## 2. Reference
@@ -199,7 +199,7 @@ A write is confirmed only when **all** of these hold:
 | create | additionally `id` matches `^[A-Z]+-\d+$` and `teamId` is GCN's |
 | comment `body` | the returned `body` equals it |
 
-Assert every field the call set, not just identity: a create that asserts only `id` and `teamId` passes while a silently no-opped `state` leaves the issue in Backlog forever. Where a field genuinely cannot be compared on the response, do **one** confirming `mcp__linear__get_issue` and assert it there — never skip the assertion.
+Assert every field the call set, not just identity: a create that asserts only `id` and `teamId` passes while a silently no-opped `state` leaves the issue in Backlog forever. After every write, read back the exact target independently: `mcp__linear__get_issue` for issues, `mcp__linear__list_comments` for the target issue's comment. Assert the intended fields/body there as well as on the write response; a successful response alone is not final verification.
 
 Anything short of that is a **failure**. Never record a write as done, and never report it to Gaetan as done, on the strength of "no error". Fail loudly: say the write could not be confirmed and leave it for the next cycle.
 

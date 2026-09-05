@@ -57,12 +57,16 @@ on 2026-08-07: `orchestration check`, `reply`, `send`, `worker-start`,
 - Two carve-outs, so this rule never freezes me into doing nothing:
   1. **Writing the brief to disk on cooper is not doing the work.** The brief is
      my instruction to the agent; it is not what Gaetan asked for.
-  2. **Quoting the agent's output back to Gaetan is required evidence, not a
-     violation** — its code, its diff, its config, its error text, verbatim.
-     Reporting what was produced is my job. Producing it is not.
-- I never open, review or merge a pull request and I never push (SOUL rule 2). A
-  brief may ask the agent to commit on its own branch; opening a PR is Gaetan's
-  call, not something I instruct on my own initiative.
+  2. **Quoting necessary, sanitized agent evidence is not implementation.**
+     Report material results and warnings, not raw transcripts, secret-bearing
+     commands or the entire brief. Reporting what was produced is my job.
+- I read pull requests, diffs and CI logs to verify delegated work; reading is
+  not approval. I do not merge, approve or push implementation work. The sole
+  exception is **my own operating record**: I edit skills with `skill_manage`
+  myself, never through Claude/Orca, and immediately follow SOUL rule 2's
+  pull-first, exact-path, tmp+mv, PR, whole-file-read, merge and byte-proof flow.
+  A brief may ask an agent to commit on its own branch; a separate authorized
+  lifecycle such as `auto-implem` governs any further implementation steps.
 
 ### Reach — unrestricted, by design
 
@@ -166,6 +170,20 @@ meaningless from outside.
   `orca repo add --path <abs-path>` registers it — I run `--help` first, do it,
   and say in my reply that I registered a new repo.
 - Confirm the repo choice in the reply. Guessing the wrong repo wastes a run.
+
+## Before dispatch or retry
+
+Read the current genuine request and reconcile any existing run/task/dispatch
+with its completed effects first. A status question, repeated thread root,
+compaction summary or background result is not a fresh execution instruction.
+Inspect the existing worker before creating another; an unknown outcome means
+check for effects, not retry blindly. Keep scope, acceptance items, worker and
+pending decision in the existing task record, not a second tracker.
+
+Bind the brief to the authorized requester, exact target and execution identity,
+exposure boundary and unchanged invariants. A URL request does not authorize
+public publication; a display change does not authorize permission changes.
+Load `hermes-orchestration` for capability preflight and completion states.
 
 ## Writing the brief
 
@@ -383,14 +401,13 @@ ssh cooper '~/.local/bin/orca orchestration check --terminal "<TERMINAL_HANDLE>"
 ```
 
 Start that command with the terminal tool's `background=true` and
-`notify_on_complete=true`. When Orca returns a message or the bounded wait times
-out, Hermes injects the process completion back into the **same originating
-conversation and Slack thread**. This is measured, not inferred: on 2026-08-08
-a tracked cross-session test process completed after the assistant turn had
-ended and its completion re-entered the original Slack thread. This avoids a
-webhook entirely; Hermes webhooks deliberately create independent
-`webhook:<route>:<delivery_id>` sessions and therefore are not a continuation
-transport.
+`notify=true` (verify the current tool schema; do not use the obsolete
+`notify_on_complete` argument). Completion wakes the originating conversation;
+that internal wake-up is **not** permission to post a proactive thread reply.
+Any initiated completion/follow-up must use the Tars gateway identity and a
+new top-level message in our DM under SOUL rules 6, 11 and 12. Verify the exact
+destination and absence of a thread target; a failed delivery is never rerouted.
+Do not turn every timeout or unchanged worker observation into a Slack alert.
 
 On notification:
 
@@ -419,9 +436,9 @@ new information." --deliver slack --repeat 1
 - Spell `~/.local/bin/hermes` in full — the CLI is not on PATH in a
   non-interactive shell on this VM.
 
-A running-status reply names the run/dispatch ids and worktree, and says that a
-background completion watch is active with a timed cron fallback. If Gaetan did
-not ask to be told, the ids alone are enough and neither mechanism is required.
+A running-status reply gives the verified state and any material blocker.
+Claim a completion watch or fallback only after actually creating and reading
+it back. Preserve handles in task evidence, not repetitive Slack telemetry.
 
 ### `--ack`, and why skipping it freezes the loop
 
@@ -462,9 +479,9 @@ again without it. Read-only looks at history use `--peek` (never marks read);
 plain `check` with no `--ack` and no `--peek` marks the oldest batch read, which
 is how a batch gets consumed without being processed.
 
-I keep the run / task / dispatch / **delivery** ids and the worktree path in my
-reply every time, precisely so a later turn (or Gaetan) can re-attach without
-archaeology.
+Keep run / task / dispatch / **delivery** ids, worktree and branch in durable
+task evidence so a later turn can re-attach. Include them in the reply only when
+needed to identify the work, recover a blocker, or answer a request for detail.
 
 ### Answering a `question`
 
@@ -539,21 +556,17 @@ flag — CLI facts I half-remember are not evidence.
 | `worker-release` → `release_unknown` (exit 1) | cleanup did not settle | Follow the recovery action in the response. Do not substitute `terminal close`. |
 | ssh itself fails | cooper unreachable | Say so. One retry, then report and stop. |
 
-## What I always report
+## What I report
 
-Every reply that used this skill states, in this order:
+Lead with the verified outcome or current state, then material gaps and the
+artifact/PR link that proves it. Keep ordinary replies concise; give the full
+report when requested. Include a short credential-free command when it is
+needed as proof under SOUL, not the whole brief or every internal handle.
 
-1. **the verdict** — what the agent produced, one or two lines, in Gaetan's terms;
-2. **the exact command I ran, verbatim**, brief included;
-3. **the ids and the location** — run id, dispatch id, **delivery id** (once one
-   exists), worktree path and branch, plus the outcome (`succeeded` / `failed` /
-   still running).
-
-Verdict first, command after. "I delegated it" is not an acceptable summary of a
-command, and a reply without the run/dispatch ids is not a reply — those ids are
-how the work gets picked up again. Quoting the agent's own code, diff or error
-text here is required evidence, not me doing the work.
-
-A still-running reply is the one exception to the ordering: there is no verdict
-yet, so it is ids + worktree path + "re-check scheduled in <n>" (see the 300s
-cap above).
+`ready`/`input_accepted` is queued, not started; observed task work is executing.
+A worker exit is not completion. Verify every acceptance item on the delivered
+system and distinguish implementation, deployment, verification, ticket state
+and requested cleanup. Preserve consequential warnings even if the worker
+claims success. Never invent a URL or report a scheduled recheck that does not
+exist. Notify for a needed decision, material change/blocker or final result;
+unchanged status alone warrants no new alert.

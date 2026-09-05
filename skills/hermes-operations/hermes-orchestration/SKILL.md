@@ -28,7 +28,7 @@ Primary references:
 | Reasoning-heavy isolated subtask or parallel batch | `delegate_task` | Process/session-local execution; child starts with fresh context |
 | Separate ad-hoc session while chat remains free | `/background` (`/bg`, `/btw`) | Fresh isolated session; not a durable workflow queue |
 | Keep one chat iterating until acceptance criteria pass | `/goal` | Single session; no fan-out or board task |
-| Long shell command | `terminal(background=true, notify_on_complete=true)` | Shell process, not an agent workflow |
+| Long shell command | `terminal(background=true, notify=true)` | Shell process, not an agent workflow |
 | Scheduled or restart-independent fresh agent run | `cronjob` | Fresh session; cron runs cannot recursively schedule cron |
 | Durable multi-profile workflow with dependencies/retries/handoffs | Kanban | Single-host SQLite board |
 | External event starts work | Webhook | Trigger surface; pair with cron/Kanban/agent logic as needed |
@@ -107,12 +107,36 @@ Separate Slack UI limitations from Hermes gateway behavior:
 - In channels, Hermes normally needs an initial mention and replies in a thread; established thread sessions may continue without a fresh mention. 1:1 DMs are mention-exempt; group DMs are shared surfaces and follow channel controls.
 - Messages from other bots are ignored by default. `allow_bots: mentions` is the recommended loop-safe peer-agent mode; `all` risks bot loops.
 
-## Operational checks before claiming a capability is live
+## Capability preflight and completion evidence
 
-1. Check installed profiles and their descriptions.
-2. Check the gateway and embedded dispatcher are running.
-3. Check delegation width/depth and toolsets.
-4. Check the relevant board exists, worker assignees resolve, and concurrency caps.
-5. Check platform UI/adapter limits separately from core Hermes capabilities.
-6. Distinguish **supported by Hermes** from **configured in this installation**.
-7. Verify outputs and external side effects; never trust an agent's self-report alone.
+Before saying “unavailable” or asking for login, inspect current tool discovery,
+installed CLI/help and existing authenticated API/CLI access. Prefer a working
+supported route over a new login; on “retry”, recheck because tools and auth may
+have changed. Name the actual failed check if blocked. Preserve human-only
+authentication steps; never bypass access controls or change provider/model
+defaults, profiles or permissions to make preflight pass.
+
+For delegation, check the selected runtime is reachable, its account usable,
+and the effective host/model complies with current restrictions. On Cooper,
+Codex is unavailable by standing policy; use the authorized Claude workflow.
+Inspect board/dispatcher/profile limits only when that primitive is involved.
+Distinguish source support, installed release support, configured state and
+actual delivered behavior; source code alone does not prove a binary feature.
+
+Keep these evidence states in the existing task record, not another tracker:
+
+- **queued**: dispatch/input accepted; no task execution observed yet;
+- **executing**: substantive task work observed beyond a submitted prompt;
+- **blocked**: the actual failed check or pending decision is identified;
+- **implemented**: requested artifact exists and its relevant checks passed;
+- **deployed**: intended installation received and activated that artifact;
+- **verified**: every requested acceptance item passed on the delivered system.
+
+Before dispatch/retry, reconcile current request identity, scope, existing
+worker and completed effects. Status questions, old roots and result events do
+not authorize duplicate execution. Unknown effects require inspection first.
+Before “done”, independently read back exact external targets and verify all
+acceptance items, including requested ticket state, cleanup and durability.
+Preserve material worker warnings as unverified until checked. Verify exact
+links before supplying them; if access blocks verification, say so rather than
+guessing a URL. Procedural checks do not prove runtime replay protection.
