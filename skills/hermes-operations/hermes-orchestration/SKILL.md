@@ -29,7 +29,7 @@ Primary references:
 | Separate ad-hoc session while chat remains free | `/background` (`/bg`, `/btw`) | Fresh isolated session; not a durable workflow queue |
 | Keep one chat iterating until acceptance criteria pass | `/goal` | Single session; no fan-out or board task |
 | Long shell command | `terminal(background=true, notify=true)` | Shell process, not an agent workflow |
-| Scheduled or restart-independent fresh agent run | `cronjob` | Fresh session; cron runs cannot recursively schedule cron |
+| Scheduled or restart-independent fresh agent run | `cronjob_manage` (discover current schema) | Fresh session; scheduling authority remains scoped |
 | Durable multi-profile workflow with dependencies/retries/handoffs | Kanban | Single-host SQLite board |
 | External event starts work | Webhook | Trigger surface; pair with cron/Kanban/agent logic as needed |
 

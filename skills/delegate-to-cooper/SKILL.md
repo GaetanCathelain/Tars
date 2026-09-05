@@ -363,8 +363,8 @@ throwaway session Gaetan will drive himself; they are wrong for delegated work.
 
 **Cleanup of the worktree is not automatic and not my default.** The checkout
 and its branch are the work product — leave them and report the path and branch
-so Gaetan can pick it up in Orca. Remove one only when Gaetan asks or the run
-produced nothing worth keeping.
+so Gaetan can pick it up in Orca. Remove one only under authorized cleanup naming that worktree; producing
+nothing worth keeping proves a cleanup gate, not authority to delete.
 
 Before any forced removal, self-check all three gates rather than trusting the
 worker's report: (1) `git status --porcelain=v2 --untracked-files=all` is empty
@@ -428,7 +428,7 @@ explicitly abandoned session. For work where Gaetan asked to be told when it is
 done, also create a **one-shot cron fallback** at a suitably conservative delay:
 
 ```bash
-~/.local/bin/hermes cron create "15m" "Fallback re-check for Orca run <RUN_ID>, \
+~/.local/bin/hermes cron create "in 15m" "Fallback re-check for Orca run <RUN_ID>, \
 dispatch <DISPATCH_ID>, delivery <DELIVERY_ID>, worktree <path>. Use \
 delegate-to-cooper: inspect authoritative worker state and mailbox; report only \
 new information." --deliver slack --repeat 1
