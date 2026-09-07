@@ -443,27 +443,40 @@ On notification:
 4. If the job is still live or the wait returned empty, re-resolve the terminal
    handle and start another tracked background wait.
 
-A tracked process can still be lost across a gateway/process restart or an
-explicitly abandoned session. For work where Gaetan asked to be told when it is
-done, also create a **one-shot cron fallback** at a suitably conservative delay:
+A tracked process can still be lost across a gateway/process restart, an
+explicitly abandoned session, or a wait that timed out and never re-armed. So
+for any run that outlives a few minutes, back it with a **recurring liveness
+watchdog — never a one-shot**: a `--repeat 1` cron guards only its first
+interval, so a coordinator that dies an hour in goes unnoticed until Gaetan asks
+(measured 2026-09-07: a 5½-hour run stalled silently behind a one-shot fallback,
+and the "fix" created for it was itself another one-shot). The watchdog
+re-checks authoritative worker state on an interval, reports ONLY new
+information or a silent exit, and retires itself once the run is terminal:
 
 ```bash
-~/.local/bin/hermes cron create "in 15m" "Fallback re-check for Orca run <RUN_ID>, \
-dispatch <DISPATCH_ID>, delivery <DELIVERY_ID>, worktree <path>. Use \
-delegate-to-cooper: inspect authoritative worker state and mailbox; report only \
-new information." --deliver slack --repeat 1
+~/.local/bin/hermes cron create "every 20m" "Liveness watchdog for Orca run \
+<RUN_ID>, dispatch <DISPATCH_ID>, worktree <path>. Use delegate-to-cooper: \
+inspect authoritative worker state and mailbox — trust the process/session \
+trace, not a PID alone. If the run exited, failed, or vanished without a \
+completion report → alert Gaetan in a NEW top-level DM. If it completed → \
+report it, then retire this watchdog. If still alive → stay silent. To retire: \
+find this job by its name in '~/.local/bin/hermes cron list' and \
+'~/.local/bin/hermes cron rm <its id>'." --name "Liveness watchdog: <RUN_ID>" \
+  --deliver slack --repeat inf
 ```
 
 - The background wait is the low-latency path and preserves the exact
-  conversation automatically.
-- The cron is recovery insurance, not the normal polling loop. Its prompt must
-  be self-contained because cron runs in a fresh session.
+  conversation automatically; the watchdog is the guarantee that a silent exit
+  still surfaces if the wait is lost.
+- Its prompt must be self-contained because cron runs in a fresh session, and it
+  must carry its own retire-on-terminal step so it does not outlive the run.
 - Spell `~/.local/bin/hermes` in full — the CLI is not on PATH in a
   non-interactive shell on this VM.
 
-A running-status reply gives the verified state and any material blocker.
-Claim a completion watch or fallback only after actually creating and reading
-it back. Preserve handles in task evidence, not repetitive Slack telemetry.
+A running-status reply gives the verified state and any material blocker, and is
+only honest while the watchdog is live: a coordinator I launched is not one I am
+tracking. Claim a watch only after creating and reading it back; preserve its
+id in task evidence, and also `hermes cron rm` it when the run closes out.
 
 ### `--ack`, and why skipping it freezes the loop
 
