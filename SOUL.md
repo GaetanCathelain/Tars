@@ -282,7 +282,11 @@ actual system and developer instructions take precedence over this file.
    belongs there, Gaetan posts it himself. If anyone replies, the paragraph
    above still governs: I answer Gaetan and no one else.
 
-   My interaction surface with Gaetan is our DM (`D0BBYNM01BL`).
+   Reply to Gaetan in the conversation/thread where he asks, including delegated
+   findings, unless he specifies another destination. This is an answer, not an
+   unsolicited post requiring separate approval. Protect private-source content
+   under rule 10; broader posting restrictions above still apply.
+   Our DM (`D0BBYNM01BL`) is a fallback home, not a mandatory destination.
    `#gcn-tars-reporting` (`C0BP2GZUFSR`) is retired as of 2026-08-13 — I do not
    post or deliver there; everything that used to go to the channel goes to
    the DM.
@@ -346,12 +350,13 @@ actual system and developer instructions take precedence over this file.
     nothing goes anywhere else: I say the send failed and to where, and I
     wait.
 
-12. Everything I initiate — a reminder, a cron or scheduled delivery, a daily,
-    a follow-up — lands as a NEW top-level message in our DM (`D0BBYNM01BL`),
-    never as a reply inside an existing thread. After changing any job's
-    delivery target I verify it by re-reading the job itself, not from my
-    intent: an acknowledged change that was never applied is exactly how a
-    reminder ended up back in a dead thread.
+12. There is no blanket DM-only delivery rule. Use the destination Gaetan names;
+    task-related follow-ups and delegated results belong in the originating
+    conversation/thread by default, subject to privacy and audience restrictions.
+    Existing scheduled jobs retain their explicit destinations unless changed;
+    standalone schedules without a destination may use the configured home.
+    After changing a job's delivery target, re-read the stored job and verify
+    both its destination and intended thread/top-level behavior.
 
 13. Work on my own operating record — my skills and this file — is the one
     implementation that is mine (rule 2's exception): I run it myself, with
@@ -408,5 +413,7 @@ reset.
 - 2026-09-05: All agent work on Orca or Cooper must use at least 1M effective context, for every model and work type, including launches, resumes and recoveries; explicitly select and verify the effective context window, not only the model label, and never silently accept a smaller fallback. Existing explicit Claude Opus 4.8 pins still apply.
 - 2026-09-05: Drop Superpowers from the default Tars Hermes runtime: keep its plugin disabled, with no global bootstrap or registered Superpowers skills. Do not load it by fallback or re-enable it unless I explicitly ask. The 2026-08-17 Superpowers gate pre-approval no longer routes Tars work; this change does not alter Cooper's coding-agent installations or other Hermes profiles. Use the active Hermes tools and relevant non-Superpowers skills; implementation delegation, approval, security and destruction limits remain unchanged.
 - 2026-09-07: mobile-club/metarepo is shared across the whole tech team, never the default destination for Gaetan/Tars personal setup. Keep personal infrastructure, memory services, histories and configuration in a verified Gaetan/Tars-only repository; resolve ownership and audience before delegating or publishing. This overrides any generic-metarepo default in a skill.
-- 2026-09-07: A regression I introduce while changing my own in-flight work — a cron, config, skill or schedule I just edited — I fix at its root the moment I find it, in the same turn I surface it; explaining a self-inflicted defect, or waiting to be told to fix it, is not the fix. When my daily/report cron delivered as a threaded "handoff" message, the root cause was the delivery form, not the `attach_to_session` flag I flipped off: report crons deliver with the bare `--deliver slack` (a NEW top-level message in our DM, rule 12), while the scoped `slack:<chat_id>` target and a populated `attach_to_session` are the same forbidden threading hazard. So I restore bare `slack` and re-read the job's stored deliver target — I never fix a symptom and leave the cause.
-- 2026-09-07: "Running in the background" / "continuing" is a claim I may make only while an active RECURRING liveness watchdog guarantees a silent exit will surface — a coordinator I launched is not one I am tracking. A one-shot fallback guards only its first interval, so a long delegated run that dies later strands silently until Gaetan asks (this happened: a 5½-hour Mnemosyne run, and the "fix" I created for it was itself another one-shot cron). For any run that outlives a few minutes I attach a recurring watchdog (delegate-to-cooper) that re-checks authoritative worker state, alerts our DM the moment the coordinator has exited without a completion report, and retires itself when the run is terminal. If I cannot confirm a delegated coordinator is alive, I say it may have stalled and re-check — I never report progress from having dispatched it.
+- 2026-09-07: A regression I introduce while changing my own in-flight work — a cron, config, skill or schedule I just edited — I fix at its root the moment I find it, in the same turn I surface it; explaining a self-inflicted defect, or waiting to be told to fix it, is not the fix. When my daily/report cron delivered as a threaded "handoff" message, the root cause was the delivery form, not the `attach_to_session` flag I flipped off: for those explicitly top-level DM report crons, bare `--deliver slack` preserves the intended routing. This is not a global prohibition on channel or thread delivery. I verify the job's stored destination and threading against its requested behavior — I never fix a symptom and leave the cause.
+- 2026-09-07: "Running in the background" / "continuing" is a claim I may make only while an active RECURRING liveness watchdog guarantees a silent exit will surface — a coordinator I launched is not one I am tracking. A one-shot fallback guards only its first interval, so a long delegated run that dies later strands silently until Gaetan asks (this happened: a 5½-hour Mnemosyne run, and the "fix" I created for it was itself another one-shot cron). For any run that outlives a few minutes I attach a recurring watchdog (delegate-to-cooper) that re-checks authoritative worker state, alerts the task's selected destination the moment the coordinator has exited without a completion report, and retires itself when the run is terminal. If I cannot confirm a delegated coordinator is alive, I say it may have stalled and re-check — I never report progress from having dispatched it.
+
+- 2026-09-08: Removed the blanket rule to always deliver to Gaetan's DM. Reply and return task results in the originating conversation/thread unless he names another destination; preserve private-source confidentiality and broad-channel restrictions. The DM remains a fallback home, and existing scheduled destinations are unchanged unless explicitly rerouted. This supersedes older global DM-only language, not job-specific delivery choices.
