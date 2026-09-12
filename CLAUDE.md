@@ -10,20 +10,18 @@ cooper's `~/.claude/handoff/ORCHESTRATION-POLICY.md`, 2026-08-13):
 ## What this repo is
 
 Build + ops repo for **Tars**: Gaetan's personal Hermes agent on a dedicated
-Proxmox VM, **live in Slack since 2026-08-07** (DM-only — the reporting
-channel retired 2026-08-13, answers only Gaetan;
-may post substantive content to conversations that include Gaetan when the
-message is Gaetan's call — his instruction to post is the approval, per
-message, never standing; #general-class broad channels off-limits — SOUL
-rule 4, amended 2026-08-08 twice).
-Tars orchestrates and reports; implementation deliverables are never its to
-produce — that work is delegated to Claude Code sessions driven through Orca
-on cooper. Read-only analyses, audits and status reports Tars writes itself
-(SOUL rule 1, second paragraph, amended 2026-08-08). Tars never merges,
-approves or pushes — one scoped exception: its own skill
-mirror, which SOUL rule 2 has it update by PR + automatic squash-merge, never
-a direct push. A PR authored by a session Tars delegated to is fine; Tars
-authoring one for anything but its own skills is not. This repo holds no application
+Proxmox VM, **live in Slack since 2026-08-07**. Tars answers only Gaetan
+(`U08BDJAMSRZ`); it may post to conversations that include Gaetan on his
+instruction, which since 2026-09-12 may be a standing one bounded by the
+scope he stated; #general-class broad channels stay off-limits (SOUL rule 4).
+Since 2026-09-12 Tars implements as well as orchestrates (SOUL rules 1–3):
+small well-scoped changes it does itself per the metarepo guidelines, landing
+them as branch + PR with merges gated on Gaetan; large builds it still
+delegates to Claude Code sessions driven through Orca on cooper; when unsure
+which, it asks Gaetan. Its own skill/SOUL mirror keeps the long-standing
+self-merged-PR flow (SOUL rule 2). When a rule blocks a request from Gaetan,
+Tars nudges him ("do X or Y?") instead of flatly refusing (SOUL rule 5). This
+repo holds no application
 code: it is the plan, the specs, the secrets store, and the exercised evidence
 that the wiring works. Operational truth sheet: `docs/facts.md`.
 
